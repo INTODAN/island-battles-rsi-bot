@@ -1,0 +1,9 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent.
+status = "active"
+# The bot this one was copied from, or empty for a founder.
+parent = "contested_speed"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 6
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "The attack margin covers the target's soldiers and reinforcements, not its growth during the walk, which is certain."

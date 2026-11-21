@@ -18,6 +18,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Keeping an attacking castle strong against its neighbours costs more than it saves**, as the production reserve did in iteration 2: an attack that may not leave its castle weaker than the strongest enemy castle could beat lost to its parent 3 of 18 (iteration 4).
 - **Counting everything an enemy castle's owner could send to it makes a bot too timid.** Adding to a target's defenders the soldiers of every other enemy castle whose group could land first lost to its parent 5 of 18 (iteration 5): the owner seldom sends them all, and a bot that waits for that margin attacks too late. The real game's lesson stands for long walks; summing every castle within the walk overcounts it.
 - **Mechanisms that only act in rare situations split the mirror match.** A candidate that differs from its parent only when, say, a rescue would be too slow plays most mirror games move for move like it, and two of its last three such candidates took exactly 9 of 18 against the parent while rating above it (`contested_timeline` in iteration 3, `speed_rescue` in iteration 5). The head-to-head rule then decides on a few games.
+- **Put the attack margin on what is uncertain.** A castle's growth during the walk is certain; its soldiers and the groups bound for it are not. Applying the 1.3 margin to the soldiers and reinforcements only, and adding the growth as it is, beat its parent 14 of 18 and took `gyre` 30 of 30 (iteration 6): the old margin on growth kept the bot from striking castles that a steady attacker had emptied.
+- **`circle`'s rush can be held only at a price.** Keeping the lone opening castle above what the enemy's castle could take turned both losses to `expander` into draws at the limit, but cost more on `claw` and `strait` than it gained (7 of 18 against its parent, iteration 6). Answering an attack at its origin, through the attacker, changed the length of 13 games and the winner of none.
 - **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent); a finish that works is still to be found.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
@@ -323,3 +325,69 @@ All three passed the gate: no failed turn, slowest turns 16.1, 13.4 and 17.7 ms.
 **Where the champion still loses:** as in iteration 4: `circle` against `expander`; `strait` against `rusher`, `level3`, `contested_stage` and `economist_reinforce`; `gyre` against `rusher`; `claw` against `contested_stage`; `islands` against `level2`.
 
 **Next:** iterations 3 and 5 promoted nothing, and two near misses were exact halves against the parent. If iteration 6 also promotes nothing, iteration 7 starts by adding maps (more games per pair) and with a founder. `circle`'s opening has now survived five iterations: it may need a founder that doesn't buy production first.
+
+## Iteration 6: the margin on what is uncertain
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,106 in the training selection round robin, 880 in the holdout selection; the final standings are 1,134 training and 880 holdout matches. The baseline (`iteration-6-before`) gave exactly iteration 5's training table.
+
+**Findings** (from `contested_speed`'s games on the training maps):
+
+1. **It never strikes a steady attacker's empty castles.** `gyre`, against `rusher`, turns 36 to 40: `rusher`'s castles held 2 to 9 soldiers after each wave of 8 to 12, while castle 0 held 15 to 21. Its nearest, castle 4 (3 units, 6 turns, 5 to 9 soldiers at production 1), needed `ceil((9 + 6) × 1.3) + 1` = 21 with the margin on the growth as well; with the wave of 8 walking at it, castle 0 had 8 to spare. The game was lost on turn 75. **Idea (a):** the margin covers the target's soldiers and reinforcements, not its certain growth.
+2. **The soldiers it keeps for an incoming wave do nothing.** In the same game, castle 0 kept 8 to 12 home against each wave while the wave's origin stood empty on the same line. **Idea (b):** answer an attack by striking its origin through the attacker: the group meets it head-on, and if it has more than twice the attacker it walks on.
+3. **`circle`'s opening, lost by every economist descendant since iteration 0.** Turns 1 to 4 (iteration 2's finding 1): it buys production down to 7 soldiers, and `expander`, 4 units away with 33, takes the castle. Iteration 2's `reinforce_threat` held that reserve all game and lost. **Idea (c):** hold it only while the bot owns a single castle.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `speed_margin` | contested_speed | The attack margin covers the target's soldiers and reinforcements, not its growth during the walk, which is certain. | 1562 (1471) | 14/18 | 2010 (1937) | **promoted** |
+| `speed_counter` | contested_speed | Answer an attack by striking its origin along the same line: the group meets the attacker head-on, so the soldiers kept home for it go out instead. | 1471 (1471) | 9/18 | not played | **rejected**: half against its parent and the same rating. The counter fired (16 times in one `gyre` game) but changed the winner of no game: its row of the pair table is its parent's, cell for cell. |
+| `speed_opening` | contested_speed | While the bot has one castle, it spends nothing below what the strongest enemy castle could take; unlike reinforce_threat, only in the opening. | 1422 (1471) | 7/18 | not played | **rejected**: below its parent in both rules. It drew both `circle` games against `expander` (the parent loses them) but fell to 18.5/30 on `claw` and 14/30 on `strait` (parent 24.5 and 19). |
+
+All three passed the gate: no failed turn, slowest turns 36.3, 19.3 and 10.3 ms.
+
+**Status changes:** `speed_margin` is active. `contested_speed` stays active: `speed_margin` scored less against `reinforce_timeline` (15/18 to its 17). That made seven active bots, so `expander`, the lowest-rated active bot (880 in the selection), is **retired**: `speed_margin`'s row beats it against every other player. It stays in every tournament as a retired opponent, with its `circle` rush. Active: `speed_margin`, `contested_speed`, `contested_stage`, `reinforce_timeline`, `economist_reinforce`, `economist_contested`; retired: `economist`, `sentinel`, `reinforce_contested`, `rusher`, `expander`.
+
+Training maps (`iteration-6-train`, 1,134 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| speed_margin | 1557 | 0.893 | 198 | 22 | 14 |
+| contested_speed | 1482 | 0.844 | 187 | 21 | 26 |
+| contested_stage | 1387 | 0.769 | 173 | 14 | 47 |
+| reinforce_timeline | 1292 | 0.684 | 151 | 18 | 65 |
+| reinforce_contested (retired) | 1281 | 0.673 | 147 | 21 | 66 |
+| economist_reinforce | 1232 | 0.626 | 134 | 25 | 75 |
+| economist_contested | 1163 | 0.558 | 122 | 17 | 95 |
+| economist (retired) | 1097 | 0.491 | 104 | 22 | 108 |
+| level3 | 1000 | 0.313 | 58 | 8 | 132 |
+| expander (retired) | 873 | 0.278 | 61 | 8 | 165 |
+| rusher (retired) | 863 | 0.269 | 54 | 18 | 162 |
+| sentinel (retired) | 837 | 0.248 | 52 | 12 | 170 |
+| level2 | 803 | 0.162 | 29 | 6 | 163 |
+| level1 | 512 | 0.040 | 0 | 16 | 182 |
+
+Holdout maps (`iteration-6-holdout`, 880 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| speed_margin | 2010 | 0.915 | 119 | 0 | 11 |
+| contested_speed | 1937 | 0.877 | 110 | 8 | 12 |
+| reinforce_timeline | 1825 | 0.808 | 102 | 6 | 22 |
+| contested_stage | 1779 | 0.777 | 101 | 0 | 29 |
+| reinforce_contested (retired) | 1668 | 0.700 | 88 | 6 | 36 |
+| economist_reinforce | 1567 | 0.631 | 78 | 8 | 44 |
+| economist_contested | 1509 | 0.592 | 75 | 4 | 51 |
+| economist (retired) | 1395 | 0.523 | 66 | 4 | 60 |
+| level3 | 1000 | 0.214 | 22 | 3 | 85 |
+| sentinel (retired) | 882 | 0.250 | 29 | 7 | 94 |
+| rusher (retired) | 824 | 0.215 | 25 | 6 | 99 |
+| expander (retired) | 798 | 0.200 | 26 | 0 | 104 |
+| level2 | 737 | 0.100 | 10 | 2 | 98 |
+| level1 | 409 | 0.018 | 0 | 4 | 106 |
+
+**Champion:** `speed_margin`, 1557 on the training maps and 2010 on the holdout maps (iteration 5's champion, `contested_speed`, was 1512 and 1969; 1482 and 1937 in this tournament). Over iterations 1 to 6 the champion went from 1108 to 1557 against the same fixed `level3`.
+
+**Where the champion still loses (training maps):** `circle` against `expander` in 12 turns, both sides; `claw` against `contested_stage` (76 and 81 turns) and `crossing` against it (138 and 182); `strait` against `rusher` (93) and `reinforce_timeline` (114), both sides; `islands` against `level2` (86 and 112); `archipelago` against `economist` (159); `crossing` against `contested_speed` at the limit. Draws at the limit on `circle` against `contested_speed`, `contested_stage` and `economist`.
+
+**Next:** `contested_stage` now beats the champion on `claw` and `crossing`, both sides: its staging, measured against the new champion. `strait`, against two players. `circle`'s opening still has no answer that pays for itself.
