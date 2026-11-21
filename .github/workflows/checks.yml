@@ -1,0 +1,42 @@
+# The league's checks, on every pull request and on main: the tools' and every
+# bot's checks, then every bot plays the others and the game's default bots on
+# one map with the headless runner. A bot that fails a turn fails the job.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  league:
+    name: League
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # The runner is built from the game's source, which the first tournament
+      # fetches at the commit that runner.toml names.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache: false
+
+      - name: Checks of the tools and of every bot
+        run: scripts/check.sh
+
+      - name: The bots play a tournament
+        run: uv run --locked league tournament --maps circle --run-id checks --strict

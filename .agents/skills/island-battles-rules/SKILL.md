@@ -1,0 +1,78 @@
+---
+name: island-battles-rules
+description: "The rules of an Island Battles game: turns (generations), castles, soldiers, growth, movement, clashes, capturing, upgrades and their costs, bursts, and how a game is won, lost or drawn. Load it before deciding what a bot should do, or when a result of the bot surprises you."
+---
+
+# Island Battles rules
+
+Island Battles is a turn-based strategy game on a 2D map. Each team is played by **one player**, a person or a bot, and a game has two or more teams. A team has a `team_color` (1, 2, ...). Color `0` is **neutral**.
+
+## A turn is a generation
+
+The game is a list of **generations**. `turn.turn_number` counts them: the game's first generation is turn 1, and each turn adds one, as the replay numbers them. (`turn.generation.id` is the server's ID of the generation, not the turn number: it only increases and doesn't start at 1.) In each one, every player sees the board and answers with commands (this is what `play(turn)` does). When all players have answered, the server computes the next generation. The steps run in this order:
+
+1. **Your commands**, in the order you list them.
+2. **Movement**: every soldier group moves, and enemy groups that meet clash.
+3. **Growth**: every castle that a team owns produces its `generation_amount` value of soldiers (1 at level 1, up to 4). A castle that bursts this turn gets the burst on top, and a castle with burst debt repays it first (see Bursts). A **neutral** castle (`team_color` 0) does not grow: it keeps its soldiers until a team captures it.
+4. **Arrival**: groups that reached their destination castle land.
+
+So a group you send moves in the same turn, and a castle grows before the arrivals fight it. A neutral castle captured this turn was still neutral at the growth step, so it does not grow this turn and grows from the next turn on.
+
+## Castles and soldiers
+
+A **castle** has an `id`, a `team_color`, `soldiers`, a position (`x`, `y`) and `upgrades` (its levels). Every game is played on a map, a default map or a map file, which decides where the castles are, how many each team starts with and how many soldiers they hold, and may have neutral castles. Ids never change or get reused.
+
+`send_soldier_group(origin, destination, amount)` takes `amount` soldiers out of one of your castles (at least 1, at most what it has) and puts them in a **group** that walks in a straight line to the destination castle, which can be any other castle. The group copies the origin castle's upgrade levels at that moment and keeps them.
+
+A group moves `speed` map units per turn and never overshoots. Distances are in map units (`castle.distance(other)`), not turns: at speed 0.5, 3 units take 6 turns.
+
+## Clashes
+
+Groups of different teams **clash** when their centers come within **0.25** units. Clashes resolve in time order within the turn. In a clash each team loses as many soldiers as all enemy groups in it have together (never more than it has); a group at 0 is gone.
+
+Counting soldiers before the losses, if the smaller side has **half or more** of the larger side's soldiers, every group in the clash **stops** where they met, and stays still for its `clash_stop_generations` value (3, 2 or 1 turns, counting the clash turn). If the smaller side has less than half, the survivors keep walking. A group that reaches its castle in the same instant arrives instead of clashing.
+
+## Arriving and capturing
+
+A group that ends the turn at its destination lands, in group id order:
+
+- **Your own castle**: its soldiers join the castle.
+- **Any other castle** (enemy or neutral): if the group has **more** soldiers than the castle, the castle becomes yours with the difference as its soldiers (it keeps its upgrade levels, and loses its burst debt). Otherwise the castle loses that many soldiers and stays as it was. An equal fight leaves the castle with 0 soldiers and its owner.
+
+## Upgrades
+
+`upgrade_castle(castle_id, type)` buys the **next level** for a castle you own, paid in that castle's soldiers (it may spend all of them). Level 1 is free and every castle starts there. You can buy several levels in one turn. Upgrade before you send: a group copies the levels at the moment it leaves.
+
+| Type | Level | Value | Cost to reach it |
+|---|---|---|---|
+| `speed` (map units per turn) | 1 / 2 / 3 / 4 | 0.5 / 1 / 1.5 / 2 | 0 / 10 / 20 / 30 |
+| `clash_stop_generations` (turns stopped) | 1 / 2 / 3 | 3 / 2 / 1 | 0 / 10 / 20 |
+| `generation_amount` (soldiers produced per turn) | 1 / 2 / 3 / 4 | 1 / 2 / 3 / 4 | 0 / 10 / 20 / 30 |
+| `burst_potential` (largest burst) | 1 / 2 / 3 / 4 | 0 / 4 / 8 / 16 | 0 / 10 / 20 / 30 |
+
+The costs are in `turn.upgrades`; read them there rather than hard-coding them.
+
+## Bursts
+
+`burst_castle(castle_id, amount)` orders a **burst** of 1 up to the castle's `burst_potential` value (counting the levels bought this turn, also later in the same result) for a castle you own. A castle at `burst_potential` level 1 can't burst. The burst is a loan:
+
+1. The turn you order it, the castle gets its production **plus** the burst, so the very next generation has them, and the burst becomes its `burst_debt`. The burst arrives before that turn's groups land, so it already helps the castle hold.
+2. From then on, each turn's production repays the debt first; only what is left over grows the castle. Once the debt is 0 it grows normally again.
+
+A castle can't burst while it has `burst_debt`, nor twice in one turn. A capture clears the debt. Every player sees it.
+
+## Winning, losing, drawing
+
+A team is **out** when it has no castles and no groups. The game ends when:
+
+- **One team is left**: it wins. Neutral castles do not need to be captured. If the last teams go out in the same turn, it is a **draw**.
+- **Generation `turn.max_generations` is created** (300 unless the host chose another length): the team with the most castles wins; equal counts are a draw. So the last turn a bot plays is `turn.max_generations - 1`, and at most `turn.max_generations - turn.turn_number` turns are left, this one included. Read the limit from the turn rather than hard-coding it.
+- **A turn passes its deadline** before every player answered: each team with a late player **loses** and the game ends at once. The team with the most castles among the others wins.
+
+The host sets the turn timeout: 30 seconds unless the lobby chose 5 to 600 seconds or no limit. `turn.turn_deadline_at` says when this turn ends (`None` for no limit). One slow answer loses the whole game, so answer fast.
+
+**A game with a player who plays by hand is real-time.** Each turn then ends after the lobby's turn pace, 1 second unless the host chose 0.5 to 5 seconds, and `turn.turn_deadline_at` is that time. The server plays the turn with the orders that arrived by then: a bot that answers later passes the turn (its answer is refused as a stale generation), and nobody loses for a missed turn. No turn times out; instead the turn timeout applies per player: a bot the server hasn't heard from for that long (or for one turn plus 5 seconds, if that is longer) when a turn ends has **left**, and its team is out: its castles turn neutral and keep their soldiers, and its groups vanish. Any answer counts, even a late one, so a bot that answers every turn it gets never leaves. A player who plays by hand can also **resign**, which takes their team out the same way when the turn ends. A real-time game that nobody plays for the turn timeout is **abandoned**: it ends where it stands, and the team with the most castles wins.
+
+## Rejected results
+
+The server checks all commands against the board and rejects the **whole result** if one is invalid: soldiers a castle does not have (counting what earlier commands in the result spend), a castle that is not yours or does not exist, an upgrade past the maximum level, a burst above the castle's burst potential or of a castle with debt, or sending to the same castle. The turn is not played. See `writing-a-bot`.
