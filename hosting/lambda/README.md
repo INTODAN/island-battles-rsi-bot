@@ -8,7 +8,7 @@ In `eu-central-1`, next to the game:
 
 | Resource | Name |
 | --- | --- |
-| Function | `island-battles-league-bot`: `python3.14`, arm64, 512 MB, 15 s timeout, reserved concurrency 5, env `BOT=bots.economist.bot:play` |
+| Function | `island-battles-league-bot`: `python3.14`, arm64, 512 MB, 15 s timeout, reserved concurrency 5, env `BOT=bots.<bot>.bot:play` for the bot that [`bot`](bot) names |
 | Function URL | auth `NONE`; the bot's URL is the function URL followed by `/turn` |
 | Role | `island-battles-league-bot`: writes its own logs, nothing else |
 | Code | `s3://island-battles-league-bot-<account>/bot.zip` |
