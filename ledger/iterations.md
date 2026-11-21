@@ -10,6 +10,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - Production upgrades pay on most maps with neutral castles: the economist, which does nothing else cleverly, beats default level 3 in 24 of 28 games. `islands` was the exception (4 of 12 points there), and the cause wasn't production but holding: see the next lesson.
 - **A castle taken with 1 soldier near the enemy falls unless another castle reinforces it.** A bot that never sends soldiers to its own castles loses them to groups of 8 to 15 while its home castle holds 15 to 20 two or three units away and waits. Reinforcing a castle that would fall, from castles whose groups land before the attack, took the economist line from 4 to 14 of 16 points on `islands` and from 1108 to 1271 overall (iteration 1).
 - **Castles that choose their targets independently in one turn send twice at one target** (two groups of 21 at a neutral of 20), and a neutral that an enemy group is already walking to is a different target: it will be an enemy castle, or a weakened neutral, when yours lands. Counting both is worth about 90 rating points (iteration 1).
+- **Defence is about the landing that takes the castle, not the first one.** Counting every attacker against the first landing's deadline makes help look too late when the second group is the one that captures; playing the landings in order found help in time and beat its parent 16 of 18 (iteration 2).
+- **A static reserve against the strongest enemy castle costs more than it saves.** Holding home what any enemy castle could send, before buying production, lost to its parent 4 of 18 and didn't even win `circle`'s opening (iteration 2's `reinforce_threat`): the economy it gave up mattered more than the strikes it deterred.
 - **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent); a finish that works is still to be found.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
@@ -131,3 +133,63 @@ Holdout maps (`iteration-1-holdout`, 330 matches):
 - Against `economist_contested`: 5 losses on `gyre`, `islands`, `claw` and `delta`, three of them at the generation limit, and draws at the limit on `circle` and `claw` against both economist descendants: neither finishes a level game (the fourth lesson).
 
 **Next:** the obvious candidate is the two promoted ideas together (`economist_reinforce` with `economist_contested`'s target accounting), measured from the start. Then `rusher` on `strait` and `gyre`, and a finish that isn't a pool of every idle castle.
+
+## Iteration 2: the two ideas together, and defence in order
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 1,134 in the training selection round robin, 520 in the holdout selection; the final standings are 936 training and 520 holdout matches. The baseline (`iteration-2-before`) gave exactly iteration 1's training table.
+
+**Findings** (from `economist_reinforce`'s games on the training maps):
+
+1. **It spends its home castle down while an enemy castle can strike.** `circle`, against `expander`, turns 1 to 4: it bought production levels 2 and 3 and held 7 soldiers on turn 4; `expander`, 4 units away with 33, sent 32 that turn and took the castle on turn 11 (28 held). **Cause:** its reserve counts groups already walking, never an enemy castle that could send. **Idea:** keep home what the strongest enemy castle could bring before its group lands.
+2. **Its reinforcement never fired on `strait`.** Against `rusher`, turn 12: castle 2 held 6 against two groups of 8, landing in 3 and about 7 turns; castle 0, 5 turns away, had 15. All 16 attackers were counted against the first landing's deadline of 3 turns, so no helper was "in time", although the second group, the one that took the castle on turn 18, could have been met. The game is move for move the same as `economist`'s. **Cause:** the shortfall is measured at the first landing. **Idea:** play the landings in order and help in time for the one that would capture.
+3. **It still sends twice at one target.** `gyre`, against `economist_contested` (which won both sides), turn 39: castles 0 and 4 each sent 26 at neutral castle 9, which held 25. This is iteration 1's finding 2, which `economist_contested` answers. **Idea:** graft that accounting in, as iteration 1's entry proposed.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `reinforce_timeline` | economist_reinforce | Reinforce against the attack that would take the castle: play the attackers' landings in order and help in time for the first one that captures. | 1364 (1277) | 16/18 | 1764 (1543) | **promoted** |
+| `reinforce_contested` | economist_reinforce | Graft from economist_contested: size an attack by every group bound for the target, enemy groups that land first and this turn's own sends. | 1358 (1277) | 11.5/18 | 1746 (1543) | **promoted** |
+| `reinforce_threat` | economist_reinforce | Keep home what the strongest enemy castle could bring before its group lands; buy and attack only with the rest. | 1186 (1277) | 4/18 | not played | **rejected**: lost to its parent and rated below it. It took 20 of 22 points on `strait` (parent 16) but fewer elsewhere, and still lost `circle`'s opening (14/22 against 15/22); its games weren't read. |
+
+All three passed the gate: no failed turn, slowest turns 18.7, 15.8 and 14.7 ms.
+
+**Status changes:** `reinforce_timeline` and `reinforce_contested` are active. `economist_reinforce` stays active: neither candidate's row matches it everywhere (`reinforce_timeline` took 14/18 from `economist` to its 15; `reinforce_contested` 16/18 from `level3` to its 18). That made seven active bots, so `sentinel`, the lowest-rated active bot (843), is **retired**: `reinforce_timeline`'s row beats it against every other player. Active: 6; retired: 2.
+
+Training maps (`iteration-2-train`, 936 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| reinforce_contested | 1321 | 0.831 | 143 | 13 | 24 |
+| reinforce_timeline | 1318 | 0.828 | 143 | 12 | 25 |
+| economist_reinforce | 1228 | 0.747 | 126 | 17 | 37 |
+| economist_contested | 1175 | 0.694 | 120 | 10 | 50 |
+| economist (retired) | 1080 | 0.594 | 100 | 14 | 66 |
+| level3 | 1000 | 0.417 | 56 | 8 | 80 |
+| expander | 832 | 0.328 | 55 | 8 | 117 |
+| sentinel (retired) | 827 | 0.322 | 52 | 12 | 116 |
+| rusher | 821 | 0.317 | 48 | 18 | 114 |
+| level2 | 768 | 0.201 | 26 | 6 | 112 |
+| level1 | 494 | 0.056 | 0 | 16 | 128 |
+
+Holdout maps (`iteration-2-holdout`, 520 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| reinforce_timeline | 1764 | 0.900 | 88 | 4 | 8 |
+| reinforce_contested | 1746 | 0.890 | 87 | 4 | 9 |
+| economist_reinforce | 1543 | 0.760 | 73 | 6 | 21 |
+| economist_contested | 1543 | 0.760 | 75 | 2 | 23 |
+| economist (retired) | 1391 | 0.660 | 64 | 4 | 32 |
+| level3 | 1000 | 0.294 | 22 | 3 | 55 |
+| sentinel (retired) | 881 | 0.325 | 29 | 7 | 64 |
+| rusher | 823 | 0.280 | 25 | 6 | 69 |
+| expander | 797 | 0.260 | 26 | 0 | 74 |
+| level2 | 736 | 0.138 | 10 | 2 | 68 |
+| level1 | 407 | 0.025 | 0 | 4 | 76 |
+
+**Champion:** `reinforce_contested`, 1321 on the training maps (iteration 1's champion, `economist_reinforce`, was 1271; 1228 in this tournament). `reinforce_timeline` is 3 points behind on training and 18 ahead on holdout, and wins their pair 11/18 to 7/18 for `reinforce_contested`: the two are equals with different strengths.
+
+**Where the champion still loses (training maps):** `circle` against `expander` in 12 turns (both sides; still nobody's answer); `strait` against `rusher` (79 turns), `level3` (76) and `economist_reinforce` (125); `gyre` against `rusher` (75); `islands` against `level2` (85 and 93) and `reinforce_timeline` (146); `archipelago` against `economist`; `delta` against `reinforce_timeline` and `economist_contested`, in games of 219 to 300 turns.
+
+**Next:** `reinforce_timeline`'s defence grafted into `reinforce_contested` (both promoted, one idea each); `strait`, where the champion loses to four players; and `circle`'s opening, which neither a reserve nor anything else has answered.
