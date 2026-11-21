@@ -817,3 +817,23 @@ Holdout maps (`iteration-13-holdout`, 1,224 matches, exit 0):
 **Champion:** `safe_hold`, 1902 on the training maps and 2216 on the holdout maps (`finish_safe` 1849 and 2017 in the same tables).
 
 **Where the champion still loses:** to the player's bot on `islands`, `reef`, `lagoon` and `shoals`.
+
+## Iteration 14: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout (unchanged). **Matches:** 3,000 in the training selection round robin; no holdout selection; the standings are iteration 13's.
+
+**Findings** (`safe_hold`'s games):
+
+1. **The rear never buys its own production while the front holds plenty.** `reef`, against the player's bot (lost in 150 turns): production 9 against 12 from turn 36 to the end; home castle 0 at production 3 from turn 11, castle 4 at 2, while front castle 2, at production 4 and speed 2, held 100 to 190 soldiers. **Idea (a):** once the front is at the top of production and holds more than any enemy castle, the rear keeps its soldiers for its own levels.
+2. **The home behind the front is staged empty.** `strait`, against `frontline` (lost in 68 turns): home castle 0 held 18 on turn 39 and fell to one strike. **Idea (b):** a rear castle stages only what leaves it more than the nearest enemy castle holds.
+3. **The margin keeps a rich front idle.** `reef` again: 150 to 190 soldiers in one castle against enemy castles of 50 to 113. **Idea (c):** when the bot's soldiers are 1.5 times the enemy's, strike exactly.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `hold_rearfund` | safe_hold | Once the front castle's production is at the top and it holds more than the strongest enemy castle, rear castles keep their soldiers for their own production instead of staging. | 1861 (1899) | 10/20 | **rejected**: half against its parent, rated below it; it still lost `reef` to the player's bot. |
+| `hold_stageguard` | safe_hold | A rear castle stages only what leaves it more soldiers than the nearest enemy castle holds. | 1792 (1899) | 7/20 | **rejected**: below its parent in both rules (16/34 on `claw` and `gyre`, parent 30). |
+| `hold_rich` | safe_hold | When the bot's soldiers outnumber the enemy's by half again, a strike counts the target exactly instead of with the margin. | 1889 (1899) | 10/20 | **rejected**: half against its parent, rated below it. |
+
+All three passed the gate (slowest turns 11.6, 10.7 and 9.9 ms). Against the player's bot each won 24 of 32 or fewer, as the parent did.
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
