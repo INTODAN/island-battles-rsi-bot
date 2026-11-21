@@ -727,3 +727,27 @@ All three passed the gate: no failed turn, slowest turns 10.1, 13.4 and 15.2 ms.
 **Status changes:** none. **Standings:** iteration 10's (`iteration-11-train`, `iteration-11-holdout`). **Champion:** `finish_speed`, 1881, level with `finish_safe` (in this iteration's selection, with the candidates in the field, `finish_safe` led 1919 to 1896).
 
 **What this says:** for the second time (`hold_exact` in iteration 9, `speed_safe` now) a candidate that beat the player's bot more often than its parent was rejected by the league's mirror match. The league measures the bots against each other and three default bots; the real opponents reward holding and economy more than the league does.
+
+## Iteration 12: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,700 in the training selection round robin; no holdout selection; the standings are iteration 10's.
+
+Real games since iteration 11, against the hosted bot in a lobby (Blue): `finish_speed` won `islands` (62 turns), `strait` (68), `crossing` (123) and `far-shores` (110), lost `delta` (108) and drew `circle` at the limit (1,142 soldiers to 1,141, the same as `frontline`: on `circle` the hosted bot plays move for move as the `frontline` bots do).
+
+**Findings:**
+
+1. **Speed for a rear castle next to the front costs the race.** `islands`, `finish_speed` against `frontline` (lost in 75 turns): home castle 0 bought speed on turn 6, 25 soldiers to `frontline`'s 35 on turn 11; it lost to every `frontline` bot there. **Idea (a):** rear speed only for a walk to the front longer than 8 turns, the speed lesson's threshold.
+2. **Help that would land late is never sent.** The hosted bot's `delta` game: castle 4 logged unheld from turn 76 and fell on turn 84 with 17 soldiers; the hosted bot holds what it takes with 5 to 9. **Idea (b):** help that lands up to three turns late, sized to retake.
+3. **The front strikes while another castle falls.** Same game, turns 77 and 81: castle 2 struck castle 5 with 26 and 28 soldiers while castle 4 was unheld. **Idea (c):** no strike while an own castle is unheld.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `speed_far` | finish_speed | A rear castle buys speed before staging only when its walk to the front is longer than SPEED_WALK turns. | 1872 (1894) | 9/18 | **rejected**: half against its parent, rated below it (30/34 on `islands`, parent 24; 25/34 on `claw`, parent 31). |
+| `speed_retake` | finish_speed | A castle that would fall is also helped by castles whose groups land up to RETAKE_TURNS after the attack, sized to take it back. | 1843 (1894) | 11/18 | **rejected**: rated below its parent. |
+| `speed_rescuefirst` | finish_speed | No strike while an own castle is short under attack and no help reaches it in time. | 1745 (1894) | 2/18 | **rejected**: below its parent in both rules. |
+
+All three passed the gate (no failed turn, slowest turns 10.3, 10.4 and 13.0 ms). Against the player's bot: `speed_far` and `speed_retake` 22 of 28, `speed_rescuefirst` 20, the parent 20.
+
+**Status changes:** none. **Champion:** `finish_speed`, unchanged.
+
+**Next:** iterations 11 and 12 promoted nothing, so iteration 13 starts by adding a training and a holdout map, and one of its candidates is a founder.
