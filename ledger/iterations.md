@@ -837,3 +837,25 @@ Holdout maps (`iteration-13-holdout`, 1,224 matches, exit 0):
 All three passed the gate (slowest turns 11.6, 10.7 and 9.9 ms). Against the player's bot each won 24 of 32 or fewer, as the parent did.
 
 **Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+## Iteration 15: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout (unchanged). **Matches:** 3,000 in the training selection round robin; no holdout selection; the standings are iteration 13's.
+
+**Findings** (`safe_hold`'s `islands` game against the player's bot, lost in 114 turns):
+
+1. **Big neutrals need two castles, and expansion uses one.** Turns 11 to 110: two castles at production 2 each held 8 to 16 soldiers while neutrals of 15 and 20 on the bot's side stayed neutral. **Idea (a):** the castles nearest a neutral take it together when no one alone can.
+2. **Strikes take every spare soldier, so production stops at level 2.** Same turns: production 4 for 100 turns; no castle held the 24 for level 3. **Idea (b):** a castle joins a strike only with what its next production level doesn't need.
+3. **Strikes trickle.** 36 to 44 soldiers walking at castle 5 in groups of 1 to 8 at any time, 136 lost in clashes. **Idea (c):** one strike per target until it lands (iteration 11's `speed_onestrike`, on the new champion).
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `hold_poolneutral` | safe_hold | A neutral castle that no castle can afford alone is taken by the castles nearest it together. | 1759 (1916) | 8/20 | **rejected**: below its parent in both rules (16/34 on `islands`, parent 30). |
+| `hold_strikefund` | safe_hold | A castle joins a strike only with the spare soldiers it doesn't need for its next production level. | 1944 (1916) | 8/20 | **rejected**: lost to its parent head to head, though it rated 28 above it (`claw` 32/34 and `crossing` 26/34, parent 27 and 20). |
+| `hold_onestrike` | safe_hold | One strike at a time per enemy castle. | 1902 (1916) | 9/20 | **rejected**: below its parent in both rules; it beat the player's bot 26 of 32 (parent 24). |
+
+All three passed the gate (slowest turns 11.6, 11.1 and 12.4 ms).
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+**Next:** iterations 14 and 15 promoted nothing: iteration 16 adds maps and a founder. `hold_strikefund` is the second candidate in three iterations to rate above its parent and lose the mirror match; with 10 training maps the mirror match is 20 games, most of them decided the same way from both sides.
