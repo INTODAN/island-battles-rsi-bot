@@ -34,6 +34,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Local fronts shorten the lines and win the training maps, not yet the holdout maps.** Staging each rear castle to its own nearest castle nearer the enemy, instead of to one front, beat its parent 21 of 28, its best mirror score since iteration 9, and rose 63 points on training (`crossing` 32/34 against 22, `sound` 30 against 21), but lost 25 on holdout (`scatter` 22/32 against 28; iteration 18's `hold_localfront`). Four candidates have now risen on training and fallen on holdout.
 - **A holdout set that gates every promotion stops being held out.** Six candidates in a row (iterations 16 to 19) rose on the training maps, beat their parent head to head, and fell below it on the holdout maps. On iteration 19's new holdout map `key`, which no bot was ever selected on, both candidates beat the champion (26 and 27 points against 25); on `lagoon`, part of every holdout gate since iteration 13, the champion led them 28 to 22 and 18. A champion is partly the bot that happened to fit the holdout maps it passed, and its descendants regress from that fit. Fresh holdout maps restore the test; a rejected idea retried on them must still come in another form. *Not always the explanation (iteration 20):* `opener_safe` also lost both brand-new holdout maps, `tor` (20 points against 26) and `wick` (24 against 26).
 - **`circle` is won by waiting for the enemy to spend its home.** Every `frontline` bot and the hosted bot buy production 2 and 3 by turn 3, leaving their only castle with 7 soldiers; a bot that buys nothing for 12 turns and strikes the first enemy castle it can take with a speed-2 group took 30 of 34 points on `circle` against its parent's 19 (iteration 21's `ambush`). Everywhere else the same waiting lost (1446 against 1798).
+- **A castle that waits for a better neutral must stop staging too.** Waiting up to four turns of production for the best-value neutral passed every league rule (iteration 22's `hold_bestneutral`: 18 of 34 against its parent, 31 points up on training and 32 on holdout) and then won 1 of 17 lobby games against the hosted bot, against the champion's 4: the waiting castle kept sending its batches of 10 to the front (`wait>4` for 17 turns on `archipelago` while `stage>10 0:10` went on), so it waited without saving and lost the race the idea was for.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
 
@@ -1298,3 +1299,30 @@ Holdout maps (`setup-22-holdout`, 3,458 matches, exit 0):
 | level3 | 1000 | 0.052 | 19 | 0 | 345 |
 | level2 | 533 | 0.003 | 1 | 0 | 363 |
 | level1 | 341 | 0.000 | 0 | 0 | 364 |
+
+## Iteration 22: six candidates, and the first check against the real opponent
+
+**Date:** 2026-11-21. **Maps:** 17 training, 13 holdout (unchanged since the setup). **Matches:** 8,500 in the training selection round robin (six candidates, the outside opponent and the sparring bot in the field), plus the holdout selection for the one that passed. The baseline is the setup's standings (`setup-22-train`), the same population. Six candidates, written in parallel by subagents (a smaller model), every diff read before it played.
+
+**Findings** (the champion's lobby games against the hosted bot, training maps only):
+
+1. **On compact maps the hold check makes the bot's own neutrals unaffordable.** `haven`, turns 12 to 36: castle 7 (25 soldiers, 2.7 units from home) stayed neutral while the bot logged "saving"; its price summed every enemy castle within five turns of it. **Idea (a):** count only the strongest one.
+2. **Strikes before neutrals** (`islands`, iteration 15's finding 2, now with the real opponent's evidence). **Idea (b):** neutrals first.
+3. **The hosted bot buys a neutral with 4 or 5 soldiers to spare**; the bot pays 1.4 times a contested neutral. **Idea (c):** a cushion of 5 instead.
+4. **The first neutral is the only affordable one, not the best one.** `bight`, turn 1: 16 soldiers to the contested centre castle 3 (taken with 1, lost on turn 23) while castle 4, 2.8 units from home, waited until turn 66. **Idea (d):** wait up to four turns for the best neutral.
+5. **Rear castles stay at production 2** (home at 2 until turn 83 on `far-shores`, 90 on `crossing`). **Ideas (e) and (f):** fixed batches of 12 to the front; or rear castles reach production 3 before staging.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Hosted bot | Decision |
+|---|---|---|---|---|---|---|---|
+| `hold_bestneutral` | safe_hold | A castle waits up to WAIT_TURNS for the neutral with the best return instead of taking a worse one it can afford now. | 1828 (1797) | 18/34 | 1942 (1910) | 1 win, 1 draw, 15 losses (champion: 4 wins) | **rejected** by the check against the real opponent. |
+| `hold_nearthreat` | safe_hold | A neutral paid exactly must outlast the strongest single enemy castle that could land on it within HOLD_TURNS, not all of them together. | 1791 (1797) | 16/34 | not played | not played | **rejected**: below its parent in both rules. |
+| `hold_batch12` | safe_hold | Rear castles stage fixed batches of BATCH soldiers instead of all their spare. | 1790 (1797) | 17/34 | not played | not played | **rejected**: half against its parent, rated below it. |
+| `hold_rear3` | safe_hold | A rear castle saves for its next production level, up to level 3, before it stages. | 1765 (1797) | 17/34 | not played | not played | **rejected**: half against its parent, rated below it. Against the player's bot it won 50 of 60 (parent 46). |
+| `hold_expandfirst` | safe_hold | Neutrals before strikes. | 1755 (1797) | 12/34 | not played | not played | **rejected**: below its parent in both rules. |
+| `hold_cushion` | safe_hold | A contested neutral costs what it needs exactly plus NEUTRAL_CUSHION soldiers, not NEUTRAL_MARGIN times. | 1737 (1797) | 12/34 | not played | not played | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 60 to 75 ms with the six tournaments running at once.
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+**The check against the real opponent, in practice:** five lobby tabs played the 17 training maps in about 20 minutes, one tab losing time to a start button that stayed disabled (`lobby-run.js` now retries it). The check rejected the only candidate the league would have promoted.
