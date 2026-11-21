@@ -28,6 +28,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Pay a neutral exactly only where the enemy can't strike it back.** Paying every neutral exactly took castles with 1 soldier next to the enemy and lost them (iteration 9's `hold_exact`, 5 of 18 against its parent); paying exactly only neutrals that no enemy castle is nearer to than the attacker beat its parent 10 of 18 and was promoted (iteration 10's `finish_safe`), and beat the player's bot in 24 of 28 games.
 - **Speed for the rear pays.** Buying speed level 2 in a rear castle before its first batch to the front, instead of after its production tops out, beat its parent 12 of 18 (iteration 10's `finish_speed`): soldiers that walk half as long are soldiers that fight.
 - **A front that buys nothing is a front that loses.** Keeping the front castle's soldiers for strikes alone, with no production or speed bought there, lost to its parent 1 of 18 (iteration 10's `finish_front`): the front is where the staged soldiers are, and the levels they buy there pay even when the castle later falls.
+- **A castle taken exactly must also outlast the next enemy castle along.** "No enemy castle nearer than the attacker" wasn't safe: `finish_safe` took castles with 1 soldier on `strait` and lost them within one to five turns to enemy castles a little farther away. Adding to an exact price what the enemy castles within five turns of the capture could send, less the castle's growth, beat its parent 14 of 20 and rose 198 points on the holdout maps (iteration 13's `safe_hold`).
+- **Landing every castle's group on one turn is not enough without a front.** A founder that plans waves, each castle launching on the turn that lands its group with the others', beat the champion 11 of 20 head to head but rated 220 below it: without staging its castles walk long and its rear never fights (iteration 13's `converge`, 8 of 34 points on `islands`).
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
 
@@ -751,3 +753,67 @@ All three passed the gate (no failed turn, slowest turns 10.3, 10.4 and 13.0 ms)
 **Status changes:** none. **Champion:** `finish_speed`, unchanged.
 
 **Next:** iterations 11 and 12 promoted nothing, so iteration 13 starts by adding a training and a holdout map, and one of its candidates is a founder.
+
+## Iteration 13: more maps, and holding safe neutrals
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout: **the map set grew** before this iteration's first measurement, after two iterations that promoted nothing, with `reef` (training, `league new-map reef --seed 1301`: 6 castles, two neutrals of 8 and two of 5) and `lagoon` (holdout, seed 1302). Every rating moved with them. **Matches:** 2,040 in the baseline (`iteration-13-before`, 204 of them new), 3,000 in the training selection round robin, 1,326 in the holdout selection; the final standings are 2,040 training and 1,224 holdout matches. On the new baseline `finish_safe` (1906) leads `finish_speed` (1888), so it is the champion this iteration studies.
+
+**Findings** (`finish_safe`'s games on the training maps):
+
+1. **Safe neutrals are taken with 1 soldier and lost.** `strait`, against `frontline_hold` (lost in 69 turns): castle 6 taken on turn 27 with 1 and lost on turn 32; castle 4 taken on turn 36 with 1 and lost on turn 37; both had no enemy castle nearer than the attacker, but enemy castles a little farther struck them. **Idea (a):** an exact price must also outlast the enemy castles that could land within a few turns of the capture.
+2. **`finish_speed` beats it on `islands` and `gyre`, both sides.** **Idea (b):** graft the rear speed.
+3. **Founder** (two iterations without a promotion): the real opponents land their stacks together; **idea (c):** a bot built around waves whose groups land on one turn.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `safe_hold` | finish_safe | A neutral paid exactly must also outlast what enemy castles could land on it within HOLD_TURNS after the capture. | 1921 (1854) | 14/20 | 2231 (2033) | **promoted** |
+| `safe_speed` | finish_safe | Graft from finish_speed: a rear castle buys speed level 2 before it stages its first batch. | 1854 (1854) | 7/20 | not played | **rejected**: below its parent head to head, level in rating. It beat the player's bot 28 of 32. |
+| `converge` | finish_safe (scaffolding) | A new strategy: no staging; the castles within reach of one enemy castle launch at different turns so that their groups land on it together. | 1632 (1854) | 11/20 | not played | **rejected**: rated 222 below its parent. |
+
+All three passed the gate (no failed turn, slowest turns 11.0, 11.2 and 10.3 ms). Against the player's bot (32 games now, 16 maps): `safe_speed` 28 wins, 4 losses; `finish_safe` 26 and 6; `safe_hold` 24 and 8 (`islands`, `reef`, `lagoon`, `shoals`); `converge` 14, 2 draws, 16 losses.
+
+**Status changes:** `safe_hold` is active; `finish_safe` stays active. With seven active bots, `frontline_hold` (1754 in the selection) is **retired**: `finish_speed`'s row matches or beats it everywhere. That made seven retired bots, so `economist_reinforce` (1328), the lowest-rated, is **deleted**. Active: `safe_hold`, `finish_safe`, `finish_speed`, `hold_finish`, `frontline_finish`, `frontline`; retired: `frontline_hold`, `speed_margin`, `contested_speed`, `contested_stage`, `reinforce_timeline`, `reinforce_contested`.
+
+Training maps (`iteration-13-train`, 2,040 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1902 | 0.836 | 221 | 26 | 33 |
+| finish_safe | 1849 | 0.793 | 209 | 26 | 45 |
+| finish_speed | 1841 | 0.786 | 203 | 34 | 43 |
+| hold_finish | 1768 | 0.720 | 183 | 37 | 60 |
+| frontline_hold (retired) | 1727 | 0.680 | 173 | 35 | 72 |
+| frontline_finish | 1727 | 0.680 | 170 | 41 | 69 |
+| frontline | 1723 | 0.677 | 170 | 39 | 71 |
+| speed_margin (retired) | 1602 | 0.561 | 141 | 32 | 107 |
+| contested_speed (retired) | 1489 | 0.457 | 111 | 34 | 135 |
+| contested_stage (retired) | 1407 | 0.389 | 98 | 22 | 160 |
+| reinforce_timeline (retired) | 1346 | 0.343 | 82 | 28 | 170 |
+| reinforce_contested (retired) | 1301 | 0.311 | 72 | 30 | 178 |
+| level3 | 1000 | 0.042 | 10 | 0 | 230 |
+| level2 | 879 | 0.021 | 5 | 0 | 235 |
+| level1 | 454 | 0.000 | 0 | 0 | 240 |
+
+Holdout maps (`iteration-13-holdout`, 1,224 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2216 | 0.935 | 157 | 0 | 11 |
+| finish_safe | 2017 | 0.821 | 138 | 0 | 30 |
+| finish_speed | 1968 | 0.786 | 128 | 8 | 32 |
+| frontline_finish | 1905 | 0.738 | 118 | 12 | 38 |
+| frontline | 1860 | 0.702 | 112 | 12 | 44 |
+| hold_finish | 1831 | 0.679 | 107 | 14 | 47 |
+| frontline_hold (retired) | 1831 | 0.679 | 107 | 14 | 47 |
+| speed_margin (retired) | 1603 | 0.500 | 84 | 0 | 84 |
+| contested_speed (retired) | 1478 | 0.411 | 67 | 4 | 97 |
+| reinforce_timeline (retired) | 1451 | 0.393 | 65 | 2 | 101 |
+| contested_stage (retired) | 1405 | 0.363 | 61 | 0 | 107 |
+| reinforce_contested (retired) | 1187 | 0.244 | 40 | 2 | 126 |
+| level3 | 1000 | 0.042 | 6 | 0 | 138 |
+| level1 | 526 | 0.000 | 0 | 0 | 144 |
+| level2 | 526 | 0.000 | 0 | 0 | 144 |
+
+**Champion:** `safe_hold`, 1902 on the training maps and 2216 on the holdout maps (`finish_safe` 1849 and 2017 in the same tables).
+
+**Where the champion still loses:** to the player's bot on `islands`, `reef`, `lagoon` and `shoals`.

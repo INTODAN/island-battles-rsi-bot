@@ -1,0 +1,45 @@
+{
+  "map_name": "reef",
+  "player_amount": 2,
+  "plane_size_x": 16,
+  "plane_size_y": 10,
+  "neutral_starting_soldier_amount": 15,
+  "castles": [
+    {
+      "team_color": 1,
+      "x": -7.0,
+      "y": 2.0,
+      "starting_soldier_amount": 30
+    },
+    {
+      "team_color": 2,
+      "x": 7.0,
+      "y": -2.0,
+      "starting_soldier_amount": 30
+    },
+    {
+      "team_color": 0,
+      "x": -4.0,
+      "y": -3.0,
+      "starting_soldier_amount": 8
+    },
+    {
+      "team_color": 0,
+      "x": 4.0,
+      "y": 3.0,
+      "starting_soldier_amount": 8
+    },
+    {
+      "team_color": 0,
+      "x": -7.5,
+      "y": -0.5,
+      "starting_soldier_amount": 5
+    },
+    {
+      "team_color": 0,
+      "x": 7.5,
+      "y": 0.5,
+      "starting_soldier_amount": 5
+    }
+  ]
+}
