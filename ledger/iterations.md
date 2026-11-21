@@ -16,6 +16,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Speed pays for long attacks.** A group that walks half as long meets half the target's growth and half the time for its owner to reinforce it; 10 soldiers for speed level 2 before an attack of over 8 turns beat its parent 16 of 18 (iteration 4).
 - **Staging at the front finishes games the economist line couldn't.** Idle castles sending their spare soldiers to the castle nearest the enemy beat its parent 13 of 18 and took 26 of 26 points on `claw`, where its parent held 4,000 soldiers in six castles and never struck (iteration 4).
 - **Keeping an attacking castle strong against its neighbours costs more than it saves**, as the production reserve did in iteration 2: an attack that may not leave its castle weaker than the strongest enemy castle could beat lost to its parent 3 of 18 (iteration 4).
+- **Counting everything an enemy castle's owner could send to it makes a bot too timid.** Adding to a target's defenders the soldiers of every other enemy castle whose group could land first lost to its parent 5 of 18 (iteration 5): the owner seldom sends them all, and a bot that waits for that margin attacks too late. The real game's lesson stands for long walks; summing every castle within the walk overcounts it.
+- **Mechanisms that only act in rare situations split the mirror match.** A candidate that differs from its parent only when, say, a rescue would be too slow plays most mirror games move for move like it, and two of its last three such candidates took exactly 9 of 18 against the parent while rating above it (`contested_timeline` in iteration 3, `speed_rescue` in iteration 5). The head-to-head rule then decides on a few games.
 - **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent); a finish that works is still to be found.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
@@ -291,3 +293,33 @@ Holdout maps (`iteration-4-holdout`, 750 matches):
 **Where the champion still loses (training maps):** `circle` against `expander` in 12 turns, both sides (every economist descendant still loses it); `strait` against `rusher` (79 turns), `level3` (76), `contested_stage` (94 and 100) and `economist_reinforce` (125), both sides each; `gyre` against `rusher` (75); `claw` against `contested_stage` (103); `islands` against `level2` (93, one side). Draws at the limit on `circle` against `contested_stage`, `economist` and `economist_contested`.
 
 **Next:** `contested_stage`'s staging grafted into `contested_speed` (both promoted, and staging beats the champion on `claw` and `strait`); `strait`, where the champion loses to four players; `circle`'s opening.
+
+## Iteration 5: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,106 in the training selection round robin; no holdout selection (no candidate passed); the final standings are 1,014 training and 750 holdout matches, all from the cache, the same as iteration 4's. The baseline (`iteration-5-before`) gave exactly iteration 4's training table.
+
+**Findings** (from `contested_speed`'s games on the training maps):
+
+1. **A castle that no helper reaches in time falls while big castles watch.** `strait`, against `economist_reinforce`, turns 82 to 84: castle 4 (production level 1, 14 soldiers) logged as unheld three turns running while castles 0 and 2 held 70 to 78 and 50 to 58, 7 turns away at speed level 1; it fell on turn 84 with 1 soldier. `islands`, against `level2`, turns 77 to 80: castle 5 (13) faced a group of 32 with no helper in time and fell. Speed was never bought: every walk on `strait` is 7 turns or less, under the champion's threshold of 8. **Idea:** a helper that is too slow buys speed when that makes its group land in time.
+2. **Castles it takes fall again within ten turns.** `islands`, against `level2`: castle 5 taken on turn 51 with 4 soldiers and lost on turn 61, taken again on turn 71 with 9 and lost on turn 80; castle 3 taken on turn 82 with 8 and lost on turn 92, to groups of 32 to 44 from castles 1.6 to 6.8 units away. **Cause:** a target's defenders are its soldiers, growth and the groups bound for it, never what its owner could send there, the real game's lesson. **Idea:** count the soldiers of the owner's castles whose groups could land first.
+3. **`contested_stage` beats the champion on `strait` and `claw`, both sides** (5/18 to 13/18 for the champion overall). **Idea:** graft its staging, as iteration 4's entry proposed.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `speed_rescue` | contested_speed | A castle too slow to reinforce a castle that would fall buys its next speed level when that makes its group land in time. | 1502 (1490) | 9/18 | **rejected**: exactly half against its parent, not more, though it rated above it. |
+| `speed_stage` | contested_speed | Graft from contested_stage: a castle that finds nothing to attack alone sends its spare soldiers to the own castle nearest the enemy. | 1421 (1490) | 9/18 | **rejected**: half against its parent and rated below it. It beat `rusher` and `level3` 18/18 where the parent took 14 and 16, but lost 8/18 to `contested_stage` itself and 11/18 to `economist_reinforce` against the parent's 15. |
+| `speed_reach` | contested_speed | An enemy castle's defenders include what its owner's other castles could send there before the attack lands. | 1331 (1490) | 5/18 | **rejected**: below its parent in both rules; 46 draws in 270 games, the most of any bot, as it waited for margins it never got. |
+
+All three passed the gate: no failed turn, slowest turns 16.1, 13.4 and 17.7 ms. None played the holdout maps.
+
+**Status changes:** none. Active: `contested_speed`, `contested_stage`, `reinforce_timeline`, `economist_reinforce`, `economist_contested`, `expander`; retired: `economist`, `sentinel`, `reinforce_contested`, `rusher`.
+
+**Standings:** unchanged from iteration 4 (`iteration-5-train`, `iteration-5-holdout`); see that entry's tables.
+
+**Champion:** `contested_speed`, 1512 on the training maps and 1969 on the holdout maps, unchanged.
+
+**Where the champion still loses:** as in iteration 4: `circle` against `expander`; `strait` against `rusher`, `level3`, `contested_stage` and `economist_reinforce`; `gyre` against `rusher`; `claw` against `contested_stage`; `islands` against `level2`.
+
+**Next:** iterations 3 and 5 promoted nothing, and two near misses were exact halves against the parent. If iteration 6 also promotes nothing, iteration 7 starts by adding maps (more games per pair) and with a founder. `circle`'s opening has now survived five iterations: it may need a founder that doesn't buy production first.
