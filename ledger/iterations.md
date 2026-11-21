@@ -703,3 +703,27 @@ Holdout maps (`iteration-10-holdout`, 1,020 matches; the default bots win nothin
 **Where the champion still loses:** to the player's bot on 4 maps of 14, both sides (`archipelago`, `claw`, `gyre`, `twin-keeps`), where `finish_safe` wins; `finish_safe` loses `islands` and `shoals`. Against the hosted bot, `crossing`, `delta` and `far-shores` are lost by the earlier champions and not yet played by these two.
 
 **Next:** the two promoted ideas together, and the hosted bot's maps with the new champion.
+
+## Iteration 11: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,700 in the training selection round robin; no holdout selection (no candidate passed); the final standings are iteration 10's, all from the cache.
+
+**Findings** (`finish_safe`'s and `finish_speed`'s games against the player's bot on `islands`, which both lost or nearly lost):
+
+1. **Strikes become trickles.** `islands`, turns 20 to 30: castles 0 and 2 sent groups of 1 to 8 at castle 5 every turn, which the player's bot met one at a time with groups of 2 to 9 (136 soldiers lost in clashes). **Cause:** a strike takes the bot's groups already walking off what the target needs, so every turn's new spare soldiers follow as a top-up. **Idea (b):** one strike at a time per target.
+2. **Strikes come before neutrals, so neutrals on the bot's own side stay neutral.** Same game, turns 11 to 110: castles 4 (15 soldiers) and 6 (20), both nearer the bot than the enemy, stayed neutral while two castles at production 2 fed the strikes; production 4 for 100 turns against 4 to 18. **Idea (c):** neutrals before strikes.
+3. **`finish_safe` and `finish_speed` win different maps against the player's bot** (`archipelago`, `claw`, `gyre` and `twin-keeps` for `finish_safe`; `islands` and `shoals` for `finish_speed`). **Idea (a):** the safe neutrals grafted into `finish_speed`.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `speed_safe` | finish_speed | Graft from finish_safe: a neutral castle that no enemy castle is nearer to than the attacking castle is paid exactly; contested neutrals keep the margin. | 1867 (1896) | 9/18 | **rejected**: half against its parent and rated below it. Against the player's bot it won 24 of 28 games (`archipelago` and `far-shores` lost). |
+| `speed_onestrike` | finish_speed | One strike at a time: a target the bot's groups are already walking to isn't struck again until they land. | 1828 (1896) | 8/18 | **rejected**: below its parent in both rules. |
+| `speed_expandfirst` | finish_speed | Neutrals before strikes: each castle takes the neutral castle it can afford before its spare soldiers join a strike. | 1849 (1896) | 7/18 | **rejected**: below its parent in both rules. |
+
+All three passed the gate: no failed turn, slowest turns 10.1, 13.4 and 15.2 ms. None played the holdout maps.
+
+**Status changes:** none. **Standings:** iteration 10's (`iteration-11-train`, `iteration-11-holdout`). **Champion:** `finish_speed`, 1881, level with `finish_safe` (in this iteration's selection, with the candidates in the field, `finish_safe` led 1919 to 1896).
+
+**What this says:** for the second time (`hold_exact` in iteration 9, `speed_safe` now) a candidate that beat the player's bot more often than its parent was rejected by the league's mirror match. The league measures the bots against each other and three default bots; the real opponents reward holding and economy more than the league does.
