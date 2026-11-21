@@ -24,6 +24,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Staging alone doesn't help the economist line.** Grafting `contested_stage`'s staging into the champion took exactly half against the parent twice (iteration 5 and 7): soldiers moved to the front still wait for one castle to afford a target alone. Staging pays with a strike made for it.
 - **Counting the enemy groups that land after yours pays for neutral castles.** Playing every landing on a target in order, before and after the new group, fell 105 points below its parent on the holdout maps for every target of the economist line (iteration 7's `margin_landings`), but for `frontline`'s neutral targets alone it was promoted (iteration 8's `frontline_hold`), and it took the `ridge` games from the player's bot.
 - **Near the turn limit, a strike should count exactly.** A margin that keeps a strike safe in the middle game turns a level end into a draw; dropping it in the last 30 turns, with the target's burst counted instead, won `circle` against the player's bot and beat the parent 10 of 18 (iteration 8's `frontline_finish`).
+- **A neutral castle's soldiers are certain; a margin on them leaves big neutrals to the enemy.** With 1.4 times a neutral's own soldiers, a neutral of 25 cost 36 from one castle, and two of them stayed neutral next to `frontline`'s front for 130 turns on `delta`. Paying them exactly won `delta`, `islands` and `atoll` against the player's bot (24 of 28 games against 20), but lost the mirror match to its parent 5 of 18 (iteration 9's `hold_exact`): cheaper neutrals were taken thinner and fell. The idea needs the holding to come with it.
+- **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
@@ -552,3 +554,77 @@ Holdout maps (`iteration-8-holdout`, 1,020 matches):
 **Where the champion still loses:** to the player's bot on `delta`, `islands` and `atoll`, with `circle` drawn; the hosted bot's `crossing` and `circle`. In the league, `circle` (21/34 for every `frontline` bot).
 
 **Next:** the two promoted ideas together (`frontline_hold` with `frontline_finish`'s finish), then the starved rear in a form the league doesn't punish.
+
+## Iteration 9: the finish, on the champion
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,700 in the training selection round robin, 1,170 in the holdout selection; the final standings are 1,836 training and 1,020 holdout matches. The baseline is iteration 8's final standings, the same commit.
+
+Real games since iteration 8, against the hosted bot in a lobby on the league's map files (one side each, Blue): `frontline` won `archipelago` (115 turns), drew `circle` at the limit (1,142 soldiers to 1,141) and lost `crossing` (129); `frontline_hold` lost `crossing` (108) and `delta` (107).
+
+**Findings:**
+
+1. **The two promoted ideas of iteration 8 are in different bots.** `frontline_finish` wins `circle` against the player's bot; `frontline_hold` wins `ridge`. **Idea (a):** the finish grafted into the champion.
+2. **The rear never buys production after the race is over.** The hosted bot's `crossing` game against `frontline_hold`: home castle 0 at production 2 until turn 90, the hosted bot's home at 4 by turn 44; the staged soldiers bought production 4 and speed at the front castle 8 instead, which changed hands twelve times and was lost on turn 87. **Idea (b):** once no neutral castle is on the bot's side, rear castles save for production before staging.
+3. **Neutrals of 25 next to the front stay neutral.** `delta` against the player's bot, turns 30 to 130: castles 2 and 4, 2 units from the front castle 6, needed 36 each from one castle under the 1.4 margin on their own soldiers. **Idea (c):** no margin on a neutral's own soldiers.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `hold_finish` | frontline_hold | Graft from frontline_finish: near the turn limit a strike counts the target exactly, its soldiers, growth, burst and reinforcements, instead of with the margin. | 1717 (1661) | 15/18 | 2296 (2296) | **promoted** |
+| `hold_exact` | frontline_hold | A neutral castle's own soldiers are certain: the margin covers only the enemy groups that may land on it, not what it holds. | 1684 (1661) | 5/18 | not played | **rejected**: lost to its parent head to head, though it rated above it (34/34 on `archipelago` and `gyre`, 24/34 on `delta` and `strait`). Against the player's bot it won 24 of 28 games, the most of any bot. |
+| `hold_phase` | frontline_hold | Once no neutral castle is nearer an own castle than every enemy castle, a rear castle saves for its next production level before it stages at the front. | 1627 (1661) | 8/18 | not played | **rejected**: below its parent in both rules. |
+
+All three passed the gate: no failed turn, slowest turns 12.7, 11.9 and 16.9 ms.
+
+Against the player's bot (28 games each): `hold_exact` 24 wins, 2 draws, 2 losses (it lost only `shoals`, and drew `circle`); `hold_finish` 22 wins, 6 losses (`delta`, `islands`, `atoll`); `hold_phase` and `frontline_hold` 20, 2, 6.
+
+**Status changes:** `hold_finish` is active; `frontline_hold` stays active (`hold_finish`'s row doesn't match it everywhere). With seven active bots, `contested_stage` (1359 in the selection), the lowest-rated active bot, is **retired**: `hold_finish`'s row beats it everywhere. That made seven retired bots, so `expander` (927), the lowest-rated, is **deleted**. Active: `hold_finish`, `frontline_finish`, `frontline`, `frontline_hold`, `speed_margin`, `contested_speed`; retired: `contested_stage`, `reinforce_timeline`, `reinforce_contested`, `economist_reinforce`, `economist_contested`, `economist`.
+
+**The holdout scale has lost its anchor:** the default bots win no holdout game now, so the fit puts `level1`, `level2` and `level3` all at 1000 and the other ratings float. Compare holdout ratings within one table only.
+
+Training maps (`iteration-9-train`, 1,836 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| hold_finish | 1764 | 0.851 | 200 | 29 | 23 |
+| frontline_finish | 1725 | 0.823 | 191 | 33 | 28 |
+| frontline | 1720 | 0.819 | 191 | 31 | 30 |
+| frontline_hold | 1704 | 0.808 | 190 | 27 | 35 |
+| speed_margin | 1552 | 0.679 | 156 | 30 | 66 |
+| contested_speed | 1494 | 0.625 | 143 | 29 | 80 |
+| contested_stage (retired) | 1420 | 0.556 | 129 | 22 | 101 |
+| reinforce_timeline (retired) | 1344 | 0.484 | 109 | 26 | 117 |
+| reinforce_contested (retired) | 1307 | 0.450 | 99 | 29 | 124 |
+| economist_reinforce (retired) | 1277 | 0.423 | 90 | 33 | 129 |
+| economist_contested (retired) | 1194 | 0.351 | 76 | 25 | 151 |
+| economist (retired) | 1127 | 0.298 | 60 | 30 | 162 |
+| level3 | 1000 | 0.102 | 22 | 0 | 194 |
+| level2 | 805 | 0.037 | 8 | 0 | 208 |
+| level1 | 299 | 0.000 | 0 | 0 | 216 |
+
+Holdout maps (`iteration-9-holdout`, 1,020 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| frontline_finish | 2522 | 0.886 | 122 | 4 | 14 |
+| frontline | 2452 | 0.843 | 116 | 4 | 20 |
+| hold_finish | 2431 | 0.829 | 113 | 6 | 21 |
+| frontline_hold | 2431 | 0.829 | 113 | 6 | 21 |
+| speed_margin | 2264 | 0.707 | 99 | 0 | 41 |
+| contested_speed | 2181 | 0.643 | 86 | 8 | 46 |
+| reinforce_timeline (retired) | 2062 | 0.550 | 74 | 6 | 60 |
+| contested_stage (retired) | 2007 | 0.507 | 71 | 0 | 69 |
+| reinforce_contested (retired) | 1922 | 0.443 | 59 | 6 | 75 |
+| economist_reinforce (retired) | 1882 | 0.414 | 54 | 8 | 78 |
+| economist_contested (retired) | 1774 | 0.343 | 46 | 4 | 90 |
+| economist (retired) | 1684 | 0.293 | 39 | 4 | 97 |
+| level1 | 1000 | 0.000 | 0 | 0 | 120 |
+| level2 | 1000 | 0.000 | 0 | 0 | 120 |
+| level3 | 1000 | 0.000 | 0 | 0 | 120 |
+
+**Champion:** `hold_finish`, 1764 on the training maps (`frontline_hold` 1704 in the same table).
+
+**Where the champion still loses:** to the player's bot on `delta`, `islands` and `atoll`; to the hosted bot on `crossing` and `delta` (as `frontline_hold`). In the league, `circle` (19/34 for every `frontline` bot) and `archipelago` (29/34).
+
+**Next:** `hold_exact`'s exact neutrals, with what makes a cheap neutral hold: why it lost the mirror match is unread. The starved rear against the real opponents, in a form the race for castles allows.
