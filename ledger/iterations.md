@@ -859,3 +859,67 @@ All three passed the gate (slowest turns 11.6, 11.1 and 12.4 ms).
 **Status changes:** none. **Champion:** `safe_hold`, unchanged.
 
 **Next:** iterations 14 and 15 promoted nothing: iteration 16 adds maps and a founder. `hold_strikefund` is the second candidate in three iterations to rate above its parent and lose the mirror match; with 10 training maps the mirror match is 20 games, most of them decided the same way from both sides.
+
+## Iteration 16: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 11 training, 7 holdout: **the map set grew** before the first measurement, after two iterations without a promotion, with `shelf` (training, seed 1601, 8 castles) and `cays` (holdout, seed 1602, 13 castles). **Matches:** 2,244 in the baseline (`iteration-16-before`), 3,300 in the training selection, 1,442 in the holdout selection; the final standings are 2,244 training and 1,428 holdout matches. `safe_hold` stays the champion on the new baseline (1931).
+
+**Findings:**
+
+1. **Founder:** the player's bot, which beats every league bot on `islands` and `reef`, plans: it schedules launches from several castles to land together, ranks neutrals by return, keeps soldiers for its next level, reinforces and bursts to save castles, and punishes enemy castles that just weakened (its own log lines). **Idea (a):** a bot built that way, with no front.
+2. **Late help is never sent** (iteration 12's finding 2, against the hosted bot on `delta`). **Idea (b):** retake, on the new champion.
+3. **No league bot uses bursts to defend.** **Idea (c):** a castle that would fall with no help in time bursts when the burst saves it.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `planner` | safe_hold (scaffolding) | A new strategy, after the player's bot: no front; every castle saves for its next production level, big neutrals are taken by several castles at once, and enemy castles by waves whose groups land on one turn. | 1505 (1852) | 5/22 | not played | **rejected**: below its parent in both rules (3/34 on `archipelago`). |
+| `hold_retake` | safe_hold | A castle that would fall is also helped by castles whose groups land up to RETAKE_TURNS after the attack, sized to take it back. | 1884 (1852) | 14/22 | 2077 (2189) | **rejected**: its holdout rating is 112 below its parent's. |
+| `hold_burstsave` | safe_hold | A castle that would fall with no help in time buys burst potential and bursts when the burst makes it hold. | 1852 (1852) | 11/22 | not played | **rejected**: it never fired; every game is its parent's. A burst of 4 for 10 soldiers is never worth it to a castle without burst levels, and the league's castles have none. |
+
+All three passed the gate (slowest turns 23.7, 17.4 and 15.9 ms). Against the player's bot (36 games, 18 maps) every candidate but `planner` won 24, as the parent did; it now beats the league's bots on `shelf` and `cays` too.
+
+**Status changes:** none.
+
+Training maps (`iteration-16-train`, 2,244 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1931 | 0.847 | 247 | 28 | 33 |
+| finish_safe | 1881 | 0.808 | 235 | 28 | 45 |
+| finish_speed | 1839 | 0.773 | 217 | 42 | 49 |
+| hold_finish | 1780 | 0.719 | 199 | 45 | 64 |
+| frontline_hold (retired) | 1742 | 0.683 | 189 | 43 | 76 |
+| frontline_finish | 1729 | 0.670 | 182 | 49 | 77 |
+| frontline | 1725 | 0.667 | 182 | 47 | 79 |
+| speed_margin (retired) | 1592 | 0.539 | 149 | 34 | 125 |
+| contested_speed (retired) | 1521 | 0.474 | 129 | 34 | 145 |
+| contested_stage (retired) | 1410 | 0.380 | 106 | 22 | 180 |
+| reinforce_timeline (retired) | 1388 | 0.364 | 98 | 28 | 182 |
+| reinforce_contested (retired) | 1316 | 0.312 | 80 | 32 | 196 |
+| level3 | 1000 | 0.038 | 10 | 0 | 254 |
+| level2 | 880 | 0.019 | 5 | 0 | 259 |
+| level1 | 456 | 0.000 | 0 | 0 | 264 |
+
+Holdout maps (`iteration-16-holdout`, 1,428 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2259 | 0.929 | 182 | 0 | 14 |
+| finish_safe | 2096 | 0.837 | 164 | 0 | 32 |
+| finish_speed | 2003 | 0.770 | 147 | 8 | 41 |
+| frontline_finish | 1950 | 0.730 | 136 | 14 | 46 |
+| hold_finish | 1918 | 0.704 | 131 | 14 | 51 |
+| frontline | 1911 | 0.699 | 130 | 14 | 52 |
+| frontline_hold (retired) | 1905 | 0.694 | 129 | 14 | 53 |
+| speed_margin (retired) | 1634 | 0.490 | 96 | 0 | 100 |
+| contested_speed (retired) | 1522 | 0.413 | 79 | 4 | 113 |
+| reinforce_timeline (retired) | 1474 | 0.383 | 74 | 2 | 120 |
+| contested_stage (retired) | 1441 | 0.362 | 71 | 0 | 125 |
+| reinforce_contested (retired) | 1210 | 0.240 | 46 | 2 | 148 |
+| level3 | 1000 | 0.036 | 6 | 0 | 162 |
+| level2 | 724 | 0.006 | 1 | 0 | 167 |
+| level1 | 528 | 0.000 | 0 | 0 | 168 |
+
+**Champion:** `safe_hold`, 1931 on the training maps.
+
+**Next:** iterations 14 to 16 promoted nothing, and two candidates (iteration 7's `margin_landings`, now `hold_retake`) rose on training and fell on the holdout maps: iteration 17 adds training maps and a founder.
