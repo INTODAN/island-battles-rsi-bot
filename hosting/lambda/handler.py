@@ -9,7 +9,8 @@ time budget, the same pass when the bot fails or is slow, and the same retries.
 
 Unlike ``serve``, it submits before it answers rather than after, since Lambda
 freezes the instance once the handler returns. ``GET /health`` answers like
-``serve``'s. ``BOT`` names the bot, ``bots.economist.bot:play`` by default.
+``serve``'s. ``BOT`` names the bot; by default it is the one that the file
+``bot`` names, which ``build.sh`` packages next to this one.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import base64
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 from island_battles_client._generated import BotTurnResult, TurnDelivery
@@ -25,7 +27,7 @@ from island_battles_client.cli import MAX_BODY_BYTES, BotServer, load_play, subm
 from island_battles_client.game_log import ClientLogging
 from pydantic import ValidationError
 
-BOT = os.environ.get("BOT", "bots.economist.bot:play")
+BOT = os.environ.get("BOT") or f"bots.{Path(__file__).with_name('bot').read_text().strip()}.bot:play"
 # The longest a turn may play; the turn's deadline cuts it shorter, as in serve.
 TURN_TIMEOUT_SECONDS = float(os.environ.get("TURN_TIMEOUT_SECONDS", "8"))
 
