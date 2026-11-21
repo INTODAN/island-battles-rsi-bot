@@ -1,0 +1,9 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent.
+status = "active"
+# The bot this one was copied from, or empty for a founder.
+parent = "reinforce_contested"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 4
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Short lines: a castle that finds nothing to attack alone sends its spare soldiers to the own castle nearest the enemy, which then strikes alone."
