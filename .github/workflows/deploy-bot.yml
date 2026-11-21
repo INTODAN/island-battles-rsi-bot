@@ -1,0 +1,81 @@
+# Deploys the hosted bot (hosting/lambda/) when main changes the bots, the
+# deployment or the dependencies: the bot that hosting/lambda/bot names goes to
+# the Lambda function behind the hosted bot's URL. It signs in to AWS with
+# GitHub's OIDC as a role that only main of this repository may assume, and
+# that may only upload the zip and update that one function.
+#
+# Repository variables: AWS_DEPLOY_ROLE_ARN, BOT_BUCKET and BOT_FUNCTION.
+name: Deploy hosted bot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - bots/**
+      - hosting/lambda/**
+      - uv.lock
+      - .github/workflows/deploy-bot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Checks of the tools and of every bot
+        run: scripts/check.sh
+
+      - name: Build the zip
+        id: build
+        run: |
+          hosting/lambda/build.sh
+          echo "bot=$(tr -d '[:space:]' < hosting/lambda/bot)" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update the function
+        env:
+          BUCKET: ${{ vars.BOT_BUCKET }}
+          FUNCTION: ${{ vars.BOT_FUNCTION }}
+          BOT: bots.${{ steps.build.outputs.bot }}.bot:play
+        run: |
+          aws s3 cp dist/lambda/bot.zip "s3://$BUCKET/bot.zip" --only-show-errors
+          aws lambda update-function-code --function-name "$FUNCTION" \
+            --s3-bucket "$BUCKET" --s3-key bot.zip --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION"
+          aws lambda update-function-configuration --function-name "$FUNCTION" \
+            --environment "Variables={BOT=$BOT}" --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION"
+
+      - name: The hosted bot answers as the new bot
+        env:
+          FUNCTION: ${{ vars.BOT_FUNCTION }}
+          BOT: bots.${{ steps.build.outputs.bot }}.bot:play
+        run: |
+          url=$(aws lambda get-function-url-config --function-name "$FUNCTION" --query FunctionUrl --output text)
+          health=$(curl -sS --fail --retry 3 "${url%/}/health")
+          echo "$health"
+          test "$(jq -r .name <<< "$health")" = "$BOT"
