@@ -12,6 +12,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Castles that choose their targets independently in one turn send twice at one target** (two groups of 21 at a neutral of 20), and a neutral that an enemy group is already walking to is a different target: it will be an enemy castle, or a weakened neutral, when yours lands. Counting both is worth about 90 rating points (iteration 1).
 - **Defence is about the landing that takes the castle, not the first one.** Counting every attacker against the first landing's deadline makes help look too late when the second group is the one that captures; playing the landings in order found help in time and beat its parent 16 of 18 (iteration 2).
 - **A static reserve against the strongest enemy castle costs more than it saves.** Holding home what any enemy castle could send, before buying production, lost to its parent 4 of 18 and didn't even win `circle`'s opening (iteration 2's `reinforce_threat`): the economy it gave up mattered more than the strikes it deterred.
+- **Steady small waves pin an economy that reserves every attacker in full.** `rusher`'s groups of 8, one every few turns, kept the economist line's home castle at production 2 to 4 on `strait` for 60 turns, although its growth alone would have met each wave. Reserving only what the landings need, growth counted, raised the score against `rusher` (16 against 14 of 18) but lost the mirror match against the parent (8 of 18), so it is not yet a gain (iteration 3).
 - **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent); a finish that works is still to be found.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
@@ -193,3 +194,33 @@ Holdout maps (`iteration-2-holdout`, 520 matches):
 **Where the champion still loses (training maps):** `circle` against `expander` in 12 turns (both sides; still nobody's answer); `strait` against `rusher` (79 turns), `level3` (76) and `economist_reinforce` (125); `gyre` against `rusher` (75); `islands` against `level2` (85 and 93) and `reinforce_timeline` (146); `archipelago` against `economist`; `delta` against `reinforce_timeline` and `economist_contested`, in games of 219 to 300 turns.
 
 **Next:** `reinforce_timeline`'s defence grafted into `reinforce_contested` (both promoted, one idea each); `strait`, where the champion loses to four players; and `circle`'s opening, which neither a reserve nor anything else has answered.
+
+## Iteration 3: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 1,584 in the training selection round robin; no holdout selection (no candidate passed); the final standings are 936 training and 520 holdout matches, all from the cache, the same as iteration 2's. The baseline (`iteration-3-before`) gave exactly iteration 2's training table.
+
+**Findings** (from `reinforce_contested`'s games on the training maps):
+
+1. **Its reserve doesn't count growth, so steady waves pin it.** `strait`, against `rusher`, turns 30 to 33: castle 0 held 13 to 15 soldiers at production 2 and logged "saving", with one group of 8 three to five turns away, which its growth alone would have met. The reserve was the 8 in full plus 4, so it couldn't buy production 3 or strike `rusher`'s castles, which held 2 to 9 after each wave. Its production stayed at 2 to 4 for the whole 79-turn game. **Idea:** keep home only what the castle needs now to hold through every landing, its growth counted.
+2. **It tops up attacks in trickles.** `strait`, against `level3`, turns 22 to 27 and 42 to 47: castle 0 sent 14 and then 2, 1, 1, 2, 1 at castle 2, and later 18 and then 2, 1, 1, 2, 1; its small groups died in clashes on turns 47 and 55, and castle 2 changed hands six times. **Cause:** each turn it adds whatever the target's growth or reinforcements added since the last send. **Idea:** own groups count towards a target only when the new group lands with them.
+3. **Its defence is still measured at the first landing.** `reinforce_timeline` beats it 11/18 to 7/18 (on `islands` and `delta`). **Idea:** graft `reinforce_timeline`'s defence, as iteration 2's entry proposed.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `contested_timeline` | reinforce_contested | Graft from reinforce_timeline: reinforce against the landing that would take the castle, played in order, not the first one. | 1382 (1349) | 9/18 | **rejected**: exactly half against its parent, not more, although it rated above it and scored 15 to 18 of 18 against every bot below the top three. |
+| `contested_growth` | reinforce_contested | A castle under attack keeps home only what it needs now to hold through every landing, counting its growth until each lands. | 1327 (1349) | 8/18 | **rejected**: below its parent in both rules. |
+| `contested_notopup` | reinforce_contested | No top-ups: own groups already walking to a target count only if the new group lands within a turn of them, so attacks land as stacks. | 1272 (1349) | 7/18 | **rejected**: below its parent in both rules; it lost 4/18 to `reinforce_timeline`. |
+
+All three passed the gate: no failed turn, slowest turns 22.2, 36.5 and 35.8 ms. None played the holdout maps.
+
+**Status changes:** none. Active: `reinforce_contested`, `reinforce_timeline`, `economist_reinforce`, `economist_contested`, `expander`, `rusher`; retired: `economist`, `sentinel`.
+
+**Standings:** unchanged from iteration 2 (`iteration-3-train` and `iteration-3-holdout`): training `reinforce_contested` 1321, `reinforce_timeline` 1318, `economist_reinforce` 1228, `economist_contested` 1175, `economist` 1080, `level3` 1000, `expander` 832, `sentinel` 827, `rusher` 821, `level2` 768, `level1` 494; holdout `reinforce_timeline` 1764, `reinforce_contested` 1746, `economist_reinforce` 1543, `economist_contested` 1543, `economist` 1391, `level3` 1000, `sentinel` 881, `rusher` 823, `expander` 797, `level2` 736, `level1` 407.
+
+**Champion:** `reinforce_contested`, 1321, unchanged.
+
+**Where the champion still loses:** as in iteration 2: `circle` against `expander`, `strait` against four players, `gyre` against `rusher`, `islands` against `level2` and `reinforce_timeline`.
+
+**What this says:** the top of the league is now three economist descendants that differ in one mechanism each and split their games about evenly; a change that helps against the rest of the field doesn't show against the parent. If iteration 4 also promotes nothing, iteration 5 starts with new maps and a founder, as the iteration skill says.
