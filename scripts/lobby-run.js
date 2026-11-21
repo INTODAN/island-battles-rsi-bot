@@ -37,8 +37,12 @@
     await setMap(name);
     const ready = btn('Mark ready');
     if (ready) { ready.click(); await sleep(2500); }
-    const start = btn('Start lobby');
-    if (start && !start.disabled) start.click();
+    // The start button can stay disabled for a moment after getting ready: try until the game is on.
+    for (let i = 0; i < 20 && btn('Start lobby'); i++) {
+      const start = btn('Start lobby');
+      if (!start.disabled) start.click();
+      await sleep(1500);
+    }
     await sleep(5000);
     for (let i = 0; i < 400; i++) {
       const t = main();
