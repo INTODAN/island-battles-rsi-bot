@@ -1,9 +1,9 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent.
-status = "retired"
+status = "active"
 # The bot this one was copied from, or empty for a founder.
-parent = ""
+parent = "frontline"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 0
+iteration = 8
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "Burst and reinforce castles that would fall, and strike enemy castles that emptied."
+idea = "Near the turn limit a strike counts the target exactly, its soldiers, growth, burst and reinforcements, instead of with the margin, so a level game is finished instead of drawn."
