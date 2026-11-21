@@ -1,6 +1,6 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent.
-status = "active"
+status = "retired"
 # The bot this one was copied from, or empty for a founder.
 parent = "contested_speed"
 # The league iteration that created it (ledger/iterations.md).
