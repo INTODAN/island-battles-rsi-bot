@@ -16,11 +16,15 @@ In `eu-central-1`, next to the game:
 
 A cold start takes about 0.9 s and a warm turn about 60 ms. A game is a few hundred requests, well inside Lambda's free tier, which the account shares with the game's own functions.
 
-## Redeploying
+## Deploying
 
-Only a bot that a tournament measured is deployed, normally the ledger's champion.
+[`bot`](bot) names the bot that is deployed: the ledger's champion, which an iteration that crowns a new one changes. Only a bot that a tournament measured is deployed.
 
-1. `hosting/lambda/build.sh [bot]` builds `dist/lambda/bot.zip` with `bots/<bot>/` (economist by default).
+**On main, by itself.** [`deploy-bot.yml`](../../.github/workflows/deploy-bot.yml) runs on every push to main that changes `bots/`, `hosting/lambda/` or `uv.lock`, and from the Actions tab. It runs `scripts/check.sh`, builds the zip, uploads it, updates the function's code and its `BOT`, and checks that `GET <url>/health` names the bot. It signs in with GitHub's OIDC as the role `island-battles-league-bot-deploy`, which only main of this repository may assume, and which may only upload `bot.zip` and update this one function. The repository variables `AWS_DEPLOY_ROLE_ARN`, `BOT_BUCKET` and `BOT_FUNCTION` say where.
+
+**By hand,** the same steps:
+
+1. `hosting/lambda/build.sh [bot]` builds `dist/lambda/bot.zip` with `bots/<bot>/` (the one `bot` names by default).
 2. Upload it to `s3://island-battles-league-bot-<account>/bot.zip`, then call `UpdateFunctionCode` with that S3 object.
 3. When the bot changed, set `BOT=bots.<bot>.bot:play` with `UpdateFunctionConfiguration`.
 4. Check the deployment: `GET <url>/health` should name the bot.

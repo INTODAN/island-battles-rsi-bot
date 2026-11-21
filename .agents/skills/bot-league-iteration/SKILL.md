@@ -140,6 +140,8 @@ Append an entry to `ledger/iterations.md`, in the shape of the entries before it
 - the champion, and its rating next to last iteration's;
 - where the champion still loses, as the next iteration's starting point.
 
+When the champion changed, write its name in `hosting/lambda/bot`: the hosted bot deploys it once the iteration is on main.
+
 Then update **Lessons so far** at the top: add what this iteration showed about the game in general, and correct a lesson that a game contradicted. A lesson is about the game ("a group that lands one turn after a burst loses to it"), not about a bot.
 
 Run `scripts/check.sh` once more. The iteration is done when the checks pass, the roster has no candidate left, and the ledger entry is written.

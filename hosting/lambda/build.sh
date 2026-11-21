@@ -2,10 +2,10 @@
 # Builds dist/lambda/bot.zip: the Lambda handler, one league bot and the SDK
 # with its dependencies for Lambda's python3.14 runtime on arm64.
 #
-#   hosting/lambda/build.sh [bot]     # the bot's directory under bots/, economist by default
+#   hosting/lambda/build.sh [bot]     # the bot's directory under bots/, hosting/lambda/bot by default
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-bot="${1:-economist}"
+bot="${1:-$(tr -d '[:space:]' < hosting/lambda/bot)}"
 [[ -f "bots/$bot/bot.py" ]] || { echo "no bot bots/$bot/bot.py" >&2; exit 1; }
 
 out=dist/lambda
