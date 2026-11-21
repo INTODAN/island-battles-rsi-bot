@@ -17,6 +17,9 @@ uv pip install --quiet --target "$out/package" \
   -r "$out/requirements.txt"
 cp bots/__init__.py "$out/package/bots/"
 cp "bots/$bot/"*.py "$out/package/bots/$bot/"
-cp hosting/lambda/handler.py hosting/lambda/bot "$out/package/"
+cp hosting/lambda/handler.py hosting/lambda/games.py hosting/lambda/page.py hosting/lambda/bot "$out/package/"
+# The league's maps, which name the map of a real game.
+mkdir -p "$out/package/maps"
+cp maps/*/*.json "$out/package/maps/"
 (cd "$out/package" && find . -name __pycache__ -prune -exec rm -rf {} + && zip -qr9 ../bot.zip .)
 echo "$out/bot.zip ($(du -h "$out/bot.zip" | cut -f1)), bot $bot: set BOT=bots.$bot.bot:play"

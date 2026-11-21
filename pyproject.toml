@@ -13,6 +13,7 @@ league = "league_tools.cli:main"
 
 [dependency-groups]
 dev = [
+    "boto3>=1.44.9",
     "pytest>=8.0,<9",
     "ruff>=0.16.9",
     "ty>=0.0.84",
@@ -40,3 +41,7 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ty.environment]
+# The hosted bot's modules, which its handler and tests import by name.
+extra-paths = ["hosting/lambda"]

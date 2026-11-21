@@ -87,7 +87,7 @@ uv run league tournament                    # the population and levels 1-3 on t
 uv run league tournament --focus NAME       # only NAME's matches: its lost games and longest wins
 uv run league tournament --add NAME         # NAME, a candidate too, in the whole round robin
 uv run league tournament --maps holdout     # or: all, or map names
-uv run league digest DEMO                   # the timeline, the logistics and the events of a game
+uv run league digest DEMO                   # the timeline, the logistics and the events of a game (a hosted game's zip too)
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
 uv run league status NAME active            # or: candidate, retired
@@ -104,3 +104,4 @@ scripts/check.sh                                      # format, lint, types and 
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
 - **No real opponents.** The league has read one real game (the ledger's lessons from it) and played none: every opponent here is a league bot or a default bot.
+- **Real games come back as estimates.** The hosted bot keeps every real game it plays as a zip and lists them on its home page ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)), but a hosted bot is never told how a game ended, so its demo stops at its last turn, without the other teams' logs, and the result is estimated.

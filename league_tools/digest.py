@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import gzip
+import io
 import json
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +16,12 @@ KEY_EVENTS = ("capture", "eliminated", "upgrade", "burst")
 
 
 def load_demo(path: Path) -> dict[str, Any]:
-    """Read a demo file, packed with gzip or not."""
+    """Read a demo file, packed with gzip or not, or the demo.json of a hosted game's zip."""
     data = path.read_bytes()
-    if data[:2] == b"\x1f\x8b":
+    if data[:4] == b"PK\x03\x04":
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            data = archive.read("demo.json")
+    elif data[:2] == b"\x1f\x8b":
         data = gzip.decompress(data)
     return json.loads(data)
 
