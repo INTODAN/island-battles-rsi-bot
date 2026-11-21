@@ -20,7 +20,9 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Mechanisms that only act in rare situations split the mirror match.** A candidate that differs from its parent only when, say, a rescue would be too slow plays most mirror games move for move like it, and two of its last three such candidates took exactly 9 of 18 against the parent while rating above it (`contested_timeline` in iteration 3, `speed_rescue` in iteration 5). The head-to-head rule then decides on a few games.
 - **Put the attack margin on what is uncertain.** A castle's growth during the walk is certain; its soldiers and the groups bound for it are not. Applying the 1.3 margin to the soldiers and reinforcements only, and adding the growth as it is, beat its parent 14 of 18 and took `gyre` 30 of 30 (iteration 6): the old margin on growth kept the bot from striking castles that a steady attacker had emptied.
 - **`circle`'s rush can be held only at a price.** Keeping the lone opening castle above what the enemy's castle could take turned both losses to `expander` into draws at the limit, but cost more on `claw` and `strait` than it gained (7 of 18 against its parent, iteration 6). Answering an attack at its origin, through the attacker, changed the length of 13 games and the winner of none.
-- **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent); a finish that works is still to be found.
+- **A bot that only attacks what one castle affords alone never finishes.** Once the enemy's last castle holds more than any one of its castles can beat with the margin, it waits: the economist held 1,100 soldiers in 7 castles for 80 turns against one castle of 130 to 280 on `claw`. Sending every idle castle's spare soldiers at once, sized for the farthest group, was worse (iteration 1's `economist_pool`, 5 of 18 points against its parent). *What works (iteration 7):* a strike by the castles whose groups land within two turns of the nearest one, all at once, after the rear castles have fed the castle nearest the enemy: `frontline` beat every bot of the league, the champion 16 of 18.
+- **Staging alone doesn't help the economist line.** Grafting `contested_stage`'s staging into the champion took exactly half against the parent twice (iteration 5 and 7): soldiers moved to the front still wait for one castle to afford a target alone. Staging pays with a strike made for it.
+- **Counting the enemy groups that land after yours takes fewer castles that fall at once, but isn't yet a gain**: playing every landing on a target in order beat its parent 10.5 of 18 and rated above it on training, and fell 105 points below it on the holdout maps (iteration 7's `margin_landings`; the holdout games weren't read).
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
 
@@ -31,6 +33,12 @@ From a real game between two players' bots on the official map, `claw` (2026-11-
 - **The lightly held castle on the border decides a level game.** The castle at (0, -3) was captured four times, usually held under 20 soldiers while the stacks stood elsewhere, and its last capture, on turn 149, made production 19 against 12; the game ended 46 turns later.
 - **Clashes trade one for one** (687 soldiers lost on each side), so nothing is won in the field: a group sent out of a castle at an arriving stack only delays it, when it is at least half the stack's size.
 - **Neither bot bought speed**, in a game where attacks walked 12 to 17 turns. Whether speed level 2, for 10 soldiers, pays on a map this size is untested. *In the league it pays (iteration 4):* buying the next speed level before an attack that would walk more than 8 turns was the largest single gain so far, 1320 to 1518 on the training maps and 1679 to 1969 on the holdout maps.
+
+From a real game of the champion, `speed_margin`, against a hosted bot in a lobby on `claw` (2026-11-21, 72 turns, lost with 0 castles to 8; read with `league digest`, not played here):
+
+- **The opponent fed a front castle in batches and struck from two castles at once.** It bought production at home to level 3 on turns 1 and 2, took neutrals with groups of 14 to 18 at castles of 10, then bought production and speed level 2 on every castle; its three rear castles sent groups of 12 to the castle nearest us every three turns (499 of its 808 soldiers sent went to its own castles), and its strikes left from two or three castles at once: 39 and 22 at a castle of 29 on turn 50, 65, 12 and 7 at a castle of 37 on turn 66.
+- **It won the game in the race for the two middle castles.** The champion took its two near neutrals by turn 9, then lost both middle castles: it sent 11 at a neutral of 10 from 5 units away, topped it up with groups of 1 that landed alone, and took the other middle castle with 1 soldier on turn 26, one turn before an enemy group of 23 landed. From turn 27 it had 3 castles to 5, and production 12 to 20 by turn 51.
+- **The champion saved for 23 turns at home** (turns 27 to 50, "saving" every turn, 117 soldiers in three castles by turn 51) and sent nothing to its own castles all game; its first speed level came on turn 57.
 
 ## Iteration 0: the founders
 
@@ -391,3 +399,75 @@ Holdout maps (`iteration-6-holdout`, 880 matches):
 **Where the champion still loses (training maps):** `circle` against `expander` in 12 turns, both sides; `claw` against `contested_stage` (76 and 81 turns) and `crossing` against it (138 and 182); `strait` against `rusher` (93) and `reinforce_timeline` (114), both sides; `islands` against `level2` (86 and 112); `archipelago` against `economist` (159); `crossing` against `contested_speed` at the limit. Draws at the limit on `circle` against `contested_speed`, `contested_stage` and `economist`.
 
 **Next:** `contested_stage` now beats the champion on `claw` and `crossing`, both sides: its staging, measured against the new champion. `strait`, against two players. `circle`'s opening still has no answer that pays for itself.
+
+## Iteration 7: the front, after a real opponent
+
+**Date:** 2026-11-21. **Maps:** 9 training, 5 holdout (unchanged). **Matches:** 2,394 in the training selection round robin, 1,170 in the holdout selection; the final standings are 1,836 training and 1,020 holdout matches. The baseline (`iteration-7-before`, 1,584 matches) gave exactly iteration 6's training table.
+
+Before this iteration the champion played its first real game, against a hosted bot in a lobby on `claw`, and lost it in 72 turns (the lessons above). This iteration's founder is built after that opponent: the league had no bot that plays like it, and a strategy that beats the champion in a real game is the one the league should meet.
+
+**Findings** (the real game, and `speed_margin`'s games on the training maps):
+
+1. **It takes contested castles with 1 soldier and loses them a turn later.** The real game, turn 26: castle 4 taken with 1, lost on turn 27 to groups of 18 and 5 sent on turns 20 and 21. `claw`, against `contested_stage`, turn 19: castle 2 taken with 1 and lost on turn 20 to a group of 4 one turn behind; castle 4 taken on turn 26 and lost on turn 36. **Cause:** a target's defenders count only the enemy groups that land before the new group. **Idea (a):** play every landing on the target in order.
+2. **It tops up in groups of 1 that land alone.** The real game, turns 16 to 19 and 21 to 26: groups of 1 and 2 at castles 2 and 4, logged `0->2!:1`; its group of 11 landed a turn before the enemy's, alone, while the accounting counted it with every later send. `claw` against `contested_stage`, turns 11 to 19, the same from the other side. **Cause:** the bot's own groups bound for a target count whatever their landing turn. The same idea (a) answers it: the landings in order, own groups too.
+3. **It saves at home while the enemy builds a front.** The real game, turns 27 to 50: "saving" every turn with 3 castles at production 12, while the opponent moved its rear castles' soldiers to its castle nearest us and struck from two castles at once. `contested_stage`, which stages, beats the champion on `claw` and `crossing`, both sides. **Ideas:** (b) graft the staging; (c) a founder that plays as the real opponent did.
+
+**Candidates:**
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `frontline` | speed_margin (scaffolding) | A new strategy, from the real game's winner: every castle buys production then speed, rear castles feed the castle nearest the enemy in batches, and the castles nearest a target strike it together. | 1677 (1501) | 16/18 | 2161 (2004) | **promoted** |
+| `margin_landings` | speed_margin | Size an attack by playing every landing on the target in order, own and enemy groups, before and after this one: send what leaves the castle ours after the last of them. | 1535 (1501) | 10.5/18 | 1899 (2004) | **rejected**: its holdout rating is below its parent's. |
+| `margin_stage` | speed_margin | Graft from contested_stage: a castle that finds nothing to attack alone sends its spare soldiers to the own castle nearest the enemy. | 1490 (1501) | 9/18 | not played | **rejected**: half against its parent and rated below it; 30/32 on `claw` (parent 25) but 20/32 on `crossing` and 22/32 on `far-shores` (parent 27 and 28). |
+
+All three passed the gate: no failed turn, slowest turns 12.9, 18.9 and 20.0 ms.
+
+**Status changes:** `frontline` is active. `speed_margin` stays active: `frontline` scored less against `level3` on the training maps (16/18 to its 18) and against `contested_speed`, `economist_reinforce` and `economist` on the holdout maps. That made seven active bots, so `economist_contested`, the lowest-rated active bot (1149 in the selection), is **retired**: `frontline`'s row beats it against every other player on both sets of maps. Active: `frontline`, `speed_margin`, `contested_speed`, `contested_stage`, `reinforce_timeline`, `economist_reinforce`; retired: `economist`, `sentinel`, `reinforce_contested`, `rusher`, `expander`, `economist_contested`.
+
+Training maps (`iteration-7-train`, 1,836 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| frontline | 1668 | 0.925 | 225 | 16 | 11 |
+| speed_margin | 1517 | 0.837 | 199 | 24 | 29 |
+| contested_speed | 1459 | 0.796 | 189 | 23 | 40 |
+| contested_stage | 1373 | 0.726 | 175 | 16 | 61 |
+| reinforce_timeline | 1285 | 0.647 | 153 | 20 | 79 |
+| reinforce_contested (retired) | 1266 | 0.629 | 147 | 23 | 82 |
+| economist_reinforce | 1219 | 0.585 | 134 | 27 | 91 |
+| economist_contested (retired) | 1153 | 0.522 | 122 | 19 | 111 |
+| economist (retired) | 1089 | 0.460 | 104 | 24 | 124 |
+| level3 | 1000 | 0.296 | 60 | 8 | 148 |
+| expander (retired) | 875 | 0.266 | 63 | 8 | 181 |
+| rusher (retired) | 855 | 0.250 | 54 | 18 | 180 |
+| sentinel (retired) | 830 | 0.230 | 52 | 12 | 188 |
+| level2 | 795 | 0.148 | 29 | 6 | 181 |
+| level1 | 506 | 0.037 | 0 | 16 | 200 |
+
+Holdout maps (`iteration-7-holdout`, 1,020 matches):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| frontline | 2111 | 0.929 | 130 | 0 | 10 |
+| speed_margin | 2009 | 0.879 | 123 | 0 | 17 |
+| contested_speed | 1934 | 0.836 | 113 | 8 | 19 |
+| reinforce_timeline | 1811 | 0.757 | 103 | 6 | 31 |
+| contested_stage | 1758 | 0.721 | 101 | 0 | 39 |
+| reinforce_contested (retired) | 1654 | 0.650 | 88 | 6 | 46 |
+| economist_reinforce | 1568 | 0.593 | 79 | 8 | 53 |
+| economist_contested (retired) | 1501 | 0.550 | 75 | 4 | 61 |
+| economist (retired) | 1403 | 0.493 | 67 | 4 | 69 |
+| level3 | 1000 | 0.196 | 22 | 3 | 95 |
+| sentinel (retired) | 882 | 0.232 | 29 | 7 | 104 |
+| rusher (retired) | 824 | 0.200 | 25 | 6 | 109 |
+| expander (retired) | 798 | 0.186 | 26 | 0 | 114 |
+| level2 | 737 | 0.092 | 10 | 2 | 108 |
+| level1 | 409 | 0.017 | 0 | 4 | 116 |
+
+**Champion:** `frontline`, 1668 on the training maps and 2111 on the holdout maps (iteration 6's champion, `speed_margin`, was 1557 and 2010; 1517 and 2009 in this tournament).
+
+**Where the champion still loses (training maps):** `claw`, the official map, against `contested_stage` (90 and 91 turns) and `level3` (119), both sides; `circle` against `expander` in 12 turns, both sides, and draws at the limit there against five bots; `crossing` against `contested_speed` (123), both sides; `far-shores` against `speed_margin` (141); `islands` against `reinforce_timeline` at the limit, both sides.
+
+**Next:** `claw`, where the champion loses four games and the real games are played.
+
+**After the iteration**, `frontline` played the same hosted bot in a lobby on `claw`, from the same side as the real game above, and won as the last team standing in 92 turns (8 castles and 315 soldiers to 0), with no failed turn. It took the middle castle 2 four times and lost it three; the game turned from turn 73, when its strikes took castles 6, 7 and the enemy's home castle 1 in eleven turns. Its production was 10 to 10 on turn 51 and 15 to 12 on turn 81: unlike `speed_margin`, it never fell behind in castles after turn 41.

@@ -1,0 +1,9 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent.
+status = "active"
+# The bot this one was copied from, or empty for a founder.
+parent = "speed_margin"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 7
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "A new strategy, from the real game's winner: every castle buys production then speed, rear castles feed the castle nearest the enemy in batches, and the castles nearest a target strike it together."
