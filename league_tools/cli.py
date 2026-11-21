@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 from . import digest as digest_module
-from . import maps, roster, tournament
+from . import maps, opponents, roster, tournament
 from .paths import MAPS, RUNS
 
 
@@ -26,6 +26,8 @@ def _tournament(arguments: argparse.Namespace) -> int:
     added = [name.strip() for name in arguments.add.split(",")] if arguments.add else []
     names += [name for name in focus + added if name not in names]
     names += [f"level{level}" for level in arguments.anchors.split(",") if level]
+    if not arguments.no_opponents:
+        names += [name for name in opponents.load_opponents() if name not in names]
     plan = tournament.Tournament(
         players=names,
         maps=tournament.map_files(arguments.maps),
@@ -122,6 +124,9 @@ def main(argv: list[str] | None = None) -> int:
         help="add these bots, candidates too, to the whole round robin, and list their lost games and longest wins",
     )
     play.add_argument("--anchors", default="1,2,3", help="default bot levels to add; '' for none")
+    play.add_argument(
+        "--no-opponents", action="store_true", help="leave out the outside opponents of opponents.local.toml"
+    )
     play.add_argument("--maps", default="train", help="train, holdout, all, or map names")
     play.add_argument("--max-generations", type=int, default=300)
     play.add_argument("--turn-timeout-milliseconds", type=int, default=2000)

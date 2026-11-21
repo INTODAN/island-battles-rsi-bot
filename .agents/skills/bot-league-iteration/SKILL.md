@@ -77,10 +77,10 @@ Rules:
 - **One idea per candidate.** Two changes in one candidate give a result that says nothing about either. Two ideas are two candidates, and a third that has both if both win.
 - Change **only the candidate's directory**. Never the parent, another bot, the maps or the tools: a tool that needs changing is a separate change, made before the iteration and measured with a full tournament.
 - Keep the logging rule: the changed decision shows in the turn's log line.
-- **Three candidates** unless the request names another number. More than six is usually the same idea with different numbers.
+- **Three candidates** unless the request names another number; **six** when subagents write them. More than six is usually the same idea with different numbers.
 - **A number is not an idea.** Don't make candidates that only differ in a constant. If an idea needs a constant tuned, tune it inside the candidate on the training maps, and count that as the one idea.
 
-Write the candidates yourself, one after the other, measuring each as it is done. When the request asks for subagents, or for more than three candidates, they can be written in parallel, since candidates don't share files: one subagent per candidate, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. Each subagent finishes by running `uv run league tournament --focus <candidate> --strict --run-id iteration-N-<candidate>`, and reports its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the selection yourself.
+Write the candidates yourself, one after the other, measuring each as it is done. When the request asks for subagents, or for more than three candidates, they can be written in parallel (a smaller model, such as Sonnet, writes a candidate well from a precise brief; read every candidate's diff before it plays, since the gate catches crashes and illegal results, not a wrong idea), since candidates don't share files: one subagent per candidate, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. Each subagent finishes by running `uv run league tournament --focus <candidate> --strict --run-id iteration-N-<candidate>`, and reports its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the selection yourself.
 
 ## 4. Gate
 
@@ -112,6 +112,12 @@ uv run league tournament --maps holdout --add CANDIDATES --run-id iteration-N-se
 ```
 
 A candidate is **promoted** when its holdout rating is not below its parent's. Read only the standings and the tables of that run; it lists no games. **Never digest a holdout game, and never change a candidate after seeing its holdout numbers:** a candidate that fails the holdout is rejected, and its idea may come back next iteration in another form, measured again from the start.
+
+### The check against real opponents
+
+A candidate that passed the holdout maps then plays the **hosted bot of the real games** in lobby games, on every training map, from Blue, as the champion did before it; it is **promoted** only if it wins at least as many of those games as the champion does. The league's own bots can't stand in for that opponent: `safe_hold` became champion in iteration 13 and won 4 of 17 such games where its predecessor `finish_speed` had won more.
+
+The games run in parallel, one lobby per browser tab: in each tab you are on Blue with **My localhost bot** on a port of your own (never 41414, which a player may be using), and the hosted bot (**Add bot**, **Hosted bot (URL)**) on Red. Serve the candidate on each port (`uv run island-battles-bot serve --port P bots.NAME.bot:play`), run `python3 scripts/serve_maps.py`, split the training maps between the tabs, and in each tab set `window.__runMaps` and paste [`scripts/lobby-run.js`](../../../scripts/lobby-run.js); read `window.__run.results`. Five tabs play the 17 training maps in about eight minutes. The champion's results are kept in the ledger, so only a new champion plays them again. Read these games like training games; never play a holdout map here.
 
 **Promoting nothing is a result.** Most ideas don't work, and an iteration that rejects all three and says why has done its job. Never promote a candidate that missed a rule by a little, and never loosen a rule to get a promotion.
 

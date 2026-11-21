@@ -74,5 +74,10 @@ The game's rules and the SDK are in three skills copied from the game's Python b
 - `candidate`: new and unmeasured. Tournaments leave it out unless `--focus` or `--bots` names it.
 - `active`: in the population, and a possible parent.
 - `retired`: no longer changed, kept as an opponent so that old strengths still have to be beaten.
+- `sparring`: a fixed opponent built to play like a real one (`ori_like` plays like the hosted bot of the real games). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
+
+## Outside opponents
+
+A real player's bot can play every tournament without its code coming into this public repository. `opponents.local.toml` (git ignores it) names each one by its project directory, interpreter and `module:function` ([`league_tools/opponents.py`](../../../league_tools/opponents.py) has the format). Tournaments add them like the default bots; `--no-opponents` leaves them out. Their games count in the ratings, so a candidate must beat them too. Name them in the ledger as "the player's bot", never by the person's name, and never copy their code here.
 
 Deleting a bot is deleting its directory; git keeps it. Never edit an `active` or `retired` bot's code in place: its results in the ledger would stop being true. Copy it to a candidate.

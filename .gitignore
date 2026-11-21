@@ -10,3 +10,6 @@ __pycache__/
 .ruff_cache/
 dist/
 *.log
+
+# Outside opponents: local paths to other people's bot projects (league_tools/opponents.py).
+opponents.local.toml

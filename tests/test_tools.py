@@ -276,3 +276,43 @@ def test_a_local_checkout_of_the_game_replaces_the_pinned_commit(
 ) -> None:
     monkeypatch.setenv(engine.LOCAL_SOURCE_VARIABLE, str(tmp_path))
     assert engine.source() == tmp_path.resolve()
+
+
+def test_outside_opponents_come_from_the_local_file(tmp_path: Path) -> None:
+    from league_tools import opponents
+
+    project = tmp_path / "their_bot"
+    (project / ".venv" / "bin").mkdir(parents=True)
+    (project / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (project / "bot.py").write_text("def play(turn): ...\n", encoding="utf-8")
+    config = tmp_path / "opponents.local.toml"
+    config.write_text(f'[opponents.outside_player]\ndirectory = "{project}"\n', encoding="utf-8")
+    loaded = opponents.load_opponents(config)
+    assert list(loaded) == ["outside_player"]
+    spec = loaded["outside_player"].specification()
+    assert spec["worker"] == [str(project / ".venv/bin/python"), "-m", "island_battles_client.worker", "bot:play"]
+    assert spec["directory"] == str(project)
+    before = loaded["outside_player"].fingerprint()
+    # The project's virtual environment isn't its code; its own files are.
+    (project / ".venv" / "lib.py").write_text("x = 1\n", encoding="utf-8")
+    assert loaded["outside_player"].fingerprint() == before
+    (project / "bot.py").write_text("def play(turn): return None\n", encoding="utf-8")
+    assert loaded["outside_player"].fingerprint() != before
+    assert opponents.load_opponents(tmp_path / "missing.toml") == {}
+
+
+def test_an_outside_opponent_needs_its_interpreter(tmp_path: Path) -> None:
+    from league_tools import opponents
+
+    config = tmp_path / "opponents.local.toml"
+    config.write_text(f'[opponents.outside_player]\ndirectory = "{tmp_path}"\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="no interpreter"):
+        opponents.load_opponents(config)
+
+
+def test_sparring_is_a_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(roster, "BOTS", tmp_path)
+    (tmp_path / "rival").mkdir()
+    (tmp_path / "rival" / "bot.py").write_text("def play(turn): ...\n", encoding="utf-8")
+    roster.write_bot(roster.Bot(name="rival", status="sparring", parent="", iteration=22, idea="plays like a rival"))
+    assert roster.load_bot("rival").status == "sparring"

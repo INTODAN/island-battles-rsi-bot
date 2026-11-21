@@ -1241,3 +1241,60 @@ Holdout maps (`iteration-21-holdout`, 2,652 matches, exit 0):
 **Champion:** `safe_hold`, 1876 on the training maps, champion since iteration 13.
 
 **Where it stands after iterations 12 to 21:** one promotion (`safe_hold`, iteration 13) in ten iterations. Seven candidates beat the champion head to head and rated above it on training, and six of them fell below it on the holdout maps. The map set grew from 10 and 6 to 17 and 13 maps. Against the player's bot the champion wins 46 of 60 games; five rejected candidates won more (`opener_safe` 48 of 56, `hold_latespeed` 50 of 60).
+
+## Setup after iteration 21: real opponents in the league
+
+**Date:** 2026-11-21. A change of the league's setup, asked for by the people who run it, made between iterations and measured with a full tournament on both sets of maps.
+
+**Why.** The champion, `safe_hold`, played the hosted bot of the real games in lobbies on the league's maps (as Blue, 21 maps before the run was stopped): 4 wins (`archipelago`, `far-shores`, `gyre`, `loch`), a draw at the limit (`circle`) and 16 losses (`bight`, `claw`, `crossing`, `delta`, `firth`, `haven`, `islands`, `reef`, `rill`, `shelf`, `sound`, `strait` and the holdout maps `atoll`, `cays`, `fen`, `key`). Its predecessor `finish_speed` had won `crossing`, `islands`, `strait` and `far-shores` against it. In every lost training game the hosted bot took a third, often a fourth, neutral castle between turns 23 and 64 while `safe_hold` stopped at one or two, then out-produced it (10 to 15 against 3 to 10 by turn 61), with 34 to 55% of its soldiers walking to `safe_hold`'s 51 to 67%. The league had promoted a bot that beats the league and loses to the real opponent.
+
+**What changed:**
+
+- **Outside opponents** (`league_tools/opponents.py`, `opponents.local.toml`, not in git): a player's bot plays every tournament from its own project, like a default bot. The player's bot of iterations 8 to 21 is the first.
+- **A `sparring` status** for fixed opponents that play like a real one, never parents, never counted with the retired bots, never deleted. **`ori_like`** is the first: `frontline`'s code with the hosted bot's habits from its 30 lobby games (production 3 at home before anything, neutrals bought with a cushion of 5 before strikes, batches of 12 to the front, strikes at 1.6 times the defenders). Against `safe_hold` it reproduces the hosted bot's result on 10 of the 17 training maps (it wins 9 where the hosted bot won 12); 18 settings were tried and these matched best. It is a stand-in, not a copy.
+- **The check against real opponents** before a promotion (the iteration skill): a candidate that passed the holdout maps plays the hosted bot in lobby games on the training maps, five tabs at once (`scripts/serve_maps.py`, `scripts/lobby-run.js`), and is promoted only if it wins at least as many as the champion. The champion's record to beat: `safe_hold`, 4 wins of 17 training maps.
+- **Six candidates per iteration when subagents write them**, a smaller model allowed, every diff read before it plays.
+
+Training maps (`setup-22-train`, 4,522 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1782 | 0.822 | 431 | 32 | 81 |
+| finish_safe | 1714 | 0.763 | 399 | 32 | 113 |
+| finish_speed | 1683 | 0.733 | 377 | 44 | 123 |
+| hold_finish | 1677 | 0.728 | 368 | 56 | 120 |
+| ori_like | 1664 | 0.715 | 375 | 28 | 141 |
+| frontline_hold (retired) | 1660 | 0.711 | 359 | 56 | 129 |
+| frontline | 1644 | 0.696 | 349 | 59 | 136 |
+| frontline_finish | 1637 | 0.688 | 345 | 59 | 140 |
+| speed_margin (retired) | 1437 | 0.489 | 244 | 44 | 256 |
+| outside_player | 1398 | 0.452 | 242 | 8 | 294 |
+| contested_speed (retired) | 1388 | 0.443 | 219 | 44 | 281 |
+| contested_stage (retired) | 1309 | 0.373 | 191 | 24 | 329 |
+| reinforce_timeline (retired) | 1260 | 0.334 | 161 | 41 | 342 |
+| reinforce_contested (retired) | 1207 | 0.294 | 140 | 40 | 364 |
+| level3 | 1000 | 0.069 | 33 | 0 | 443 |
+| level2 | 679 | 0.012 | 5 | 1 | 470 |
+| level1 | 243 | 0.000 | 0 | 0 | 476 |
+
+Holdout maps (`setup-22-holdout`, 3,458 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1916 | 0.865 | 359 | 2 | 55 |
+| finish_safe | 1824 | 0.796 | 330 | 2 | 84 |
+| finish_speed | 1769 | 0.748 | 307 | 8 | 101 |
+| frontline_finish | 1738 | 0.719 | 289 | 20 | 107 |
+| hold_finish | 1733 | 0.714 | 286 | 22 | 108 |
+| frontline_hold (retired) | 1717 | 0.700 | 280 | 22 | 114 |
+| frontline | 1697 | 0.680 | 273 | 20 | 123 |
+| ori_like | 1655 | 0.639 | 266 | 0 | 150 |
+| speed_margin (retired) | 1522 | 0.510 | 212 | 0 | 204 |
+| outside_player | 1496 | 0.486 | 202 | 0 | 214 |
+| contested_speed (retired) | 1421 | 0.418 | 171 | 6 | 239 |
+| contested_stage (retired) | 1363 | 0.370 | 154 | 0 | 262 |
+| reinforce_timeline (retired) | 1335 | 0.349 | 143 | 4 | 269 |
+| reinforce_contested (retired) | 1223 | 0.272 | 110 | 6 | 300 |
+| level3 | 1000 | 0.052 | 19 | 0 | 345 |
+| level2 | 533 | 0.003 | 1 | 0 | 363 |
+| level1 | 341 | 0.000 | 0 | 0 | 364 |
