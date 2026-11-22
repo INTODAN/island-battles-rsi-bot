@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from html import escape
+from pathlib import Path
 from typing import Any
 
 from games import LIVE_WINDOW
 
 REPOSITORY = "https://github.com/INTODAN/island-battles-rsi-bot"
+# A study is two or three lines (bot-league-iteration's "Started by real games"); a longer one is cut.
+STUDY_LINES = 3
+_STUDY = re.compile(r"^([0-9]+)\.md$")
+
+
+def load_studies(*directories: Path) -> dict[int, list[str]]:
+    """The iterations' studies of real games (ledger/studies/<id>.md), by game id: their non-empty lines."""
+    studies: dict[int, list[str]] = {}
+    for directory in directories:
+        for path in sorted(directory.glob("*.md")):
+            match = _STUDY.match(path.name)
+            if match and int(match.group(1)) not in studies:
+                lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
+                studies[int(match.group(1))] = lines[:STUDY_LINES]
+    return studies
+
 
 _STYLE = """
 :root {
@@ -52,6 +70,8 @@ h2 { font-size: 30px; margin: 4px 0 8px; }
 .badge.lost { background: var(--lost-bg); color: var(--lost); }
 .badge.playing { background: transparent; color: var(--live); }
 .note { color: var(--muted); font-size: 14px; margin-top: 10px; }
+.study { margin-top: 14px; border-left: 3px solid var(--line); padding: 2px 0 2px 14px; }
+.study p { margin: 4px 0 0; font-size: 15px; }
 .empty { color: var(--muted); padding: 16px 0 4px; }
 footer { color: var(--muted); font-size: 14px; margin-top: 32px; }
 footer a { color: var(--text); }
@@ -153,7 +173,14 @@ _DEMO_NOTES = {
 }
 
 
-def _game(game: dict[str, Any]) -> str:
+def _study(lines: list[str] | None) -> str:
+    if not lines:
+        return ""
+    text = "".join(f"<p>{escape(line)}</p>" for line in lines)
+    return f'<div class="study"><div class="label">What the league learned</div>{text}</div>'
+
+
+def _game(game: dict[str, Any], study: list[str] | None = None) -> str:
     game_id = int(game["game_id"])
     action = f'<a class="zip" href="/games/{game_id}.zip">Zip</a>' if game.get("zip") else ""
     passed = f" ({game['passed']} passed)" if game.get("passed") else ""
@@ -173,12 +200,15 @@ def _game(game: dict[str, Any]) -> str:
         note = f'<div class="note">{mark}{escape(game["result_note"])}{demo}</div>'
     return (
         f'<article class="game"><div class="game-head"><h3>Game {game_id}</h3>{action}</div>'
-        f'<div class="fields">{"".join(fields)}</div>{note}</article>'
+        f'<div class="fields">{"".join(fields)}</div>{note}{_study(study)}</article>'
     )
 
 
-def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]]) -> str:
-    """The home page as HTML."""
+def render(
+    bot: str, summary: dict[str, Any], games: list[dict[str, Any]], studies: dict[int, list[str]] | None = None
+) -> str:
+    """The home page as HTML; studies are the iterations' studies of the games, by game id."""
+    studies = studies or {}
     latest = summary["latest"]
     record = summary["record"]
     seconds = int(LIVE_WINDOW.total_seconds())
@@ -210,7 +240,10 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]]) -> st
         f'<div class="sub">{sub}</div></div>'
         for label, big, sub in cards
     )
-    listed = "".join(_game(game) for game in games) or '<p class="empty">No games yet.</p>'
+    listed = (
+        "".join(_game(game, studies.get(int(game["game_id"]))) for game in games)
+        or '<p class="empty">No games yet.</p>'
+    )
     live = " live" if summary["live"] else ""
     return f"""{_head(f"{bot} · Island Battles bot")}
 <body>
@@ -225,7 +258,8 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]]) -> st
 <p>When a game ends, the game sends the bot its outcome and a link to its demo, with every team's logs. Each zip
 holds that demo (<code>demo.json</code>, which <code>league digest</code> and the demo viewer open), its digest,
 and the bot's own record of every turn: its commands, memory, timing and the server's answers. A result marked ≈
-is estimated from the last board the bot saw, for a game that never sent its end.</p>
+is estimated from the last board the bot saw, for a game that never sent its end. Under a game, what the league
+learned from it is the study that the iteration which studied it wrote.</p>
 <p><a href="{REPOSITORY}">The league's repository</a> · <a href="/api/games">JSON</a> ·
 <a href="/" id="sign-out">Sign out</a></p>
 </footer>

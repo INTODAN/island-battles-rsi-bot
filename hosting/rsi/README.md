@@ -22,13 +22,14 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 | --- | --- |
 | [`notifier.py`](notifier.py) | The Lambda that turns a packed zip into a `repository_dispatch`. |
 | [`real_games.py`](real_games.py) | Lists the games bucket and unpacks the final games no iteration has studied, newest `--limit` first. |
-| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger, `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
+| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger (with `ledger/studies/<id>.md`, the study of a real game that the bot's page shows), `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
 | [`../../.github/workflows/real-game-iteration.yml`](../../.github/workflows/real-game-iteration.yml) | The workflow. |
 
 ## How it behaves
 
 - **One iteration at a time.** The workflow's concurrency group keeps one run going and one waiting; dispatches that arrive meanwhile replace the waiting one. The waiting run studies every final game that no iteration has studied, up to `RSI_GAMES_PER_RUN` (10), so a burst of games makes one more iteration, not one each. A game left out by the limit is studied by a later run.
 - **The run holds the queue until its pull request has merged**, so the next iteration starts from this one's ledger entry. While an automated iteration's pull request is open (its checks failed, or it didn't merge within an hour), every later run fails at its first step and the games wait: fix or close that pull request, then start the workflow again from the Actions tab.
+- **It claims its iteration's number, as a person's session does** (`scripts/claim-iteration.sh`): the branch `claude/league-iteration-N`, pushed with an App token that is revoked at once, before Claude starts. While a session holds the next number, the run waits for that iteration to merge, up to `RSI_CLAIM_WAIT_MINUTES` (90), and then starts from the new `main`; after that it fails and the games wait for the next run. A run that fails before its pull request gives the number back.
 - **No cap.** Each merge deploys a bot, whose games start more iterations. Each iteration runs on your Claude subscription (`CLAUDE_CODE_OAUTH_TOKEN`), so the iterations share your plan's limits with your own use.
 - **The model** is `RSI_MODEL`, Opus by default; the skill lets it hand candidates to Sonnet subagents. Set it to `sonnet` to spend less.
 - **Nobody plays the other player's bot.** The iteration studies the games that happened; it never starts one (the skill's *No games against another player's bot*).
@@ -67,11 +68,11 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 ### GitHub
 
 1. **A GitHub App** for the league, installed on this repository alone, with the permissions Contents: read and write, Pull requests: read and write, Issues: read and write (for the label), Metadata: read. Save its id as the repository variable `RSI_APP_ID` and a private key as the secret `RSI_APP_PRIVATE_KEY`.
-2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN`.
+2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN` (`gh secret set CLAUDE_CODE_OAUTH_TOKEN`). In a narrow terminal it prints the token across two lines; the workflow removes the line break that a paste keeps.
 3. **Settings → General → Allow auto-merge** on.
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.
-6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`.
+6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`, `RSI_CLAIM_WAIT_MINUTES`.
 
 ### AWS (`eu-central-1`, next to the hosted bot)
 

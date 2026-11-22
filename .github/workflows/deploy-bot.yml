@@ -1,5 +1,6 @@
 # Deploys the hosted bot (hosting/lambda/) when main changes the bots, the
-# deployment or the dependencies: the bot that hosting/lambda/bot names goes to
+# deployment, the studies of real games (which its page shows) or the
+# dependencies: the bot that hosting/lambda/bot names goes to
 # the Lambda function behind the hosted bot's URL. It signs in to AWS with
 # GitHub's OIDC as a role that only main of this repository may assume, and
 # that may only upload the zip and update that one function.
@@ -13,6 +14,7 @@ on:
     paths:
       - bots/**
       - hosting/lambda/**
+      - ledger/studies/**
       - uv.lock
       - .github/workflows/deploy-bot.yml
   workflow_dispatch:

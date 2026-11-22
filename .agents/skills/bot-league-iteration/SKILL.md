@@ -18,11 +18,28 @@ An iteration takes the league from one measured state to the next: it ends with 
 3. [island-battles-rules](../island-battles-rules/SKILL.md) and [writing-a-bot](../writing-a-bot/SKILL.md): the game and the SDK.
 4. `uv run league ledger`: where the league stands. It prints the ledger ([ledger/iterations.md](../../../ledger/iterations.md)) as an iteration needs it: the **Lessons so far**, one line for every candidate ever tried (its parent, idea, numbers and decision), and the last three entries in full. Don't read the whole file: its older entries are mostly standings that the lessons and the candidate lines already sum up. When a line sends you to an older entry, `grep` the file for it.
 
+**Claim the number first.** Iterations run one at a time: each starts from the last one's ledger entry and population, so two that start from the same entry measure against a population that one of them will change, and both are called N. Other sessions and the automated iteration may be running too. Before step 0, fetch and claim:
+
+```sh
+git fetch origin
+scripts/claim-iteration.sh claim            # prints "N CLAIM"; keep both
+```
+
+It pushes the branch `claude/league-iteration-N` with an empty commit on `main` that says who claimed it, and only if nobody has. That push is part of the iteration and needs no request; it carries none of the iteration's work. **When it exits 2, N is taken: don't start.** Report who holds it (the script prints it) and stop, unless the request said to wait: then wait until `scripts/claim-iteration.sh status` exits 0 (the other iteration has merged), update from `main`, and claim again. Never take a number from a claim that isn't yours, and never start an iteration without one. The automated iteration claims its own number and says so in its request: there, skip this.
+
+Going on from your own iteration that isn't merged yet, claim the next with `--base` set to that branch: the number comes from its ledger. If you stop before the iteration is done (**When something doesn't work, stop**), give the number back: `scripts/claim-iteration.sh release N CLAIM`.
+
 **Branch.** An iteration is its own branch, `claude/league-iteration-N`, cut from `main`, or from the branch that holds the ledger's last entry while that one isn't merged yet. Never work on another pull request's branch.
 
-**Commit, push, pull request.** Only what the request asks for. The automated iteration commits, pushes and opens its pull request itself, after the iteration: there, leave the working tree to it. Asked to commit, make one commit when the iteration is done, whose message names the iteration and what was promoted and rejected. Don't push or open a pull request unless asked.
+**Commit, push, pull request.** Only what the request asks for, apart from the claim. The automated iteration commits, pushes and opens its pull request itself, after the iteration: there, leave the working tree to it. Asked to commit, make one commit when the iteration is done, whose message names the iteration and what was promoted and rejected. Don't push or open a pull request unless asked. Asked to push, the iteration's commit replaces the claim on its branch, and only while the branch still holds your claim:
 
-**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, and `ledger/iterations.md`. Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are allowed only as **When the numbers stop moving** says, and only before the iteration's first measurement.
+```sh
+git push --force-with-lease=refs/heads/claude/league-iteration-N:CLAIM origin HEAD:refs/heads/claude/league-iteration-N
+```
+
+The claim holds until `main` has the iteration's ledger entry. An iteration that is done but not pushed keeps the number: say so in the report, since every other iteration waits for it.
+
+**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, `ledger/iterations.md`, and the study of each real game the iteration studied (`ledger/studies/<id>.md`, below). Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are allowed only as **When the numbers stop moving** says, and only before the iteration's first measurement.
 
 **When something doesn't work, stop.** A tool that crashes, a command from a skill that fails, a check that failed before you changed anything, or a result that can't be right (a bot that wins every game after a small change, a tournament with no matches): stop, and report what you ran and what it printed. Don't work around it, and don't fix the tool inside the iteration. A wrong measurement is worse than no iteration.
 
@@ -30,7 +47,7 @@ An iteration takes the league from one measured state to the next: it ends with 
 
 The point of the league is to make the bots better faster, so the end-to-end time of an iteration matters, from the first command to the report. Every iteration measures where that time goes and makes the next one shorter. **Never by doing less of the work:** the same games studied, the same findings with their evidence, the same gate and selection. A faster iteration that reads fewer games or skips a check is a worse iteration.
 
-- **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
+- **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, the rematches, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
 - **Speed up what you can inside the iteration**, without changing anything an iteration may not change: run independent commands at the same time (several `digest` runs, the holdout run beside the ledger's writing), study the games in parallel (step 2) and write the candidates in parallel (step 3), and don't run a command twice for output you already have.
 - **What the tools already do:** every checkout of the repository (each worktree, each subagent) shares the main checkout's result cache and runner, so only matches no checkout played before are played; one tournament plays at a time on the machine, and one that waits takes from the cache what the other played; and `--parents` plays a candidate's head-to-head alone, so a candidate that can't pass rule 1 costs 34 games, not the whole round robin.
 - **What only a tool change can speed up** is not changed in this iteration. Write it down with its numbers, and after the iteration make it a separate change to `league_tools/` (or `scripts/`) before the next one starts, measured with a full tournament whose results must equal the cached ones. What only the game or its headless runner can speed up is an issue in INTODAN/island-battles-go, as AGENTS.md says.
@@ -80,6 +97,12 @@ The hosted bot keeps every real game it plays (`hosting/lambda/`), and an iterat
 - **Never write a player's name** in the ledger, a bot, a commit or a report: say "the opponent", "a player's bot". The repository is public.
 - **Never copy a real game into the repository**, nor into `maps/` unless its map is a new default map, as **When the numbers stop moving** says.
 - In the ledger entry, say which real games the iteration studied (their ids) and what each showed, in words. The workflow lists their ids in `ledger/real-games.txt`; don't edit that file.
+- **Write each game's study** when the iteration is done, in `ledger/studies/<id>.md`: two or three lines of plain text, no Markdown, one sentence each. The first says the hosted bot's main mistakes in that game, with their turns; the next say what this iteration changed for them: the promoted bot and the fix it carries, or that no candidate for them passed and the mistake still stands. The hosted bot's page shows it under the game, so write it for its owner, who knows the game, and never a player's name. Example:
+
+  ```
+  Sent its home garrison out at turns 40-52 while a 30-soldier stack sat two islands away, and lost home at turn 61.
+  hold_exactstrike, now the champion, keeps a home reserve sized to the nearest enemy stack.
+  ```
 
 ## 3. Vary
 
@@ -103,7 +126,21 @@ Rules:
 - **Three candidates** unless the request names another number; **six** when subagents write them. More than six is usually the same idea with different numbers.
 - **A number is not an idea.** Don't make candidates that only differ in a constant. If an idea needs a constant tuned, tune it inside the candidate on the training maps, and count that as the one idea.
 
-Make every candidate with `league new` yourself, then **write them in parallel**, since candidates don't share files: one subagent per candidate, all at once, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. (A smaller model, such as Sonnet, writes a candidate well from a precise brief, when the request allows one.) Read every candidate's diff before it plays: the gate catches crashes and illegal results, not a wrong idea. Each subagent finishes by running `uv run league tournament --focus <candidate> --parents --strict --run-id iteration-N-<candidate>`, its candidate's head-to-head against its parent, and reports the table's line for its candidate, its failed turns and slowest turn, and its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the gate and the selection yourself.
+**Check each candidate against its own games first.** Once a candidate is written, play the games its finding came from again, with the candidate in its parent's seat:
+
+```sh
+uv run league rematch DEMO... --bot CANDIDATE
+```
+
+It takes seconds. For each game it gives the result before and after, and the first turn on which the candidate commanded something else than its parent, with both bots' commands and log lines of that turn. Read it before the gate:
+
+- **"its change never acted in this game"**: the code doesn't do what the idea says, or the situation it answers is not what the game showed. Fix the candidate and run it again; don't send it to the gate.
+- **It acted, but not on the turns of the finding, or not as the idea says**: read the turns it names with `digest --turns` and fix the candidate.
+- **It acted as the idea says**: the candidate is ready for the gate, whatever the result. A rematch that turns losses into wins is not evidence that the candidate is better: a change that wins the games it was written from often loses others, and only the gate and the selection say which. Never promote or reject on a rematch.
+
+Rematch only training games, and only the ones the finding came from: it refuses holdout maps. Its matches go to the cache, so the gate doesn't play them again.
+
+Make every candidate with `league new` yourself, then **write them in parallel**, since candidates don't share files: one subagent per candidate, all at once, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. (A smaller model, such as Sonnet, writes a candidate well from a precise brief, when the request allows one.) Read every candidate's diff before it plays: the gate catches crashes and illegal results, not a wrong idea. Each subagent runs `uv run league rematch` on its finding's demos until its change acts as the idea says, then finishes by running `uv run league tournament --focus <candidate> --parents --strict --run-id iteration-N-<candidate>`, its candidate's head-to-head against its parent, and reports the rematch's first different turns, the table's line for its candidate, its failed turns and slowest turn, and its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the gate and the selection yourself.
 
 ## 4. Gate
 

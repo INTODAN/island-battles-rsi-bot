@@ -60,6 +60,10 @@ OWNER = owner.Owner.from_settings(
 )
 # The map files that name a game's map: packaged next to this file, or the repository's.
 _HERE = Path(__file__).parent
+# The iterations' studies of real games: bundled by build.sh, or the ledger's when run from the repository.
+STUDIES = page.load_studies(
+    *[path for path in (_HERE / "studies", _HERE.parent.parent / "ledger" / "studies") if path.is_dir()]
+)
 MAPS = games.KnownMaps.load(*[path for path in (_HERE / "maps", _HERE.parent.parent / "maps") if path.is_dir()])
 _ZIP_PATH = re.compile(r"^/games/(\d+)\.zip$")
 # The largest demo the bot downloads, and how long it waits for it.
@@ -236,7 +240,7 @@ def _home(store: games.Store | None) -> dict[str, Any]:
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render(_bot.name, summary, listed),
+        "body": page.render(_bot.name, summary, listed, STUDIES),
     }
 
 

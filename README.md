@@ -45,7 +45,11 @@ This repository holds bots and the tools that measure them. The game, its rules,
 
 ## Ratings
 
-A tournament's ratings are a Bradley-Terry fit of its games, shown on the Elo scale, with **`level3` fixed at 1000**. The default bots never change, so a rating means the same in every iteration, and the champion's rating over the iterations is the league's progress. A fit doesn't depend on the order of the games.
+A tournament's ratings are a Bradley-Terry fit of its games, shown on the Elo scale, with **the sparring bot `ori_mimic` fixed at 1800**. `ori_mimic` is never changed and never deleted, so a rating means the same in every iteration, and the champion's rating over the iterations is the league's progress. A fit doesn't depend on the order of the games.
+
+The anchor has to win and lose games in the table. The fit gives every player one drawn game against an average player besides its real ones, so a player that wins nothing sits where that one draw puts it, not where its games do. Until iteration 29 the anchor was `level3` at 1000; from iteration 30 the population rules had deleted every bot it beat, and in the training tables `level2` and `level3` won nothing, both printed 1000, and every rating rose about 370 points. `ori_mimic` scores about half its games against the whole field. 1800 is about its rating in the tables of iterations 24 to 29, so the training ratings go on from those; the holdout ratings, where it stood at 1943 to 2101, read about 200 to 300 lower than in those iterations. The ratings of iterations 30 to 35 compare within their tables only. A tournament without `ori_mimic` has `level3` at 1000, and one without either has its mean at 1000.
+
+Changing `ori_mimic`'s code would move the scale: a sparring bot that plays more like the opponent is a new bot with a new name. When `ori_mimic`'s score in the whole population's tables falls toward 0.1, the anchor needs to move again, a change of the league's setup like this one.
 
 A rating says something only when the player met the whole field. `tournament --focus NAME` plays NAME's pairs alone: use it to find NAME's lost games quickly, never to compare ratings. `tournament --add NAME` adds NAME to the whole round robin, which costs the same thanks to the cache, and its ratings count.
 
@@ -54,6 +58,8 @@ Deterministic bots give one game per pair, map and side, so the number of maps i
 ## The loop
 
 One **iteration** is one pass, and ends as one commit. The [bot-league-iteration skill](.agents/skills/bot-league-iteration/SKILL.md) is the procedure; in short:
+
+0. **Claim.** Iterations run one at a time, each from the last one's ledger entry. `scripts/claim-iteration.sh claim` pushes the branch `claude/league-iteration-N` before anything else, and fails when another session or the automated iteration holds N; `scripts/claim-iteration.sh status` says who does. The iteration's commit replaces the claim on that branch, and the number is free again once it has merged.
 
 1. **Measure.** Play the population and the default bots on the training maps. Most of it comes from the cache.
 2. **Study.** Take the champion's lost and drawn games, and its slow wins, on the training maps. Read the digest, then the turns that decided the game with both bots' logs. Write each finding as: what happened (map, turn), why, and the change that would fix it.
@@ -96,6 +102,7 @@ uv run league tournament --maps holdout     # or: all, or map names
 uv run league digest DEMO                   # the timeline, the logistics and the events of a game (a hosted game's zip too)
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
+uv run league rematch DEMO... --bot NAME       # those games again with NAME in its parent's seat: did the change act?
 uv run league status NAME active            # or: candidate, retired, sparring
 uv run league new-map NAME --seed N --set train
 uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot
