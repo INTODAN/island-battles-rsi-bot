@@ -12,9 +12,10 @@ notifier (notifier.py, a Lambda) ── skips a game whose demo is still pending
 real-game-iteration.yml (GitHub Actions), on several runners
    1. claim    chooses the final games that ledger/real-games.txt doesn't list (real_games.py), claims N
    2. warm ×N  each runner plays a shard of the population's round robin (league tournament --shard K/N)
-   3. study    Claude Code, the skill's first half on the games: steps 0 to 3 and the hand-over
-   4. gate ×N  each runner plays a shard of every match with a candidate, training and holdout maps
-   5. select   Claude Code, the second half from the cache: steps 4 to 7; then the commit, the scope
+   3. study    Claude Code, the skill's first half on the games: steps 0 to 3, the head-to-head, the hand-over
+   4. gate ×N  each runner plays a shard of every match with a candidate the head-to-head kept
+   5. select   Claude Code, the second half from the cache: the rest of the gate, the selection and
+               the record; then the commit, the scope
                and names check (scope.py), scripts/check.sh, the push of claude/league-iteration-N,
                and the pull request, merged once the checks pass
         ▼
@@ -34,7 +35,7 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 - **One iteration at a time.** The workflow's concurrency group keeps one run going and one waiting; dispatches that arrive meanwhile replace the waiting one. The waiting run studies every final game that no iteration has studied, up to `RSI_GAMES_PER_RUN` (10), so a burst of games makes one more iteration, not one each. A game left out by the limit is studied by a later run.
 - **The run holds the queue until its pull request has merged**, so the next iteration starts from this one's ledger entry. While an automated iteration's pull request is open (its checks failed, or it didn't merge within an hour), every later run fails at its first step and the games wait: fix or close that pull request, then start the workflow again from the Actions tab.
 - **It claims its iteration's number, as a person's session does** (`scripts/claim-iteration.sh`): the branch `claude/league-iteration-N`, pushed with an App token that is revoked at once, before Claude starts. While a session holds the next number, the run waits for that iteration to merge, up to `RSI_CLAIM_WAIT_MINUTES` (90), and then starts from the new `main`; after that it fails and the games wait for the next run. A run that fails or is cancelled before its pull request gives the number back.
-- **Its tournaments are played on `RSI_SHARDS` runners at once** (8), since one runner has 4 CPUs and an iteration's time is nearly all playing. Each runner plays the slice of a tournament that `league tournament --shard K/N` gives it, and uploads the matches it played; the next job merges them into its cache. Claude runs twice, before and after the candidates' matches: the first half studies and writes the candidates and hands over the start of the ledger entry; the second gates, selects and records, every tournament from the cache. Both are the iteration skill's section "Split across runners". The merged cache is saved after each round of runners, so a run that fails later keeps what they played.
+- **Its tournaments are played on `RSI_SHARDS` runners at once** (8), since one runner has 4 CPUs and an iteration's time is nearly all playing. Each runner plays the slice of a tournament that `league tournament --shard K/N` gives it, and uploads the matches it played; the next job merges them into its cache. Claude runs twice, before and after the candidates' matches: the first half studies, writes the candidates, plays their 34-game head-to-heads against their parents (which reject most of them cheaply) and hands over the start of the ledger entry; the second gates, selects and records, every tournament from the cache. Both are the iteration skill's section "Split across runners". The merged cache is saved after each round of runners, so a run that fails later keeps what they played.
 - **No cap.** Each merge deploys a bot, whose games start more iterations. Each iteration runs on your Claude subscription (`CLAUDE_CODE_OAUTH_TOKEN`), so the iterations share your plan's limits with your own use.
 - **The model** is `RSI_MODEL`, Opus by default; the skill lets it hand candidates to Sonnet subagents. Set it to `sonnet` to spend less.
 - **Nobody plays the other player's bot.** The iteration studies the games that happened; it never starts one (the skill's *No games against another player's bot*).

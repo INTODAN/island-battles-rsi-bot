@@ -16,7 +16,7 @@ An iteration takes the league from one measured state to the next: it ends with 
 1. [README.md](../../../README.md): what the league is.
 2. The [`bot-league`](../bot-league/SKILL.md) skill: the commands, reading standings and games, the rules for a bot.
 3. [island-battles-rules](../island-battles-rules/SKILL.md) and [writing-a-bot](../writing-a-bot/SKILL.md): the game and the SDK.
-4. [ledger/iterations.md](../../../ledger/iterations.md): where the league stands.
+4. `uv run league ledger`: where the league stands. It prints the ledger ([ledger/iterations.md](../../../ledger/iterations.md)) as an iteration needs it: the **Lessons so far**, one line for every candidate ever tried (its parent, idea, numbers and decision), and the last three entries in full. Don't read the whole file: its older entries are mostly standings that the lessons and the candidate lines already sum up. When a line sends you to an older entry, `grep` the file for it.
 
 **Claim the number first.** Iterations run one at a time: each starts from the last one's ledger entry and population, so two that start from the same entry measure against a population that one of them will change, and both are called N. Other sessions and the automated iteration may be running too. Before step 0, fetch and claim:
 
@@ -48,7 +48,8 @@ The claim holds until `main` has the iteration's ledger entry. An iteration that
 The point of the league is to make the bots better faster, so the end-to-end time of an iteration matters, from the first command to the report. Every iteration measures where that time goes and makes the next one shorter. **Never by doing less of the work:** the same games studied, the same findings with their evidence, the same gate and selection. A faster iteration that reads fewer games or skips a check is a worse iteration.
 
 - **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, the rematches, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
-- **Speed up what you can inside the iteration**, without changing anything an iteration may not change: run independent commands at the same time (several `digest` runs, the holdout run beside the ledger's writing), study games in parallel with subagents that each return their findings with the digest and log lines, write candidates in parallel as step 3 allows, and don't run a command twice for output you already have.
+- **Speed up what you can inside the iteration**, without changing anything an iteration may not change: run independent commands at the same time (several `digest` runs, the holdout run beside the ledger's writing), study the games in parallel (step 2) and write the candidates in parallel (step 3), and don't run a command twice for output you already have.
+- **What the tools already do:** every checkout of the repository (each worktree, each subagent) shares the main checkout's result cache and runner, so only matches no checkout played before are played; one tournament plays at a time on the machine, and one that waits takes from the cache what the other played; and `--parents` plays a candidate's head-to-head alone, so a candidate that can't pass rule 1 costs 34 games, not the whole round robin.
 - **What only a tool change can speed up** is not changed in this iteration. Write it down with its numbers, and after the iteration make it a separate change to `league_tools/` (or `scripts/`) before the next one starts, measured with a full tournament whose results must equal the cached ones. What only the game or its headless runner can speed up is an issue in INTODAN/island-battles-go, as AGENTS.md says.
 - **Record it.** The ledger entry and the report give the time of each step and the total, the slowest steps, what was done about them, and how the total compares with the last iteration's.
 
@@ -59,17 +60,17 @@ A machine with few CPUs (a GitHub runner has 4) plays an iteration's tournaments
 `league tournament --shard K/N` plays the K-th of N slices of a tournament's matches into the cache and prints no standings: every match falls in exactly one slice, whatever the cache holds. With every slice's cache merged into `runs/cache`, the same tournament without `--shard` plays nothing and gives the whole tables.
 
 1. **Runners play the population** in shards on every map (`--maps all`), so that steps 1 and 2 come from the cache.
-2. **The first half is steps 0 to 3**: start from the ledger, measure, study, write the candidates and rematch them. Subagents writing candidates rematch as step 3 says, but don't run their `--focus` tournament: the runners play it. Then write the **hand-over** and stop.
-3. **Runners play every match with a candidate** in shards: `--maps all --add CANDIDATES`, which holds the gate's, the selection's and the final tables' matches, on the training and the holdout maps. They print no ratings.
-4. **The second half is steps 4 to 7**, from the hand-over, with the same commands: they come from the cache. A match with a failed turn is never cached, so the gate plays it again on the second half's machine, which is the gate's "run the same command again".
+2. **The first half is steps 0 to 3 and step 4's head-to-head**: start from the ledger, measure, study, write the candidates and rematch them (the subagents' `--focus <candidate> --parents` runs too: 34 games each), then `--focus CANDIDATES --parents --strict` as step 4 begins. A candidate with no more than half of its head-to-head is rejected there, as step 4 says: record it in the hand-over and delete its directory. Then write the **hand-over** and stop.
+3. **Runners play every match with a remaining candidate** in shards: `--maps all --add CANDIDATES`, which holds the gate's, the selection's and the final tables' matches, on the training and the holdout maps. They print no ratings. With no candidate left, they play nothing.
+4. **The second half is the rest of step 4, then steps 5 to 7**, from the hand-over, with the same commands: they come from the cache. A match with a failed turn is never cached, so the gate plays it again on the second half's machine, which is the gate's "run the same command again".
 
-**The hand-over** is the start of the iteration's ledger entry in `ledger/iterations.md`, in the entry's shape (step 6), and the first line of each real game's study in `ledger/studies/<id>.md`. The second half has neither your session nor the real games, so the hand-over holds everything it needs from steps 0 to 3: the heading, the date and the maps; the champion and its rating before; each finding with its game, turns and evidence (the digest's and the logs' numbers); each candidate's parent and idea, and what its rematch showed (the first different turn, the results before and after); what you didn't do or couldn't verify; and the time of each step so far. It is written as the ledger is: in words, without a player's name, and without copying a real game's log lines. End it with a line `Second half: steps 4 to 7.`, which the second half replaces with its own part.
+**The hand-over** is the start of the iteration's ledger entry in `ledger/iterations.md`, in the entry's shape (step 6), and the first line of each real game's study in `ledger/studies/<id>.md`. The second half has neither your session nor the real games, so the hand-over holds everything it needs from what you did: the heading, the date and the maps; the champion and its rating before; each finding with its game, turns and evidence (the digest's and the logs' numbers); each candidate's parent and idea, what its rematch showed (the first different turn, the results before and after) and its head-to-head points, and for each one rejected there, that it was; what you didn't do or couldn't verify; and the time of each step so far. It is written as the ledger is: in words, without a player's name, and without copying a real game's log lines. End it with a line `Second half: the rest of step 4, then steps 5 to 7.`, which the second half replaces with its own part.
 
 **In the second half**, read the hand-over first, and take its findings as they are: the games they came from are not on your machine when they are real ones. Candidates are fixed before the runners play them: the holdout matches of every candidate are in the cache, but only step 5's holdout run, which names the candidates that passed, may show them. Never run a holdout tournament with a candidate that didn't pass the training rules, and open nothing in `runs/cache` but the demos of training games that a tournament listed. A candidate fixed after the gate is played again on your machine, which is slow but allowed; its old matches no longer count. The run's job times, which the request names, give the time of the steps that the runners played.
 
 ## 0. Start from the ledger
 
-In the ledger, read the **Lessons so far**, and the last two or three entries. They say who the champion is, where it loses, and which ideas were already tried and rejected. Don't try a rejected idea again unless you can say what is different this time. The new iteration's number is the last entry's plus one.
+In `uv run league ledger`, read the **Lessons so far**, the candidates tried, and the last three entries. They say who the champion is, where it loses, and which ideas were already tried and rejected. Don't try a rejected idea again unless you can say what is different this time. The new iteration's number is the last entry's plus one.
 
 Then `uv run league roster` and `scripts/check.sh`. A league that doesn't pass its checks is fixed before anything is measured.
 
@@ -88,6 +89,8 @@ uv run league tournament --focus CHAMPION --run-id iteration-N-champion
 ```
 
 lists the games the champion didn't win, and its longest wins. (Its ratings table is from the champion's pairs alone; ignore it.) Study at least the three shortest losses, one draw if there is one, and the opponent or map where its row is worst; then `digest` each, and the deciding turns with `--turns` and both bots' logs, as `bot-league` describes. Read a long win too: a game the champion won in 200 turns that should have taken 60 hides a weakness that a better opponent will use.
+
+**Study the games in parallel**: choose the games first, then give each one to a subagent of its own, all at once (the real games of **Started by real games** too, one each). Each brief names the demo, the map, the seats and why the game was chosen, the ledger's lessons from real games to check it against, and asks for: the `bot-league` skill read first; `digest`, then `--turns` around every turn that decided the game, with both bots' logs; and findings in the form below, each with the digest lines and log lines that show it, quoted. A subagent writes no code and changes no file. Read every finding's evidence yourself, and `--turns` a window again where the evidence doesn't show the cause; then compare the findings across games. The games read, the turns read and the evidence are the same as when one agent reads them one after the other; the time is that of the longest game.
 
 Check each game against the ledger's lessons from real games as well: a habit that a real opponent punished there (long walks, trickled attacks, a border castle left thin) is a finding even in a game the champion won.
 
@@ -152,27 +155,35 @@ It takes seconds. For each game it gives the result before and after, and the fi
 
 Rematch only training games, and only the ones the finding came from: it refuses holdout maps. Its matches go to the cache, so the gate doesn't play them again.
 
-Write the candidates yourself, one after the other, measuring each as it is done. When the request asks for subagents, or for more than three candidates, they can be written in parallel (a smaller model, such as Sonnet, writes a candidate well from a precise brief; read every candidate's diff before it plays, since the gate catches crashes and illegal results, not a wrong idea), since candidates don't share files: one subagent per candidate, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. Each subagent runs `uv run league rematch` on its finding's demos until its change acts as the idea says, then finishes by running `uv run league tournament --focus <candidate> --strict --run-id iteration-N-<candidate>`, and reports the rematch's first different turns and its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the selection yourself.
+Make every candidate with `league new` yourself, then **write them in parallel**, since candidates don't share files: one subagent per candidate, all at once, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. (A smaller model, such as Sonnet, writes a candidate well from a precise brief, when the request allows one.) Read every candidate's diff before it plays: the gate catches crashes and illegal results, not a wrong idea. Each subagent runs `uv run league rematch` on its finding's demos until its change acts as the idea says, then finishes by running `uv run league tournament --focus <candidate> --parents --strict --run-id iteration-N-<candidate>`, its candidate's head-to-head against its parent, and reports the rematch's first different turns, the table's line for its candidate, its failed turns and slowest turn, and its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the gate and the selection yourself.
 
 ## 4. Gate
 
-A candidate plays only when all of this holds:
+First, every candidate against its parent alone:
+
+```sh
+uv run league tournament --focus CANDIDATES --parents --strict --run-id iteration-N-parents
+```
+
+(The subagents' runs already played these games: this one reads them from the cache.) Its table **Each listed bot against its parent** gives each candidate's points in those 34 games. A candidate with **no more than half** of them is **rejected** here: it fails the first rule of the selection (step 5), which no other number can change, so its other games aren't played. Record its head-to-head points, and in the ledger "not played" for its ratings.
+
+Then, for the candidates with more than half, a candidate plays only when all of this holds:
 
 - `scripts/check.sh` passes.
-- `uv run league tournament --focus CANDIDATES --strict --run-id iteration-N-candidates` exits 0: no match unplayed, no failed turn.
+- `uv run league tournament --focus CANDIDATES --strict --run-id iteration-N-candidates` exits 0: no match unplayed, no failed turn. Both of these runs count: a failed turn in the head-to-head is a failed turn.
 - Its slowest turn is under 200 ms.
 
-Fix a candidate that fails the gate, or drop it. A failed turn is never "close enough". A turn that ran out of time while the machine was busy with something else is the one exception: run the same command again, which plays that match again, and believe the second run.
+Fix a candidate that fails the gate, or drop it. A candidate changed after its head-to-head plays its head-to-head again. A failed turn is never "close enough". A turn that ran out of time while the machine was busy with something else is the one exception: run the same command again, which plays that match again, and believe the second run.
 
 ## 5. Select
 
-Select from a round robin of **the whole population with the candidates in it**, never from a `--focus` run, whose ratings come from the candidates' pairs alone:
+Select from a round robin of **the whole population with the candidates that passed the gate in it**, never from a `--focus` run, whose ratings come from the candidates' pairs alone:
 
 ```sh
 uv run league tournament --add CANDIDATES --run-id iteration-N-select
 ```
 
-The cache already holds every pair without a candidate, so it plays little more than the gate did. On the **training maps**, a candidate **passes** when both hold:
+The cache already holds every pair without a candidate, so it plays little more than the gate did. On the **training maps**, a candidate **passes** when both hold (its table **Each listed bot against its parent** says where each stands; check it against the pair table and the standings):
 
 1. Head to head against its parent it has more than half the points (the pair table).
 2. Its rating is above its parent's (the standings).
@@ -183,7 +194,7 @@ Then, for the candidates that passed only, play the **holdout maps**:
 uv run league tournament --maps holdout --add CANDIDATES --run-id iteration-N-select-holdout
 ```
 
-A candidate is **promoted** when its holdout rating is not below its parent's. Read only the standings and the tables of that run; it lists no games. **Never digest a holdout game, and never change a candidate after seeing its holdout numbers:** a candidate that fails the holdout is rejected, and its idea may come back next iteration in another form, measured again from the start.
+A candidate is **promoted** when its holdout rating is not below its parent's (the run's table **Each listed bot against its parent**). Read only the standings and the tables of that run; it lists no games. **Never digest a holdout game, and never change a candidate after seeing its holdout numbers:** a candidate that fails the holdout is rejected, and its idea may come back next iteration in another form, measured again from the start.
 
 ### No games against another player's bot
 
@@ -213,7 +224,7 @@ Append an entry to `ledger/iterations.md`, in the shape of the entries before it
 
 - the date, the maps and the number of matches;
 - the findings, each with its game and turns;
-- every candidate: its parent, its idea, its training numbers (rating, score against its parent), its holdout rating if it got there, and **promoted** or **rejected and why**;
+- every candidate: its parent, its idea, its training numbers (rating, or "not played" when the head-to-head rejected it; score against its parent), its holdout rating if it got there, and **promoted** or **rejected and why**;
 - the standings on the training maps and on the holdout maps;
 - the champion, and its rating next to last iteration's;
 - where the champion still loses, as the next iteration's starting point.
@@ -230,7 +241,7 @@ Run `scripts/check.sh` once more. The iteration is done when the checks pass, th
 End with a report to whoever asked, short enough to read in a minute:
 
 - the findings, one line each, with the map and turns;
-- each candidate: its idea, its training rating and its points against its parent, its holdout rating if it got there, and **promoted** or **rejected**, with the rule it missed;
+- each candidate: its idea, its points against its parent, its training rating if it got there, its holdout rating if it got there, and **promoted** or **rejected**, with the rule it missed;
 - the standings on the training maps and on the holdout maps, as tables;
 - the champion and its rating, before and after;
 - the iteration's total time, its slowest steps, and the speed-up proposed for the next one;

@@ -1,11 +1,23 @@
 """The league's tools: ratings, the tournament's summary, the digest and the roster."""
 
+import contextlib
 import gzip
 import json
 import re
+from collections.abc import Generator
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from island_battles_client import (
+    NEUTRAL_TEAM_COLOR,
+    BotTurn,
+    BotTurnResult,
+    UpgradeType,
+    send_soldier_group,
+    turn_result,
+    upgrade_castle,
+)
 
 from league_tools import cli, digest, engine, maps, ratings, rematch, replay, roster, tournament
 
@@ -15,6 +27,18 @@ def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
     fitted = ratings.fit(games)
     assert fitted["level3"] == pytest.approx(1000)
     assert fitted["strong"] > fitted["level3"] > fitted["weak"]
+
+
+def test_ratings_fix_ori_mimic_at_1800_before_level3() -> None:
+    """level3 winning nothing doesn't move the scale: the sparring bot that wins and loses holds it."""
+    games = [("strong", "ori_mimic", 1.0)] * 3 + [("ori_mimic", "strong", 1.0)] * 2 + [("ori_mimic", "level3", 1.0)] * 6
+    games += [("strong", "level3", 1.0)] * 6
+    fitted = ratings.fit(games)
+    assert fitted["ori_mimic"] == pytest.approx(1800)
+    assert fitted["strong"] > fitted["ori_mimic"] > fitted["level3"]
+    # Without either anchor, the mean is 1000.
+    unanchored = ratings.fit([("a", "b", 1.0), ("a", "b", 0.5)])
+    assert sum(unanchored.values()) / 2 == pytest.approx(1000) and unanchored["a"] > unanchored["b"]
 
 
 def test_ratings_do_not_depend_on_the_order_of_the_games() -> None:
@@ -73,11 +97,11 @@ def test_a_match_is_cached_under_its_players_names(tmp_path: Path, monkeypatch: 
     monkeypatch.setattr(tournament, "BOTS", bots)
     monkeypatch.setattr(tournament, "CACHE", cache)
     monkeypatch.setattr(tournament, "player_specification", lambda name: {})
-    monkeypatch.setattr(tournament.engine, "build", lambda: "build")
+    monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
     played: list[list[str]] = []
     failing = {"copy"}
 
-    def play(schedule: dict, worker_log: Path) -> list[dict]:
+    def play(binary: Path, schedule: dict, worker_log: Path) -> list[dict]:
         lines = []
         for match in schedule["matches"]:
             played.append(match["seats"])
@@ -124,6 +148,105 @@ def test_a_match_is_cached_under_its_players_names(tmp_path: Path, monkeypatch: 
     )
 
 
+def _fake_league(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, names: list[str]) -> tuple[Path, list[list[str]]]:
+    """Bots with code, a map and a runner that records what it plays: the first seat always wins."""
+    bots, cache = tmp_path / "bots", tmp_path / "cache"
+    for name in names:
+        (bots / name).mkdir(parents=True)
+        (bots / name / "bot.py").write_text(f"def play(turn): ...  # {name}\n")
+    map_file = tmp_path / "duel.json"
+    map_file.write_text("{}")
+    monkeypatch.setattr(tournament, "BOTS", bots)
+    monkeypatch.setattr(tournament, "CACHE", cache)
+    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
+    played: list[list[str]] = []
+
+    def play(binary: Path, schedule: dict, worker_log: Path) -> list[dict]:
+        lines = []
+        for match in schedule["matches"]:
+            played.append(match["seats"])
+            (cache / f"{match['id']}.json.gz").write_bytes(b"demo")
+            seats = [
+                {"name": name, "failed_turns": 0, "failures": [], "slowest_turn_milliseconds": 1.0}
+                for name in match["seats"]
+            ]
+            lines.append(
+                {
+                    "id": match["id"],
+                    "map": match["map"],
+                    "players": match["seats"],
+                    "winner": match["seats"][0],
+                    "generations": 10,
+                    "outcome": {"summary": "won"},
+                    "seats": seats,
+                    "demo": str(cache / f"{match['id']}.json.gz"),
+                }
+            )
+        return lines
+
+    monkeypatch.setattr(tournament.engine, "play", play)
+    return map_file, played
+
+
+def test_parents_plays_each_focused_bot_against_its_parent_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    map_file, played = _fake_league(tmp_path, monkeypatch, ["parent", "child", "other", "third"])
+    monkeypatch.setattr(tournament, "RUNS", tmp_path / "runs")
+    plan = tournament.Tournament(
+        players=["parent", "other", "child", "level3"],
+        maps=[map_file],
+        focus=["child"],
+        listed=["child"],
+        parents={"child": "parent"},
+        parents_only=True,
+    )
+    summary, table = tournament.run(plan, "h2h")
+    assert sorted(played) == [["child", "parent"], ["parent", "child"]]
+    assert "| `child` | `parent` | 1/2 | no |" in table
+    # The whole round robin then plays only what the head-to-head run didn't, and says where the rules stand.
+    played.clear()
+    whole = tournament.Tournament(
+        players=["parent", "other", "child", "level3"],
+        maps=[map_file],
+        listed=["child"],
+        parents={"child": "parent"},
+    )
+    summary, table = tournament.run(whole, "whole")
+    assert len(played) == 10 and ["child", "parent"] not in played
+    assert "Rating (parent's)" in table and "Rated above the parent" not in table  # the map is in no set
+
+
+def test_a_tournament_that_waited_takes_what_the_other_played(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    map_file, played = _fake_league(tmp_path, monkeypatch, ["first", "second"])
+    plan = tournament.Tournament(players=["first", "second"], maps=[map_file])
+    real_exclusive = tournament.engine.exclusive
+
+    @contextlib.contextmanager
+    def exclusive(lock_file: Path, waiting: str = "") -> Generator[None]:
+        # Another checkout's tournament plays the same matches while this one waits for the lock.
+        other = tournament.Tournament(players=["first", "second"], maps=[map_file])
+        monkeypatch.setattr(tournament.engine, "exclusive", real_exclusive)
+        tournament.play(other, tmp_path / "other")
+        with real_exclusive(lock_file, waiting):
+            yield
+
+    monkeypatch.setattr(tournament.engine, "exclusive", exclusive)
+    results = tournament.play(plan, tmp_path / "run")
+    assert len(played) == 2 and len(results) == 2
+
+
+def test_the_cache_and_the_runner_are_shared_by_every_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A git worktree uses its main checkout's cache and runner, so its first tournament isn't played cold."""
+    from league_tools import paths
+
+    assert (paths.SHARED / "runner.toml").is_file()
+    assert paths.CACHE == paths.SHARED / "runs" / "cache" and paths.RUNNER_SOURCE.parent == paths.RUNNER
+    monkeypatch.setenv(paths.SHARED_VARIABLE, "/somewhere/else")
+    assert paths._shared_root() == Path("/somewhere/else")
+
+
 def castle(castle_id: int, team_color: int, soldiers: int, x: float, levels: dict | None = None) -> dict:
     upgrades = {"speed": 1, "generation_amount": 1, "burst_potential": 1, "clash_stop_generations": 1}
     return {
@@ -152,10 +275,10 @@ def test_shards_split_a_tournament_into_parts_that_make_the_whole(
     monkeypatch.setattr(tournament, "BOTS", bots)
     monkeypatch.setattr(tournament, "CACHE", cache)
     monkeypatch.setattr(tournament, "player_specification", lambda name: {})
-    monkeypatch.setattr(tournament.engine, "build", lambda: "build")
+    monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
     played: list[str] = []
 
-    def play(schedule: dict, worker_log: Path) -> list[dict]:
+    def play(binary: Path, schedule: dict, worker_log: Path) -> list[dict]:
         lines = []
         for match in schedule["matches"]:
             played.append(match["id"])
@@ -444,16 +567,29 @@ def test_replay_reads_a_known_send_and_upgrade_off_the_boards() -> None:
     assert second["upgrades"] == [] and second["sends"] == []
 
 
-def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path) -> None:
+def fixture_play(turn: BotTurn) -> BotTurnResult:
+    """The replay demo's blue team: a castle at production 1 with 56 soldiers buys production and sends 46."""
+    commands = []
+    for own in turn.generation.castles:
+        if own.team_color != turn.team_color or own.upgrades[UpgradeType.generation_amount] != 1 or own.soldiers < 56:
+            continue
+        enemy = next(c for c in turn.generation.castles if c.team_color not in (turn.team_color, NEUTRAL_TEAM_COLOR))
+        commands += [upgrade_castle(own.id, UpgradeType.generation_amount), send_soldier_group(own.id, enemy.id, 46)]
+    return turn_result(commands)
+
+
+def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A bot of the test's own, so the test needs no bot of the population, which the population rules may delete."""
     demo = replay_demo()
     path = tmp_path / "game.json.gz"
     path.write_bytes(gzip.compress(json.dumps(demo).encode()))
-    report = replay.replay([("game", digest.load_demo(path))], "safe_hold", color=1)
+    monkeypatch.setattr(replay, "load_bot", lambda name: SimpleNamespace(play=fixture_play))
+    report = replay.replay([("game", digest.load_demo(path))], "fixture", color=1)
     assert report.stats["turns"] == 2
     assert report.stats["exact"] == report.stats["loose"] == 2  # turn 2: neither the team nor the bot did anything
     assert (report.stats["upgrade tp"], report.stats["neutral team"], report.stats["attack tp"]) == (1, 0, 1)
     assert report.stats["attack team"] == report.stats["attack bot"] == 1
-    assert "exact turn match" in report.text() and "bot: safe_hold" in report.text()
+    assert "exact turn match" in report.text() and "bot: fixture" in report.text()
 
 
 def test_rematch_finds_the_first_turn_a_candidate_commands_otherwise() -> None:
@@ -542,3 +678,40 @@ def test_rematch_compares_with_the_parents_game_as_it_plays_now(
     assert "never acted" in rival and "changed since" not in rival
     assert "changed since the studied game" in other and "First different command: turn 1" in other
     assert "40 from 0 to 2" in other and "Points in these games (2): parent 0, child 1." in text
+
+
+def test_the_ledger_brief_keeps_the_lessons_every_idea_and_the_last_entries() -> None:
+    from league_tools import ledger
+
+    text = "\n".join(
+        [
+            "# The league's ledger",
+            "",
+            "## Lessons so far",
+            "",
+            "- A lesson.",
+            "",
+            "## Iteration 1: first",
+            "",
+            "| Candidate | Parent | Idea | Against parent | Decision |",
+            "|---|---|---|---|---|",
+            "| `old_idea` | founder | Strike early. | 3/18 | **rejected**: below its parent. |",
+            "",
+            "A long standings table nobody needs again.",
+            "",
+            "## Setup after iteration 1: a new map",
+            "",
+            "## Iteration 2: second",
+            "",
+            "| Candidate | Parent | Idea | Against parent | Decision |",
+            "|---|---|---|---|---|",
+            "| `new_idea` | old | Hold. | 12/18 | **promoted** |",
+        ]
+    )
+    brief = ledger.brief(text, recent=1)
+    assert "- A lesson." in brief
+    assert "- 1: `old_idea` from founder: Strike early. (against parent 3/18) **rejected**: below its parent." in brief
+    assert "- 2: `new_idea` from old: Hold. (against parent 12/18) **promoted**" in brief
+    assert "A long standings table" not in brief
+    assert "- Iteration 1: first" in brief and "- Setup after iteration 1: a new map" in brief
+    assert brief.rstrip().endswith("| `new_idea` | old | Hold. | 12/18 | **promoted** |")

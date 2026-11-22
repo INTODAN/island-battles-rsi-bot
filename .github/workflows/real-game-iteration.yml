@@ -18,12 +18,15 @@
 #            every map (league tournament --shard K/N): steps 1 and 2 then
 #            come from the cache.
 #   study    Claude, the first half: steps 0 to 3 (measure, study, write the
-#            candidates and rematch them) and the hand-over, the start of the
-#            ledger entry. Its diff, carried into a clean checkout, goes on
+#            candidates and rematch them), step 4's head-to-head (34 games a
+#            candidate, which rejects the ones that can't pass) and the
+#            hand-over, the start of the ledger entry. Its diff, carried into a clean checkout, goes on
 #            as an artifact once the scope, name and bot checks pass there.
-#   gate     N runners each play a shard of every match with a candidate, on
-#            the training and the holdout maps.
-#   select   Claude, the second half: steps 4 to 7 from the hand-over, every
+#   gate     N runners each play a shard of every match with a remaining
+#            candidate, on the training and the holdout maps; skipped when
+#            the head-to-head left none.
+#   select   Claude, the second half: the rest of step 4 and steps 5 to 7
+#            from the hand-over, every
 #            tournament from the cache. Then the commit, the checks, the pull
 #            request and the merge, as before.
 #
@@ -220,7 +223,7 @@ jobs:
         with:
           name: cache-warm-${{ matrix.shard }}
 
-  # Steps 0 to 3 and the hand-over.
+  # Steps 0 to 3, step 4's head-to-head and the hand-over.
   study:
     name: Study (first half)
     needs: [claim, warm]
@@ -283,7 +286,7 @@ jobs:
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Run the first half of a league iteration, by the bot-league-iteration skill, as its section "Split
-            across runners" says: steps 0 to 3, then the hand-over, then stop. It is iteration
+            across runners" says: steps 0 to 3 and step 4's head-to-head, then the hand-over, then stop. It is iteration
             ${{ needs.claim.outputs.n }}, already claimed by this workflow: skip the skill's claim, and number the
             ledger entry ${{ needs.claim.outputs.n }}. Other runners have played the population's round robin on
             every map into runs/cache, and will play the gate and the selection after you.
@@ -337,8 +340,8 @@ jobs:
           names = [p.parent.name for p in sorted(pathlib.Path(sys.argv[1]).glob("*/bot.toml"))
                    if tomllib.loads(p.read_text()).get("status") == "candidate"]
           print(",".join(names))' clean/bots)
-          [ -n "$candidates" ] || { echo "::error::the first half wrote no candidate"; exit 1; }
-          echo "Candidates: $candidates"
+          # None left is a result: the head-to-head rejected every candidate.
+          echo "Candidates for the gate: ${candidates:-none}"
           echo "candidates=$candidates" >> "$GITHUB_OUTPUT"
 
       # Downloaded again, outside the working tree: the name check reads the
@@ -392,6 +395,7 @@ jobs:
   gate:
     name: Gate ${{ matrix.shard }}/${{ needs.claim.outputs.count }}
     needs: [claim, study]
+    if: needs.study.outputs.candidates != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -426,10 +430,15 @@ jobs:
         with:
           name: cache-gate-${{ matrix.shard }}
 
-  # Steps 4 to 7, then the commit, the checks, the pull request and the merge.
+  # The rest of step 4 and steps 5 to 7, then the commit, the checks, the pull
+  # request and the merge. It runs without the gate when the head-to-head left
+  # no candidate: the second half then records the rejections.
   select:
     name: Select (second half)
     needs: [claim, study, gate]
+    if: >-
+      !cancelled() && needs.study.result == 'success'
+      && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -489,9 +498,10 @@ jobs:
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Finish league iteration ${{ needs.claim.outputs.n }}, by the bot-league-iteration skill, as its section
-            "Split across runners" says: the second half, steps 4 to 7. The first half ran on another runner and
-            is in the working tree: the candidates ${{ needs.study.outputs.candidates }} under bots/, and the
-            hand-over, the start of iteration ${{ needs.claim.outputs.n }}'s entry in ledger/iterations.md and
+            "Split across runners" says: the second half, the rest of step 4 and steps 5 to 7. The first half ran
+            on another runner, with step 4's head-to-head, and is in the working tree: the candidates left for the
+            gate (${{ needs.study.outputs.candidates || 'none: the head-to-head rejected them all' }}) under bots/,
+            and the hand-over, the start of iteration ${{ needs.claim.outputs.n }}'s entry in ledger/iterations.md and
             the first line of each real game's study in ledger/studies/. Read the hand-over before anything else.
             Other runners have played every match of the gate and the selection, on the training and the holdout
             maps, into runs/cache. The iteration is already claimed: skip the skill's claim.

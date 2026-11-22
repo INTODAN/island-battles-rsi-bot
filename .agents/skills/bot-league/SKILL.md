@@ -16,14 +16,16 @@ From the repository root. The first run installs the Python project, fetches the
 | Command | Use it to |
 |---|---|
 | `uv run league roster` | List the bots with status, parent, iteration and idea. |
+| `uv run league ledger` | The ledger as an iteration starts from it: the lessons, one line for every candidate ever tried, and the last three entries in full. |
 | `uv run league tournament` | Play every active and retired bot and default levels 1 to 3 on the training maps, from both sides, and print the standings. |
 | `... tournament --focus A,B` | Play only the pairs with A or B (candidates too), and list their lost games and longest wins with the demos. The quick way to find what to read. **Its ratings don't count**: they come from those pairs alone. |
 | `... tournament --add A,B` | Add A and B, candidates too, to the whole round robin, with the same lists. The ratings to compare bots by; the cache makes it cost little more than `--focus`. |
+| `... tournament --focus A,B --parents` | Play A and B each against its parent alone (34 games on the training maps): the head-to-head rule of the selection, in seconds. Every run that lists a bot with its parent prints a table of the two: points against the parent, and in a whole round robin their ratings. |
 | `... tournament --maps holdout` | The holdout maps. Also `all`, or map names such as `strait,circle`. |
 | `... tournament --bots A,B --anchors 3` | Choose the bots and the default levels (`--anchors ''` for none). |
 | `... tournament --strict` | Exit with status 1 when a match wasn't played, a player failed a turn or there was no match. |
 | `... tournament --shard K/N` | Play only the K-th of N slices of the matches into the cache, and print no standings: for N machines that share a tournament. Merge their `runs/cache` directories, and the same tournament without `--shard` plays nothing. The automated iteration plays its tournaments this way (`bot-league-iteration`'s "Split across runners"). |
-| `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. |
+| `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. Every worktree shares the main checkout's cache; one tournament plays at a time, and one that waits says so. |
 | `uv run league digest DEMO` | A game as text: a timeline, each team's logistics and the events. Any demo: a real game's **Save demo** file too. |
 | `... digest DEMO --key-events` | Only the captures, eliminations, upgrades and bursts. A game with over 250 events is listed this way anyway. |
 | `... digest DEMO --turns 40-55 [--logs NAME]` | Those turns whole: the board, the events and the bots' log lines. |
@@ -35,11 +37,11 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
 | `scripts/check.sh` | Format, lint, types and tests of the tools and every bot. Run it before a tournament counts. |
 
-Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory.
+Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory. The demos the lists point to are in the cache, the main checkout's `runs/cache/` even in a worktree.
 
 ## Reading the standings
 
-- **Rating** is on the Elo scale with `level3` at 1000, so it compares across tournaments that include `level3`. Compare two bots only within one tournament of the whole population on the same maps: a `--focus` run rates each player from its games against the focused bots alone, and those ratings mean nothing next to another run's.
+- **Rating** is on the Elo scale with the sparring bot `ori_mimic` at 1800 (since the setup after iteration 35; before, `level3` at 1000), so it compares across tournaments that include `ori_mimic`. The ratings of iterations 30 to 35 compare only within their own tables, and `level2` and `level3` are meaningless numbers while they win no game. Compare two bots only within one tournament of the whole population on the same maps: a `--focus` run rates each player from its games against the focused bots alone, and those ratings mean nothing next to another run's.
 - **Score** is points per game (a win 1, a draw 0.5).
 - **Failed turns** must be 0. A failed turn is a turn the bot passed because it raised, was too slow, or sent something the server rejects; the table's last section quotes the first failure of each game. Fix it before reading anything else from that bot's results. A match with a failed turn is played again by the next tournament, so one that only failed because the machine was busy clears itself; one that fails twice is the bot's.
 - **Slowest turn** should stay under 200 ms. A real-time game gives a bot one second, with a network in between. It is measured when a match is played, and a cached result keeps it.
@@ -77,7 +79,7 @@ The game's rules and the SDK are in three skills copied from the game's Python b
 - `candidate`: new and unmeasured. Tournaments leave it out unless `--focus` or `--bots` names it.
 - `active`: in the population, and a possible parent.
 - `retired`: no longer changed, kept as an opponent so that old strengths still have to be beaten.
-- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
+- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. `ori_mimic` is also the rating anchor, so its code never changes: a better imitation is a new sparring bot. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
 
 ## Outside opponents
 
