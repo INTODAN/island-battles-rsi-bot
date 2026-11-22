@@ -58,6 +58,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Keeping the enemy's castles under attack freezes a bot that won't spend under attack, on the training maps.** The hosted bot's rules buy and send nothing from a castle an enemy group is bound for; a founder that keeps a group of production-times-walk-plus-one walking at every enemy castle beat its parent 23 of 36 and every player of the league on training (89 points up), and fell 12 points below its parent on holdout (iteration 33's `harrier`). Against the hosted bot itself, which has that rule, it is untested.
 - **Freeze the castle the enemy strikes from, not all of them.** One group of production-times-walk-plus-one kept walking at the enemy castle nearest ours beat its parent 25 of 38 and rose 80 points on training and 51 on holdout (iteration 34's `harrier_front`); the same groups at every enemy castle had fallen on holdout (iteration 33), and at castles that could upgrade lost the mirror match. One frozen castle costs the enemy its front; many cost us more than they freeze.
 - **Freed reserves should strike, not feed.** Keeping the reserve against every enemy castle when feeding, while the end of the game frees it for strikes, beat its parent 19.5 of 38 and 21.5 of 30 on holdout, 83 points up there (iteration 34's `growtrickle_feedkeep`). Stopping all late feeding had lost (iteration 32).
+- **Grafts of two promoted siblings keep paying.** Every time two candidates were promoted from one parent, the next iteration's graft of one into the other passed (iterations 26, 28, 29 and 35): `ori_hold_exact`, `endreserve_stallfeed` and `harrier_feedkeep` are such grafts, and three of the session's four champions.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -2134,3 +2135,83 @@ Holdout maps (`iteration-34-holdout`, with `safe_hold`, exit 0):
 **Where it still loses:** `circle` and the line's mirror draws; against `ori_like` it scored a point less than its parent. Whether freezing the enemy's front pays against the hosted bot, whose rules it is aimed at, is the question the check against the real opponent should answer before it is trusted.
 
 **Time:** 15 minutes (iteration 33: 14). Maps and baseline 1 minute; gate 8 minutes (the slowest step); holdout selection 4.7 minutes (1,050 matches: two candidates and two new holdout maps).
+
+## Iteration 35: the freeze with feeding that keeps the reserve
+
+**Date:** 2026-11-22. **Maps:** 19 training, 15 holdout (unchanged since iteration 34). **Matches:** 7,866 in the training selection round robin, 5,610 in the holdout selection for the two that passed. Three candidates from the champion, written one after the other. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`harrier_front`'s games on the training maps):
+
+1. **The late draws.** `rill` and `inlet` gave 22 non-wins each, all draws at the limit inside the line; `growtrickle_feedkeep`, promoted beside it in iteration 34, rose 83 points on holdout with the ending they come from. **Idea (a):** graft its feeding rule.
+2. **A harassment group takes a castle it was sent to freeze.** `claw` against `ori_finish` (lost in 76 turns): the middle castle 2 changed hands ten times from turn 29 to turn 70, each capture leaving 0 to 8 soldiers; groups of production-times-walk-plus-one land on a castle that was just emptied and take it, and the enemy's next castle along retakes it. **Idea (b):** don't send a harassment group that would take the castle.
+3. **Strikes come in waves** (iteration 30's `claw` game: 33 and 8, then 4, 4, 16 and 4 more). **Idea (c):** also keep under attack every enemy castle whose groups are walking at ours.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `harrier_feedkeep` | harrier_front | (a) Graft from `growtrickle_feedkeep`. | 2497 (2462) | 23/38 | 2226 (2169), 20.5/30 | **promoted** (the champion) |
+| `harrier_attackers` | harrier_front | (c) | 2463 (2462) | 19.5/38 | 2177 (2169), 15.5/30 | **promoted**: it passed every rule, the training ones by the smallest margins possible. |
+| `harrier_nocapture` | harrier_front | (b) | 2462 (2462) | 19/38 | not played | **rejected**: it played every training game as its parent did (an identical row; the skip never changed a game), so half against its parent; and one turn took 245 ms, over the gate's 200. |
+
+The gate ran as one `--focus` run (2,166 matches, 9 minutes): no failed turn, slowest turns 43 and 68 ms for the two promoted.
+
+**Status changes:** `harrier_feedkeep` and `harrier_attackers` active; `harrier_feedkeep` is the champion. `harrier_front` stays active (`harrier_feedkeep` scores less than it against `sameturn_endreserve` and `stallfeed_growtrickle`). With eight active bots, `exact_stallfeed`, matched or beaten everywhere by six others, is retired; seven stay active. With eight retired, the two lowest rated that may be deleted are: `hold_exactstrike` (2194) and `ori_finish` (2239); `safe_hold` (2130) is lower but stays, since `tests/test_tools.py` replays it (iteration 34). The `hold_` line is now `safe_hold` alone.
+
+Training maps (`iteration-35-train`, 5,700 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2470 | 0.781 | 443 | 123 | 80 |
+| harrier_front | 2437 | 0.748 | 398 | 171 | 77 |
+| harrier_attackers | 2436 | 0.747 | 400 | 165 | 81 |
+| growtrickle_feedkeep | 2375 | 0.682 | 358 | 165 | 123 |
+| stallfeed_growtrickle | 2360 | 0.666 | 349 | 162 | 135 |
+| sameturn_endreserve | 2351 | 0.655 | 338 | 170 | 138 |
+| endreserve_stallfeed | 2348 | 0.652 | 333 | 176 | 137 |
+| sameturn_stallfeed (retired) | 2275 | 0.567 | 251 | 231 | 164 |
+| exact_sameturn (retired) | 2267 | 0.557 | 249 | 222 | 175 |
+| exact_stallfeed (retired) | 2226 | 0.510 | 217 | 225 | 204 |
+| ori_hold (retired) | 2225 | 0.509 | 209 | 240 | 197 |
+| ori_hold_exact (retired) | 2214 | 0.497 | 213 | 216 | 217 |
+| ori_mimic (sparring) | 2206 | 0.488 | 198 | 234 | 214 |
+| safe_hold (retired) | 2115 | 0.390 | 238 | 28 | 380 |
+| ori_like (sparring) | 1949 | 0.251 | 148 | 28 | 470 |
+| level1 | 1934 | 0.140 | 0 | 160 | 410 |
+| level2 | 1000 | 0.000 | 0 | 0 | 570 |
+| level3 | 1000 | 0.000 | 0 | 0 | 570 |
+
+Holdout maps (`iteration-35-holdout`, 4,500 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2176 | 0.786 | 336 | 130 | 44 |
+| growtrickle_feedkeep | 2165 | 0.775 | 328 | 135 | 47 |
+| harrier_attackers | 2124 | 0.735 | 306 | 138 | 66 |
+| harrier_front | 2116 | 0.727 | 302 | 138 | 70 |
+| stallfeed_growtrickle | 2076 | 0.685 | 277 | 145 | 88 |
+| endreserve_stallfeed | 2060 | 0.668 | 260 | 161 | 89 |
+| sameturn_endreserve | 2039 | 0.644 | 248 | 161 | 101 |
+| sameturn_stallfeed (retired) | 1992 | 0.592 | 208 | 188 | 114 |
+| exact_sameturn (retired) | 1987 | 0.586 | 205 | 188 | 117 |
+| exact_stallfeed (retired) | 1913 | 0.504 | 167 | 180 | 163 |
+| ori_hold_exact (retired) | 1895 | 0.484 | 157 | 180 | 173 |
+| ori_hold (retired) | 1888 | 0.476 | 158 | 170 | 182 |
+| ori_mimic (sparring) | 1875 | 0.463 | 153 | 166 | 191 |
+| safe_hold (retired) | 1718 | 0.314 | 160 | 0 | 350 |
+| ori_like (sparring) | 1637 | 0.253 | 129 | 0 | 381 |
+| level1 | 1619 | 0.142 | 0 | 128 | 322 |
+| level3 | 1000 | 0.004 | 2 | 0 | 448 |
+| level2 | 719 | 0.000 | 0 | 0 | 450 |
+
+**Champion:** `harrier_feedkeep`, 2470 on training and 2176 on holdout; `harrier_front` 2437 and 2116 in the same tables. On holdout, where `level3` still wins 2 games, the champion of iteration 25 (`ori_hold`, 1888 here) is 288 points behind it.
+
+**Where it still loses:** `circle` (the line draws it with everyone at production 4) and the mirror draws inside the line; `claw`'s middle castle; whether the freeze pays against the hosted bot itself is untested.
+
+**Time:** 16 minutes (iteration 34: 15). The gate, 2,166 matches in 9 minutes, and the holdout selection, 1,110 matches in 5.6 minutes, are the slowest steps: the population and the map set grew, so each candidate plays about 700 matches.
+
+## Iterations 26 to 35, in one container: what to carry forward
+
+- **The check against the real opponent was not played in any of them.** Eleven bots were promoted on the league's rules alone (`ori_hold_exact`, `exact_sameturn`, `exact_stallfeed`, `sameturn_endreserve`, `sameturn_stallfeed`, `endreserve_stallfeed`, `stallfeed_growtrickle`, `harrier_front`, `growtrickle_feedkeep`, `harrier_feedkeep`, `harrier_attackers`). Before `harrier_feedkeep` is trusted, it and `ori_hold` should play the hosted bot in the same session; the `harrier` bots are aimed at the hosted bot's own rule and may do better or worse there than in the league.
+- **No outside opponent played.** The player's bot (`opponents.local.toml`) wasn't in this container.
+- **The training scale has lost its anchor** since iteration 30: `level3` and `level2` win no training game, so their ratings are the fit's prior. Within a table ratings compare; across iterations they don't. The holdout scale still has 2 wins for `level3`.
+- **`tests/test_tools.py` depends on `safe_hold`**, a bot the population rules would have deleted in iteration 34.
+- **Time:** the ten iterations took 2 hours 14 minutes, from 19:36 to 21:50, the first of them 25 minutes (an empty cache). Every later iteration was 8 to 16 minutes, nearly all of it playing the gate and the holdout selection at about 4 to 7 matches a second on 4 CPUs.

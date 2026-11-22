@@ -1,16 +1,111 @@
-"""ori_finish: the hosted bot's rules, with exact strikes where little can change.
+"""harrier_feedkeep: harrier_front with feeding that keeps the full reserve.
 
-Iteration 25, from ori_mimic. An attack's price is need(P) = P + P // 10 + 3, a
-margin that near the end or over a short walk only lets the target grow back:
-the league learned that a strike near the turn limit (frontline_finish) and a
-strike over a short walk (hold_exactstrike) should count the target exactly.
-So when the last group lands within SHORT_WALK turns, or within FINISH_TURNS of
-the turn limit, an attack on an enemy castle costs P + EXACT_EXTRA plus the
-target's burst potential (if it can burst) instead of need(P); half of what
-the other enemy castles could bring is dropped for a short walk and kept near
-the turn limit. Neutrals keep ori_mimic's price. Everything else is ori_mimic's.
+Iteration 35, from harrier_front, a graft from growtrickle_feedkeep (both
+promoted from stallfeed_growtrickle in iteration 34). Feeding, and the stalled
+castles' feeding, keep a castle's reserve against every enemy castle at any
+turn; the end of the game frees reserves for strikes only. On rill and inlet
+harrier_front drew 22 games each at the limit, the ending iteration 34's
+feedkeep improved.
 
-ori_mimic, the sparring opponent that plays by the rules read off the hosted bot's games of 2026-11-22:
+harrier_front's docstring follows.
+
+harrier_front: keep the enemy castle nearest ours under attack.
+
+Iteration 34, a founder on stallfeed_growtrickle's scaffolding, iteration 33's
+harrier in another form. The hosted bot's rules, and this line's, send nothing
+from a castle that an enemy group is bound for, and the hold_ line stages its
+soldiers at the castle nearest the enemy and strikes from it. harrier kept a
+group walking at every enemy castle (89 points up on training, 12 down on
+holdout). Here one group walks only at the enemy castle nearest our castles, the
+smallest that counts as an attack (its production times the walk plus one, at
+most HARASS_MAX), sent from the nearest fully upgraded castle before it feeds.
+The log shows "harass>".
+
+stallfeed_growtrickle's docstring follows.
+
+stallfeed_growtrickle: a group the castle outgrows before it lands is no attack.
+
+Iteration 30, from endreserve_stallfeed. An attacked castle (any enemy group
+bound for it) buys nothing, pays for nothing and feeds nothing; level1's
+groups of 1 kept the line on one castle for 300 turns on nine maps (18 draws).
+Iteration 26 capped every attacked castle's spending at what its landings leave
+(half against its parent) and iteration 28 lifted every rule from a castle its
+landings wouldn't take (13 of 34). Here an enemy group counts only when it holds
+more soldiers than the castle produces before it lands; a real strike still
+freezes the castle's whole stock, as before. The log names the castles whose
+enemy groups were all outgrown.
+
+endreserve_stallfeed's docstring follows.
+
+endreserve_stallfeed: sameturn_endreserve with the feeding of stalled castles.
+
+Iteration 29, from sameturn_endreserve, a graft from sameturn_stallfeed (both
+promoted from exact_sameturn in iteration 28). A castle behind the front whose
+next upgrade it could pay but which would then be left to a single enemy
+castle, not attacked, sends what it can spare above its reserve to the front
+once that is FEED_AT or more. The log shows these sends as "stalled>".
+
+sameturn_endreserve's docstring follows.
+
+sameturn_endreserve: no reserve against an enemy castle that can't land before the end.
+
+Iteration 28, from exact_sameturn. Games inside the line end in hoards: on
+archipelago against ori_hold both sides held over 4,500 soldiers in six castles
+on turn 300 and drew, because every castle kept a reserve against the strongest
+enemy castle and so had nothing to strike with. A strike from a castle no enemy
+can reach before the game ends risks nothing: here a castle's reserve and its
+holds() check count only enemy castles whose group, sent now, would land before
+the last generation is created. The log names the castles whose reserve this
+lowered, with the soldiers it freed.
+
+exact_sameturn's docstring follows.
+
+exact_sameturn: help that lands on the turn of the capture still counts.
+
+Iteration 27, from ori_hold_exact. Defence took only helpers whose group lands
+before the landing that would take the castle. Groups land in id order, so a
+helper landing on that same turn lands after the enemy's and retakes the castle
+at once, with the castle's upgrades, if it brings what the castle lacked plus
+one. On loch (against hold_exactstrike, turn 79) castle 0, 3 turns from castle 2
+with 51 soldiers, could have covered the 30 it lacked, but the capture was also
+3 turns away; castle 2 (production 2, 31 soldiers) fell on turn 81 and the game
+was lost 14 turns later. Here a helper is in time when its walk is at most the
+fall's turn. The log marks such help with "(same turn)".
+
+ori_hold_exact's docstring follows.
+
+ori_hold_exact: ori_hold with ori_finish's exact strikes.
+
+Iteration 26, from ori_hold, a graft from ori_finish, which beats ori_hold 19.5
+of 34 and draws it on most maps. When an attack's last group lands within
+SHORT_WALK turns, or within FINISH_TURNS of the turn limit, an attack on an
+enemy castle costs what the target will hold plus EXACT_EXTRA plus its burst
+potential (if it can burst) instead of need(); half of what the other enemy
+castles could bring is dropped for a short walk and kept near the turn limit.
+Neutrals keep need(). The log marks an exact strike with "exact".
+
+ori_hold's docstring follows.
+
+ori_hold: the hosted bot's rules, and holding what it takes.
+
+Iteration 25, from ori_mimic. The league's oldest lessons are about holding: a
+castle taken with 1 soldier near the enemy falls unless another castle
+reinforces it, and defence is about the landing that takes the castle. The
+hosted bot retakes fresh captures within one to four turns, and ori_mimic's own
+captures face the same. Two changes, everything else is ori_mimic's:
+
+* Defence also takes help from castles that are themselves under attack, each
+  sending at most what leaves it with a non-negative balance through every
+  landing bound for it.
+* hold(), run right after defend(): a neutral that one of this bot's groups is
+  bound for, and that playing every landing in order would leave to the
+  enemy, is sent the fewest soldiers that leave it ours after the last landing,
+  from the nearest castle that can pay and lands no later than the first enemy
+  group that would take it.
+
+ori_mimic's docstring follows.
+
+A sparring opponent that plays by the rules read off the hosted bot's games of 2026-11-22: ori_mimic.
 
 Its rules come from 17 lobby games (1,437 turns) of the hosted bot's current
 version against safe_hold, each command read off consecutive frames, and from
@@ -89,6 +184,8 @@ SHORT_WALK = 5
 FINISH_TURNS = 30
 # Soldiers added to an exact count of the target.
 EXACT_EXTRA = 2
+# The largest group sent to keep an enemy castle under attack.
+HARASS_MAX = 20
 # Landing order of this turn's sends, after every group on the board.
 LATER_ID = 1 << 40
 
@@ -159,15 +256,25 @@ class Board:
         """Soldiers the castle hasn't spent this turn."""
         return castle.soldiers - self.spent.get(castle.id, 0)
 
-    def holds(self, castle: Castle, soldiers: int, rate: int) -> bool:
-        """Whether no single enemy castle could take the castle at need(what it would find)."""
-        return all(enemy.soldiers <= need(soldiers + rate * self.travel(enemy, castle)) for enemy in self.enemies)
+    def in_time(self, enemy: Castle, castle: Castle) -> bool:
+        """Whether a group the enemy castle sends now at the castle lands before the game's last generation."""
+        return self.travel(enemy, castle) < self.turn.max_generations - self.turn.turn_number
 
-    def reserve(self, castle: Castle) -> int:
-        """The fewest soldiers the castle keeps so that it holds."""
+    def holds(self, castle: Castle, soldiers: int, rate: int) -> bool:
+        """Whether no single enemy castle that could land in time could take the castle at need(what it would find)."""
+        return all(
+            enemy.soldiers <= need(soldiers + rate * self.travel(enemy, castle))
+            for enemy in self.enemies
+            if self.in_time(enemy, castle)
+        )
+
+    def reserve(self, castle: Castle, everyone: bool = False) -> int:
+        """The fewest soldiers the castle keeps so that it holds (against enemy castles that land in time)."""
         rate = self.rate(castle)
         keep = 0
         for enemy in self.enemies:
+            if not everyone and not self.in_time(enemy, castle):
+                continue
             # The fewest soldiers x that need(x) covers the enemy castle's, less what grows while it walks.
             fewest = max(0, (enemy.soldiers - NEED_FIXED) * NEED_TENTH // (NEED_TENTH + 1) - 1)
             while need(fewest) < enemy.soldiers:
@@ -179,9 +286,19 @@ class Board:
         """Soldiers the castle can send this turn."""
         return max(0, self.left(castle) - self.reserve(castle))
 
-    def attacked(self, castle: Castle) -> bool:
+    def targeted(self, castle: Castle) -> bool:
         """Whether an enemy group is bound for the castle."""
         return any(group.destination_castle_id == castle.id and group.team_color != self.team for group in self.groups)
+
+    def attacked(self, castle: Castle) -> bool:
+        """Whether an enemy group bound for the castle holds more than the castle produces before it lands."""
+        rate = production(self.turn, castle)
+        return any(
+            group.destination_castle_id == castle.id
+            and group.team_color != self.team
+            and group.soldiers > rate * self.arrival(group)
+            for group in self.groups
+        )
 
     def send(self, origin: Castle, target: Castle, amount: int) -> None:
         """Send soldiers, counting them as spent."""
@@ -203,12 +320,37 @@ class Board:
             if castle.id != target.id and self.avail(castle) >= 1 and not self.attacked(castle)
         )
 
-    def send_split(self, chosen: list[Castle], target: Castle, amount: int) -> list[str]:
+    def safe_out(self, castle: Castle) -> int:
+        """Soldiers an attacked castle can send now and still not fall to any landing bound for it."""
+        events = sorted(
+            (self.arrival(group), group.id, group.team_color == self.team, group.soldiers)
+            for group in self.groups
+            if group.destination_castle_id == castle.id
+        )
+        soldiers = self.left(castle)
+        rate = production(self.turn, castle)
+        lowest = soldiers
+        now = 0
+        for landing, _, friendly, size in events:
+            soldiers += rate * (landing - now)
+            now = landing
+            soldiers += size if friendly else -size
+            lowest = min(lowest, soldiers)
+        return max(0, lowest)
+
+    def give_of(self, castle: Castle) -> int:
+        """Soldiers the castle can send to help: those available, and if attacked no more than it can spare."""
+        if self.attacked(castle):
+            return min(self.avail(castle), self.safe_out(castle))
+        return self.avail(castle)
+
+    def send_split(self, chosen: list[Castle], target: Castle, amount: int, helping: bool = False) -> list[str]:
         """Send amount from the chosen castles, nearest first: the farther ones send all, the nearest the rest."""
         parts = []
         remaining = amount
         for castle in reversed(chosen[1:]):
-            give = min(self.avail(castle), remaining - 1) if remaining > 1 else 0
+            room = self.give_of(castle) if helping else self.avail(castle)
+            give = min(room, remaining - 1) if remaining > 1 else 0
             if give >= 1:
                 self.send(castle, target, give)
                 parts.append(f"{castle.id}:{give}")
@@ -307,7 +449,7 @@ def defend(board: Board) -> str:
         )
         if not any(not friendly for _, _, friendly, _ in events):
             continue
-        soldiers = castle.soldiers
+        soldiers = board.left(castle)
         rate = production(board.turn, castle)
         now = 0
         lowest = 0
@@ -323,18 +465,82 @@ def defend(board: Board) -> str:
         if fall is None:
             continue
         missing = -lowest + DEFENCE_SPARE
-        helpers = [entry for entry in board.senders(castle) if entry[0] < fall]
+        helpers = sorted(
+            (board.travel(other, castle), other.id, other)
+            for other in board.own
+            if other.id != castle.id and board.give_of(other) >= 1
+        )
+        helpers = [entry for entry in helpers if entry[0] <= fall]
         chosen = []
         total = 0
         for _, _, helper in helpers[:MOST_SENDERS]:
             chosen.append(helper)
-            total += board.avail(helper)
+            total += board.give_of(helper)
             if total >= missing:
                 break
         if total < missing:
             continue
-        notes.append(f"help>{castle.id} " + " ".join(board.send_split(chosen, castle, missing)))
+        late = " (same turn)" if max(board.travel(helper, castle) for helper in chosen) == fall else ""
+        notes.append(f"help>{castle.id}{late} " + " ".join(board.send_split(chosen, castle, missing, helping=True)))
     return " ".join(notes)
+
+
+def hold(board: Board) -> str:
+    """Send what it takes to keep a neutral that an enemy group would retake. Returns the log note."""
+    notes = []
+    for target in board.neutrals:
+        landings = sorted(
+            [board.arrival(group) for group in board.groups if group.destination_castle_id == target.id]
+            + [turns for turns, _ in board.sent.get(target.id, [])]
+        )
+        ours = (
+            any(group.destination_castle_id == target.id and group.team_color == board.team for group in board.groups)
+            or target.id in board.sent
+        )
+        enemy = any(
+            group.destination_castle_id == target.id and group.team_color != board.team for group in board.groups
+        )
+        if not ours or not enemy:
+            continue
+        last = landings[-1]
+        owner, _ = board.at_landing(target, last)
+        if owner in (board.team, NEUTRAL_TEAM_COLOR):
+            continue
+        deadline = next(
+            turns for turns in landings if board.at_landing(target, turns)[0] not in (board.team, NEUTRAL_TEAM_COLOR)
+        )
+
+        def holds_with(origin: Castle, amount: int, target: Castle = target, last: int = last) -> bool:
+            turns = board.travel(origin, target)
+            board.sent.setdefault(target.id, []).append((turns, amount))
+            try:
+                return board.at_landing(target, max(last, turns))[0] == board.team
+            finally:
+                board.sent[target.id].pop()
+
+        for walk, _, origin in board.senders(target):
+            if walk > deadline:
+                break
+            room = board.avail(origin)
+            if room < 1 or not holds_with(origin, room):
+                continue
+            low, high = 1, room
+            while low < high:
+                middle = (low + high) // 2
+                if holds_with(origin, middle):
+                    high = middle
+                else:
+                    low = middle + 1
+            board.send(origin, target, low)
+            notes.append(f"hold>{target.id}:{origin.id}:{low}")
+            break
+    return " ".join(notes)
+
+
+def is_exact(board: Board, turns: int) -> bool:
+    """Whether a strike whose last group lands in this many turns counts the target exactly."""
+    turn = board.turn
+    return turns <= SHORT_WALK or turn.max_generations - turn.turn_number <= turns + FINISH_TURNS
 
 
 def attack_price(board: Board, target: Castle, turns: int, neutral: bool = False) -> int:
@@ -469,8 +675,10 @@ def attack(board: Board) -> str:
     price, target, chosen = best
     if chosen is None:
         return ""
+    turns = max(board.travel(castle, target) for _, _, castle in chosen)
+    kind = "exact" if is_exact(board, turns) else "need"
     parts = board.send_split([castle for _, _, castle in chosen], target, price)
-    return f"strike>{target.id} need {price} " + " ".join(parts)
+    return f"strike>{target.id} {kind} {price} " + " ".join(parts)
 
 
 def saving(board: Board, castle: Castle) -> bool:
@@ -518,6 +726,74 @@ def expand(board: Board) -> str:
     return " ".join(notes)
 
 
+def stalled(board: Board, castle: Castle) -> bool:
+    """Whether the castle could pay its next upgrade but would then be left to a single enemy castle."""
+    production_level = board.level(castle, UpgradeType.generation_amount)
+    speed_level = board.level(castle, UpgradeType.speed)
+    if production_level < TOP_PRODUCTION:
+        entry = board.table(UpgradeType.generation_amount, production_level + 1)
+        rate = int(entry[0]) if entry else board.rate(castle)
+    elif speed_level < TOP_SPEED:
+        entry = board.table(UpgradeType.speed, speed_level + 1)
+        rate = board.rate(castle)
+    else:
+        return False
+    if entry is None:
+        return False
+    after = board.left(castle) - entry[1]
+    return after >= 0 and not board.holds(castle, after, rate)
+
+
+def stall_feed(board: Board) -> str:
+    """Castles behind the front whose next upgrade is unsafe send their spare soldiers to the front."""
+    if not board.enemies or len(board.own) < 2:
+        return ""
+    front = min(board.own, key=lambda castle: (min(castle.distance(e) for e in board.enemies), castle.id))
+    parts = []
+    for castle in board.own:
+        if castle.id == front.id or board.attacked(castle) or not stalled(board, castle):
+            continue
+        amount = max(0, board.left(castle) - board.reserve(castle, everyone=True))
+        if amount < FEED_AT:
+            continue
+        board.send(castle, front, amount)
+        parts.append(f"{castle.id}:{amount}")
+    return f"stalled>{front.id} " + " ".join(parts) if parts else ""
+
+
+def harass_targets(board: Board) -> list[Castle]:
+    """The enemy castle nearest our castles: the one its staging and strikes come from."""
+    if not board.enemies or not board.own:
+        return []
+    return [min(board.enemies, key=lambda enemy: (min(enemy.distance(castle) for castle in board.own), enemy.id))]
+
+
+def harass(board: Board) -> str:
+    """Send each chosen enemy castle no group of ours is bound for the fewest soldiers that freeze it."""
+    parts = []
+    for target in harass_targets(board):
+        if target.id in board.sent or any(
+            group.destination_castle_id == target.id and group.team_color == board.team for group in board.groups
+        ):
+            continue
+        options = []
+        for castle in board.own:
+            if (
+                board.level(castle, UpgradeType.generation_amount) < TOP_PRODUCTION
+                or board.level(castle, UpgradeType.speed) < TOP_SPEED
+                or board.attacked(castle)
+            ):
+                continue
+            size = production(board.turn, target) * board.travel(castle, target) + 1
+            if size <= HARASS_MAX and size <= board.avail(castle):
+                options.append((board.travel(castle, target), size, castle.id, castle))
+        if options:
+            _, size, _, castle = min(options)
+            board.send(castle, target, size)
+            parts.append(f"{target.id}:{castle.id}:{size}")
+    return "harass> " + " ".join(parts) if parts else ""
+
+
 def feed(board: Board) -> str:
     """Fully upgraded castles behind the front send it everything, if they hold with none. Returns the log note."""
     if not board.enemies or len(board.own) < 2:
@@ -531,7 +807,7 @@ def feed(board: Board) -> str:
             or board.level(castle, UpgradeType.speed) < TOP_SPEED
             or board.attacked(castle)
             or board.left(castle) < FEED_AT
-            or board.reserve(castle) > 0
+            or board.reserve(castle, everyone=True) > 0
         ):
             continue
         amount = board.left(castle)
@@ -553,9 +829,20 @@ def play(turn: BotTurn) -> BotTurnResult:
     if turn.turn_number == 1:
         notes = [first_turn(board)]
     else:
-        notes = [defend(board), speed_strike(board)]
+        notes = [defend(board), hold(board), speed_strike(board)]
         notes += [upgrade(board, castle) for castle in board.own]
-        notes += [attack(board), expand(board), feed(board)]
+        notes += [attack(board), expand(board), harass(board), feed(board), stall_feed(board)]
+    freed = [
+        f"{castle.id}:{board.reserve(castle, everyone=True) - board.reserve(castle)}"
+        for castle in board.own
+        if board.reserve(castle, everyone=True) > board.reserve(castle)
+    ]
+    if freed:
+        notes.append("late reserve freed " + " ".join(freed))
+    if turn.turn_number > 1:
+        outgrown = [str(castle.id) for castle in board.own if board.targeted(castle) and not board.attacked(castle)]
+        if outgrown:
+            notes.append("outgrows groups bound for " + ",".join(outgrown))
     logger.info(
         "turn %d: %d castles producing %d a turn; %s",
         turn.turn_number,

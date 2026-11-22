@@ -1,10 +1,10 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent. sparring: a fixed opponent built to play like a
 # real one; never a parent, never counted with the retired bots, never deleted.
-status = "retired"
+status = "active"
 # The bot this one was copied from, or empty for a founder.
-parent = "ori_mimic"
+parent = "harrier_front"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 25
+iteration = 35
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "A new strategy: the hosted bot's rules (ori_mimic's code) with exact strikes where little can change: an attack landing within 5 turns, or within 30 turns of the turn limit, costs the target's soldiers plus 2 plus its burst potential instead of need(), as hold_exactstrike's short and finish strikes do."
+idea = "Graft from growtrickle_feedkeep: feeding keeps a castle's reserve against every enemy castle at any turn, so the end of the game frees reserves for strikes only."
