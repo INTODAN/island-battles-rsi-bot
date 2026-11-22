@@ -94,6 +94,7 @@ uv run league tournament --maps holdout     # or: all, or map names
 uv run league digest DEMO                   # the timeline, the logistics and the events of a game (a hosted game's zip too)
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
+uv run league rematch DEMO... --bot NAME       # those games again with NAME in its parent's seat: did the change act?
 uv run league status NAME active            # or: candidate, retired, sparring
 uv run league new-map NAME --seed N --set train
 uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot

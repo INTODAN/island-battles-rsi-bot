@@ -1,6 +1,6 @@
 ---
 name: bot-league
-description: "The bot league, which is this repository: Python bots that only AI agents write and improve, the league command (tournament, digest, replay, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
+description: "The bot league, which is this repository: Python bots that only AI agents write and improve, the league command (tournament, digest, rematch, replay, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
 ---
 
 # The bot league
@@ -27,6 +27,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `... digest DEMO --key-events` | Only the captures, eliminations, upgrades and bursts. A game with over 250 events is listed this way anyway. |
 | `... digest DEMO --turns 40-55 [--logs NAME]` | Those turns whole: the board, the events and the bots' log lines. |
 | `uv run league new NAME --parent P --iteration N --idea "..."` | Copy bot P to a new candidate. |
+| `uv run league rematch DEMO... --bot NAME [--replaces P]` | Play league games again (demos a tournament listed) with candidate NAME in its parent's seat (or P's): the result before and after, and the first turn it commanded something else, with both bots' commands and logs. Seconds, to check that a change acts as its idea says before the gate; it can't say a bot is better. Training maps only. |
 | `uv run league status NAME active` | Change a bot's status: `candidate`, `active` or `retired`. |
 | `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. |
 | `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to `bots/NAME/bot.py` and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
