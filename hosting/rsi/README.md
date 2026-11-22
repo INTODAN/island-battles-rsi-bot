@@ -46,6 +46,20 @@ A real game's demo holds the other players' names and their bots' log lines: tex
 
 What it doesn't protect against: a model that writes a worse bot that still passes the league's selection rules. Those rules are the gate, as they are for a person's iteration; a pull request merged here can be reverted like any other.
 
+## What is deployed
+
+In `eu-central-1`, next to the hosted bot:
+
+| Resource | Name |
+| --- | --- |
+| Function | `island-battles-league-notifier`: `python3.14`, arm64, 256 MB, 30 s, handler `notifier.handler`, env `GITHUB_REPOSITORY` and `GITHUB_TOKEN_PARAMETER` |
+| Code | `s3://island-battles-league-bot-<account>/notifier.zip` (`notifier.py` alone). No workflow deploys it: after changing `notifier.py`, zip it, upload it there and call `UpdateFunctionCode`. |
+| Role | `island-battles-league-notifier`: its own logs, `s3:GetObject` on `games/*`, `ssm:GetParameter` on the token |
+| Event | the games bucket's notification `real-game-zips`: `s3:ObjectCreated:*`, prefix `games/`, suffix `.zip` |
+| Read role | `island-battles-league-games-read`: GitHub's OIDC, main of this repository only; `s3:ListBucket` on `games/*` and `s3:GetObject` on `games/*` |
+| Logs | `/aws/lambda/island-battles-league-notifier`, 14 days |
+| Token | `/island-battles-league/github-dispatch-token` (SSM SecureString): **made by hand**, never by an agent |
+
 ## Setting it up
 
 Once, by hand. Nothing works until all of it is done; until then the dispatches find no workflow secrets and the run fails at Claude's step.

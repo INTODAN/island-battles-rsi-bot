@@ -47,7 +47,7 @@ def zipped_games(event: dict[str, Any]) -> list[tuple[str, int]]:
     for record in event.get("Records", []):
         s3 = record.get("s3", {})
         bucket = s3.get("bucket", {}).get("name")
-        key = urllib.parse.unquote_plus(s3.get("object", {}).get("key", ""))
+        key = urllib.parse.unquote_plus(s3.get("object", {}).get("key") or "")
         match = ZIP_KEY.match(key)
         if bucket and match and match.group(1) == match.group(2):
             found.append((bucket, int(match.group(1))))

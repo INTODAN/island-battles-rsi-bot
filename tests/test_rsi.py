@@ -22,6 +22,7 @@ def _event(*keys: str) -> dict[str, Any]:
 def test_the_notifier_reads_only_game_zips() -> None:
     event = _event("games/12/game-12.zip", "games/12/game.json", "games/13/game-14.zip", "other/game-1.zip")
     assert notifier.zipped_games(event) == [("games-bucket", 12)]
+    assert notifier.zipped_games({"Records": [{"s3": {"bucket": {"name": "b"}, "object": {"key": None}}}]}) == []
 
 
 def test_the_notifier_dispatches_finished_games_with_a_final_demo() -> None:
