@@ -76,8 +76,10 @@ jobs:
           cache: false
 
       # The game's source and runner, and the tournament's result cache, which
-      # holds only league games: the real games are never cached.
-      - uses: actions/cache@v4
+      # holds only league games: the real games are never cached. It is saved
+      # at the end even when the iteration failed, so that the next run doesn't
+      # play again what this one played.
+      - uses: actions/cache/restore@v4
         with:
           path: |
             .runner
@@ -195,6 +197,14 @@ jobs:
           gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
             --title "$(git log -1 --format=%s)" --body-file "$body" --label "$LABEL"
           gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --merge
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            .runner
+            runs/cache
+          key: league-${{ hashFiles('runner.toml') }}-${{ github.run_id }}
 
       # The next iteration starts from this one's ledger entry, so this run
       # holds the queue until the pull request has merged.
