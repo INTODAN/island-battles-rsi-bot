@@ -2081,53 +2081,55 @@ Holdout maps (`iteration-33-holdout`, 3,724 matches, exit 0):
 
 All three passed the gate in one `--focus` run (2,052 matches, 8 minutes): no failed turn, slowest turns 24 to 33 ms.
 
-**Status changes:** `harrier_front` and `growtrickle_feedkeep` active; `harrier_front`, first on training, is the champion (`growtrickle_feedkeep` is first on holdout). `stallfeed_growtrickle` stays active (`harrier_front` scores a point less than it against `ori_like`; `growtrickle_feedkeep` less against several). With eight active bots, the two lowest rated that another active bot matches or beats everywhere are retired: `hold_exactstrike` and `ori_hold_exact` (both by `harrier_front`, which also matches `exact_stallfeed`); six stay active. With eight retired, the two lowest rated are deleted: `finish_speed` (2131) and `safe_hold` (2140). `hold_exactstrike`, retired, is now the only bot of the `hold_` line left.
+**Status changes:** `harrier_front` and `growtrickle_feedkeep` active; `harrier_front`, first on training, is the champion (`growtrickle_feedkeep` is first on holdout). `stallfeed_growtrickle` stays active (`harrier_front` scores a point less than it against `ori_like`; `growtrickle_feedkeep` less against several). With eight active bots, the two lowest rated that another active bot matches or beats everywhere are retired: `hold_exactstrike` and `ori_hold_exact` (both by `harrier_front`, which also matches `exact_stallfeed`); six stay active. With eight retired, the two lowest rated were to be deleted, `finish_speed` (2131) and `safe_hold` (2140); `finish_speed` is deleted, but `safe_hold` stays, retired, as a seventh: `tests/test_tools.py` replays it by name, so deleting it failed `scripts/check.sh` (found after this iteration's commit, fixed in the next one). A test that needs a bot of the population is for a person to change; until then `safe_hold` is kept.
 
-Training maps (`iteration-34-train`, 5,054 matches, exit 0):
-
-| Player | Rating | Score | W | D | L |
-| --- | --- | --- | --- | --- | --- |
-| harrier_front | 2449 | 0.788 | 405 | 148 | 55 |
-| growtrickle_feedkeep | 2378 | 0.714 | 362 | 144 | 102 |
-| stallfeed_growtrickle | 2370 | 0.706 | 355 | 148 | 105 |
-| endreserve_stallfeed | 2358 | 0.692 | 339 | 163 | 106 |
-| sameturn_endreserve | 2346 | 0.678 | 334 | 157 | 117 |
-| sameturn_stallfeed (retired) | 2285 | 0.607 | 255 | 228 | 125 |
-| exact_sameturn (retired) | 2275 | 0.595 | 252 | 219 | 137 |
-| exact_stallfeed | 2236 | 0.548 | 217 | 232 | 159 |
-| ori_hold (retired) | 2231 | 0.542 | 207 | 245 | 156 |
-| ori_hold_exact (retired) | 2221 | 0.530 | 208 | 229 | 171 |
-| ori_mimic (sparring) | 2216 | 0.525 | 198 | 242 | 168 |
-| ori_finish (retired) | 2214 | 0.522 | 200 | 235 | 173 |
-| hold_exactstrike (retired) | 2162 | 0.462 | 268 | 26 | 314 |
-| level1 | 1962 | 0.169 | 0 | 180 | 352 |
-| ori_like (sparring) | 1940 | 0.257 | 143 | 26 | 439 |
-| level2 | 1000 | 0.000 | 0 | 0 | 532 |
-| level3 | 1000 | 0.000 | 0 | 0 | 532 |
-
-Holdout maps (`iteration-34-holdout`, 3,990 matches, exit 0):
+Training maps (`iteration-34-train`, with `safe_hold`, exit 0):
 
 | Player | Rating | Score | W | D | L |
 | --- | --- | --- | --- | --- | --- |
-| growtrickle_feedkeep | 2173 | 0.807 | 330 | 115 | 35 |
-| harrier_front | 2142 | 0.779 | 318 | 112 | 50 |
-| stallfeed_growtrickle | 2087 | 0.724 | 283 | 129 | 68 |
-| endreserve_stallfeed | 2073 | 0.709 | 268 | 145 | 67 |
-| sameturn_endreserve | 2053 | 0.689 | 258 | 145 | 77 |
-| sameturn_stallfeed (retired) | 2011 | 0.642 | 216 | 184 | 80 |
-| exact_sameturn (retired) | 1998 | 0.627 | 209 | 184 | 87 |
-| exact_stallfeed | 1922 | 0.542 | 166 | 188 | 126 |
-| ori_finish (retired) | 1910 | 0.527 | 160 | 186 | 134 |
-| ori_hold_exact (retired) | 1902 | 0.519 | 155 | 188 | 137 |
-| ori_hold (retired) | 1882 | 0.496 | 151 | 174 | 155 |
-| ori_mimic (sparring) | 1876 | 0.490 | 149 | 172 | 159 |
-| hold_exactstrike (retired) | 1729 | 0.342 | 164 | 0 | 316 |
-| level1 | 1646 | 0.171 | 0 | 144 | 276 |
-| ori_like (sparring) | 1637 | 0.267 | 128 | 0 | 352 |
-| level3 | 1000 | 0.005 | 2 | 0 | 418 |
-| level2 | 719 | 0.000 | 0 | 0 | 420 |
+| harrier_front | 2458 | 0.789 | 435 | 150 | 61 |
+| growtrickle_feedkeep | 2387 | 0.717 | 390 | 146 | 110 |
+| stallfeed_growtrickle | 2380 | 0.709 | 383 | 150 | 113 |
+| endreserve_stallfeed | 2369 | 0.696 | 367 | 165 | 114 |
+| sameturn_endreserve | 2358 | 0.683 | 362 | 159 | 125 |
+| sameturn_stallfeed (retired) | 2300 | 0.616 | 283 | 230 | 133 |
+| exact_sameturn (retired) | 2290 | 0.604 | 280 | 221 | 145 |
+| exact_stallfeed | 2249 | 0.556 | 242 | 234 | 170 |
+| ori_hold (retired) | 2246 | 0.552 | 233 | 247 | 166 |
+| ori_hold_exact (retired) | 2236 | 0.539 | 233 | 231 | 182 |
+| ori_finish (retired) | 2229 | 0.532 | 225 | 237 | 184 |
+| ori_mimic (sparring) | 2227 | 0.529 | 220 | 244 | 182 |
+| hold_exactstrike (retired) | 2187 | 0.481 | 295 | 32 | 319 |
+| safe_hold (retired) | 2116 | 0.402 | 244 | 32 | 370 |
+| ori_like (sparring) | 1980 | 0.277 | 165 | 28 | 453 |
+| level1 | 1952 | 0.158 | 0 | 180 | 390 |
+| level2 | 1000 | 0.000 | 0 | 0 | 570 |
+| level3 | 1000 | 0.000 | 0 | 0 | 570 |
 
-**Champion:** `harrier_front`, 2449 on training and 2142 on holdout (`stallfeed_growtrickle` 2370 and 2087 in the same tables). The training table's scale is still unanchored (`level3` wins nothing there); on holdout `level3` won 2 games.
+Holdout maps (`iteration-34-holdout`, with `safe_hold`, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| growtrickle_feedkeep | 2209 | 0.813 | 357 | 115 | 38 |
+| harrier_front | 2177 | 0.784 | 344 | 112 | 54 |
+| stallfeed_growtrickle | 2125 | 0.734 | 310 | 129 | 71 |
+| endreserve_stallfeed | 2112 | 0.721 | 295 | 145 | 70 |
+| sameturn_endreserve | 2095 | 0.703 | 286 | 145 | 79 |
+| sameturn_stallfeed (retired) | 2051 | 0.657 | 243 | 184 | 83 |
+| exact_sameturn (retired) | 2041 | 0.645 | 237 | 184 | 89 |
+| exact_stallfeed | 1966 | 0.563 | 193 | 188 | 129 |
+| ori_finish (retired) | 1956 | 0.551 | 188 | 186 | 136 |
+| ori_hold_exact (retired) | 1947 | 0.541 | 182 | 188 | 140 |
+| ori_hold (retired) | 1925 | 0.518 | 177 | 174 | 159 |
+| ori_mimic (sparring) | 1911 | 0.502 | 170 | 172 | 168 |
+| hold_exactstrike (retired) | 1761 | 0.351 | 174 | 10 | 326 |
+| safe_hold (retired) | 1739 | 0.331 | 164 | 10 | 336 |
+| ori_like (sparring) | 1655 | 0.265 | 135 | 0 | 375 |
+| level1 | 1644 | 0.160 | 0 | 144 | 306 |
+| level3 | 1000 | 0.004 | 2 | 0 | 448 |
+| level2 | 719 | 0.000 | 0 | 0 | 450 |
+
+**Champion:** `harrier_front`, 2458 on training and 2177 on holdout (`stallfeed_growtrickle` 2380 and 2125 in the same tables). The training table's scale is still unanchored (`level3` wins nothing there); on holdout `level3` won 2 games.
 
 **Where it still loses:** `circle` and the line's mirror draws; against `ori_like` it scored a point less than its parent. Whether freezing the enemy's front pays against the hosted bot, whose rules it is aimed at, is the question the check against the real opponent should answer before it is trusted.
 
