@@ -5,7 +5,9 @@ the decision that lost it. Before the gate plays the candidate hundreds of times
 this plays those games once more with the candidate where its parent sat, the
 same opponent, map and side, which takes seconds, and says:
 
-- the result before and after;
+- the result before and after, where "before" is the parent's game played again
+  with the same runner, opponent and settings (the studied game itself when none
+  changed, which the cache then gives at once);
 - the first turn on which the candidate commanded something else than its parent
   did, with both bots' commands and log lines of that turn. Bots are
   deterministic, so up to that turn both games are the same move for move; a
@@ -28,6 +30,7 @@ from . import tournament
 from .digest import load_demo
 from .replay import team_commands
 from .roster import load_bot
+from .tournament import points
 
 
 @dataclass(frozen=True)
@@ -51,8 +54,8 @@ def source_result(demo: Path) -> dict[str, Any]:
     result_file = demo.with_name(f"{key}.json")
     if not key or not result_file.is_file():
         raise ValueError(
-            f"{demo} is not a league game's demo: rematch needs one that a tournament listed "
-            "(runs/cache/<key>.json.gz, with its result beside it)"
+            f"{demo} has no result beside it: rematch needs a demo that a tournament listed "
+            "(runs/cache/<key>.json.gz with <key>.json), and a match with a failed turn keeps no result"
         )
     result = json.loads(result_file.read_text(encoding="utf-8"))
     if "error" in result or "players" not in result:
@@ -68,7 +71,7 @@ def plan(demos: list[Path], bot: str, replaces: str) -> list[Source]:
             or its map is a holdout map, whose games nobody reads.
     """
     sources = []
-    for demo in demos:
+    for demo in dict.fromkeys(demo.resolve() for demo in demos):
         result = source_result(demo)
         players = result["players"]
         if replaces not in players:
@@ -81,11 +84,6 @@ def plan(demos: list[Path], bot: str, replaces: str) -> list[Source]:
         seats = [bot if name == replaces else name for name in players]
         sources.append(Source(demo, result, map_file, seats))
     return sources
-
-
-def points(result: dict[str, Any], player: str) -> float:
-    """A player's points in a game: a win 1, a draw 0.5."""
-    return 0.5 if result["winner"] is None else float(result["winner"] == player)
 
 
 def _commands(turn: dict[str, Any]) -> tuple[list[tuple[Any, ...]], list[tuple[Any, ...]]]:
@@ -124,11 +122,12 @@ def _team_color(result: dict[str, Any], player: str) -> int:
 
 
 def _log_lines(demo: dict[str, Any], turn: int, player: str) -> list[str]:
-    if turn - 1 >= len(demo["logs"]):
+    logs = demo.get("logs", [])
+    if turn - 1 >= len(logs):
         return []
     return [
         line["message"]
-        for entry in demo["logs"][turn - 1]["players"]
+        for entry in logs[turn - 1]["players"]
         if entry["display_name"] == player
         for line in entry["lines"]
     ]
@@ -138,12 +137,27 @@ def _outcome(result: dict[str, Any]) -> str:
     return f"{result['outcome']['summary']} in {result['generations']} generations"
 
 
-def report(source: Source, after: dict[str, Any], bot: str, replaces: str) -> list[str]:
-    """What changed in one game, as lines of Markdown."""
-    before = source.result
-    opponent = next(name for name in before["players"] if name != replaces)
-    lines = [f"## {before['map']}, against {opponent}", ""]
-    lines.append(f"- {replaces}: {_outcome(before)}: `{source.demo}`")
+def report(source: Source, before: dict[str, Any], after: dict[str, Any], bot: str, replaces: str) -> list[str]:
+    """What changed in one game, as lines of Markdown.
+
+    Args:
+        source: The studied game.
+        before: The parent's game played again now, which is the studied one
+            when the runner, the bots and the settings are what they were.
+        after: The candidate's game in the parent's seat.
+        bot: The candidate.
+        replaces: The parent, whose seat the candidate took.
+    """
+    opponent = next(name for name in source.result["players"] if name != replaces)
+    lines = [f"## {source.result['map']}, against {opponent}", ""]
+    if "error" in before:
+        return [*lines, f"- {replaces}: NOT PLAYED again: {before['error']}", ""]
+    if before["id"] != source.result["id"]:
+        lines.append(
+            f"- The runner, a bot or the settings changed since the studied game (`{source.demo}`): "
+            f"{replaces}'s game as it plays now is compared instead."
+        )
+    lines.append(f"- {replaces}: {_outcome(before)}: `{before['demo']}`")
     if "error" in after:
         return [*lines, f"- {bot}: NOT PLAYED: {after['error']}", ""]
     lines.append(f"- {bot}: {_outcome(after)}: `{after['demo']}`")
@@ -152,7 +166,7 @@ def report(source: Source, after: dict[str, Any], bot: str, replaces: str) -> li
         message = seat["failures"][0]["message"].strip().splitlines()[-1][:300] if seat["failures"] else ""
         lines.append(f"- **{bot} failed {seat['failed_turns']} turns**: {message}")
     lines.append(f"- Points: {points(before, replaces):g} before, {points(after, bot):g} after.")
-    old_demo, new_demo = load_demo(source.demo), load_demo(Path(after["demo"]))
+    old_demo, new_demo = load_demo(Path(before["demo"])), load_demo(Path(after["demo"]))
     color = _team_color(before, replaces)
     old_turns, new_turns = team_commands(old_demo, color), team_commands(new_demo, color)
     turn = first_difference(old_turns, new_turns)
@@ -171,8 +185,18 @@ def report(source: Source, after: dict[str, Any], bot: str, replaces: str) -> li
     return lines
 
 
-def run(demos: list[Path], bot: str, replaces: str | None, run_directory: Path) -> tuple[str, list[dict[str, Any]]]:
-    """Play the games again with ``bot`` in the seat of ``replaces`` (its parent by default).
+def run(
+    demos: list[Path],
+    bot: str,
+    replaces: str | None,
+    run_directory: Path,
+    max_generations: int = 300,
+    turn_timeout_milliseconds: int = 2000,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Play the games again with ``bot`` in the seat of ``replaces`` (its parent by default), and the parent's too.
+
+    Both are played with the same settings, which should be the studied games':
+    the tournament's by default.
 
     Returns:
         The report as Markdown, and the rematches' results.
@@ -184,17 +208,25 @@ def run(demos: list[Path], bot: str, replaces: str | None, run_directory: Path) 
     if not replaced:
         raise ValueError(f"{bot} has no parent: say whose seat it takes with --replaces")
     sources = plan(demos, bot, replaced)
-    results = tournament.play_matches([(source.map_file, source.seats) for source in sources], run_directory)
+    matches = [(source.map_file, seats) for source in sources for seats in (source.result["players"], source.seats)]
+    results = tournament.play_matches(
+        matches,
+        run_directory,
+        max_generations=max_generations,
+        turn_timeout_milliseconds=turn_timeout_milliseconds,
+    )
     by_game = {(result["map"], tuple(result["players"])): result for result in results}
+    missing = {"error": "the runner returned no result"}
     lines = [f"# {bot} in {replaced}'s seat", ""]
     total_before = total_after = 0.0
     played = []
     for source in sources:
-        after = by_game.get((source.result["map"], tuple(source.seats)), {"error": "the runner returned no result"})
-        lines += report(source, after, bot, replaced)
-        if "error" not in after:
+        before = by_game.get((source.result["map"], tuple(source.result["players"])), missing)
+        after = by_game.get((source.result["map"], tuple(source.seats)), missing)
+        lines += report(source, before, after, bot, replaced)
+        if "error" not in before and "error" not in after:
             played.append(after)
-            total_before += points(source.result, replaced)
+            total_before += points(before, replaced)
             total_after += points(after, bot)
     lines += [
         f"Points in these games ({len(played)}): {replaced} {total_before:g}, {bot} {total_after:g}.",

@@ -73,7 +73,12 @@ def _replay(arguments: argparse.Namespace) -> int:
 def _rematch(arguments: argparse.Namespace) -> int:
     run_id = arguments.run_id or f"rematch-{arguments.bot}"
     table, results = rematch_module.run(
-        [Path(demo) for demo in arguments.demo], arguments.bot, arguments.replaces, RUNS / run_id
+        [Path(demo) for demo in arguments.demo],
+        arguments.bot,
+        arguments.replaces,
+        RUNS / run_id,
+        max_generations=arguments.max_generations,
+        turn_timeout_milliseconds=arguments.turn_timeout_milliseconds,
     )
     print(table, end="")
     failed = any(
@@ -196,6 +201,8 @@ def main(argv: list[str] | None = None) -> int:
     again.add_argument("demo", nargs="+", help="league games' demos, as a tournament listed them (runs/cache/...)")
     again.add_argument("--bot", required=True, help="the candidate, by name")
     again.add_argument("--replaces", help="whose seat it takes; default: its parent")
+    again.add_argument("--max-generations", type=int, default=300, help="as the studied games were played")
+    again.add_argument("--turn-timeout-milliseconds", type=int, default=2000, help="as the studied games were played")
     again.add_argument("--run-id", help="the directory under runs/ for the bots' stderr; default: rematch-BOT")
     again.set_defaults(handler=_rematch)
 

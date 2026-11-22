@@ -197,6 +197,11 @@ def play_matches(
     return [results[key] for key in planned if key in results]
 
 
+def points(result: dict[str, Any], player: str) -> float:
+    """A player's points in a game: a win 1, a draw 0.5, a loss 0."""
+    return 0.5 if result["winner"] is None else float(result["winner"] == player)
+
+
 def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Standings, the table of every pair, each player's record per map and the problems."""
     record: dict[str, dict[str, Any]] = defaultdict(
@@ -224,8 +229,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
             )
             continue
         first, second = result["players"]
-        winner = result["winner"]
-        first_score = 0.5 if winner is None else float(winner == first)
+        first_score = points(result, first)
         games.append((first, second, first_score))
         for name, opponent, score, seat in (
             (first, second, first_score, result["seats"][0]),
