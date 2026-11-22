@@ -4,8 +4,18 @@ import gzip
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from island_battles_client import (
+    NEUTRAL_TEAM_COLOR,
+    BotTurn,
+    BotTurnResult,
+    UpgradeType,
+    send_soldier_group,
+    turn_result,
+    upgrade_castle,
+)
 
 from league_tools import digest, engine, maps, ratings, replay, roster, tournament
 
@@ -15,6 +25,18 @@ def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
     fitted = ratings.fit(games)
     assert fitted["level3"] == pytest.approx(1000)
     assert fitted["strong"] > fitted["level3"] > fitted["weak"]
+
+
+def test_ratings_fix_ori_mimic_at_1800_before_level3() -> None:
+    """level3 winning nothing doesn't move the scale: the sparring bot that wins and loses holds it."""
+    games = [("strong", "ori_mimic", 1.0)] * 3 + [("ori_mimic", "strong", 1.0)] * 2 + [("ori_mimic", "level3", 1.0)] * 6
+    games += [("strong", "level3", 1.0)] * 6
+    fitted = ratings.fit(games)
+    assert fitted["ori_mimic"] == pytest.approx(1800)
+    assert fitted["strong"] > fitted["ori_mimic"] > fitted["level3"]
+    # Without either anchor, the mean is 1000.
+    unanchored = ratings.fit([("a", "b", 1.0), ("a", "b", 0.5)])
+    assert sum(unanchored.values()) / 2 == pytest.approx(1000) and unanchored["a"] > unanchored["b"]
 
 
 def test_ratings_do_not_depend_on_the_order_of_the_games() -> None:
@@ -355,13 +377,26 @@ def test_replay_reads_a_known_send_and_upgrade_off_the_boards() -> None:
     assert second["upgrades"] == [] and second["sends"] == []
 
 
-def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path) -> None:
+def fixture_play(turn: BotTurn) -> BotTurnResult:
+    """The replay demo's blue team: a castle at production 1 with 56 soldiers buys production and sends 46."""
+    commands = []
+    for own in turn.generation.castles:
+        if own.team_color != turn.team_color or own.upgrades[UpgradeType.generation_amount] != 1 or own.soldiers < 56:
+            continue
+        enemy = next(c for c in turn.generation.castles if c.team_color not in (turn.team_color, NEUTRAL_TEAM_COLOR))
+        commands += [upgrade_castle(own.id, UpgradeType.generation_amount), send_soldier_group(own.id, enemy.id, 46)]
+    return turn_result(commands)
+
+
+def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A bot of the test's own, so the test needs no bot of the population, which the population rules may delete."""
     demo = replay_demo()
     path = tmp_path / "game.json.gz"
     path.write_bytes(gzip.compress(json.dumps(demo).encode()))
-    report = replay.replay([("game", digest.load_demo(path))], "safe_hold", color=1)
+    monkeypatch.setattr(replay, "load_bot", lambda name: SimpleNamespace(play=fixture_play))
+    report = replay.replay([("game", digest.load_demo(path))], "fixture", color=1)
     assert report.stats["turns"] == 2
     assert report.stats["exact"] == report.stats["loose"] == 2  # turn 2: neither the team nor the bot did anything
     assert (report.stats["upgrade tp"], report.stats["neutral team"], report.stats["attack tp"]) == (1, 0, 1)
     assert report.stats["attack team"] == report.stats["attack bot"] == 1
-    assert "exact turn match" in report.text() and "bot: safe_hold" in report.text()
+    assert "exact turn match" in report.text() and "bot: fixture" in report.text()

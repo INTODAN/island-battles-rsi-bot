@@ -1,6 +1,6 @@
 # The league's ledger
 
-One entry per iteration, newest last. An entry says what was measured, what was tried, what was kept and what was learned, so that the next session starts from here and doesn't try a rejected idea again. Ratings have `level3` at 1000.
+One entry per iteration, newest last. An entry says what was measured, what was tried, what was kept and what was learned, so that the next session starts from here and doesn't try a rejected idea again. Ratings have `level3` at 1000 up to iteration 29, no fixed point in iterations 30 to 35 (see the setup after iteration 35), and `ori_mimic` at 1800 from then on.
 
 ## Lessons so far
 
