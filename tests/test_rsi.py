@@ -51,6 +51,17 @@ def test_the_notifier_sends_nothing_for_a_pending_game() -> None:
     assert notifier.notify(event, lambda _b, _g: {"status": "finished", "demo": "pending"}, send) == []
 
 
+def test_the_notifier_reads_the_summary_inside_the_zip() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("game.json", json.dumps({"game_id": 3, "status": "finished", "demo": "full"}))
+    assert notifier.packed_summary(buffer.getvalue()) == {"game_id": 3, "status": "finished", "demo": "full"}
+    empty = io.BytesIO()
+    with zipfile.ZipFile(empty, "w") as archive:
+        archive.writestr("demo.json", "{}")
+    assert notifier.packed_summary(empty.getvalue()) is None
+
+
 def test_the_studied_games_are_read_from_the_ledger_list(tmp_path: Path) -> None:
     path = tmp_path / "real-games.txt"
     path.write_text("# a comment\n12 2026-11-22\n\n40 2026-11-23\n")

@@ -2,8 +2,9 @@
 
 An AWS Lambda function, called by the games bucket's event notification for
 every object created under ``games/`` that ends in ``.zip``. For each zip it
-reads the game's summary next to it (``games/<id>/game.json``) and, when the
-game is finished and its demo is final, sends a ``repository_dispatch`` of
+reads the game's summary packed inside it (``game.json``: the copy next to the
+zip is written after it, so it can still be the old one) and, when the game is
+finished and its demo is final, sends a ``repository_dispatch`` of
 type ``real-game`` to the league's repository. The workflow
 ``real-game-iteration.yml`` answers it.
 
@@ -22,12 +23,14 @@ Environment:
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
 import re
 import urllib.parse
 import urllib.request
+import zipfile
 from collections.abc import Callable
 from typing import Any
 
@@ -54,6 +57,14 @@ def zipped_games(event: dict[str, Any]) -> list[tuple[str, int]]:
 def is_final(summary: dict[str, Any] | None) -> bool:
     """Whether a game's summary says its zip is the one to study: finished, with no demo still to come."""
     return bool(summary) and summary.get("status") == "finished" and summary.get("demo") != "pending"
+
+
+def packed_summary(data: bytes) -> dict[str, Any] | None:
+    """The summary that a game's zip holds, or None when it holds none."""
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if "game.json" not in archive.namelist():
+            return None
+        return json.loads(archive.read("game.json"))
 
 
 def dispatch_body(game_ids: list[int]) -> dict[str, Any]:
@@ -100,10 +111,10 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
 
     def read_summary(bucket: str, game_id: int) -> dict[str, Any] | None:
         try:
-            body = s3.get_object(Bucket=bucket, Key=f"games/{game_id}/game.json")["Body"].read()
+            data = s3.get_object(Bucket=bucket, Key=f"games/{game_id}/game-{game_id}.zip")["Body"].read()
         except s3.exceptions.NoSuchKey:
             return None
-        return json.loads(body)
+        return packed_summary(data)
 
     def send(game_ids: list[int]) -> int:
         token = ssm.get_parameter(Name=os.environ["GITHUB_TOKEN_PARAMETER"], WithDecryption=True)
