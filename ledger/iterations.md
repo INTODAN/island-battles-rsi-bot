@@ -56,6 +56,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Defence refinements in the `ori_` line now split its mirror match.** Partial help, pricing help like an attack, cumulative trickles and holding strike captures each took 16 to 17 of 34 against their parent (iterations 30 and 31): the line's games against itself are decided move for move, and a change that acts only under attack changes a few of them either way.
 - **An enemy that buys speed strikes from farther than its speed says.** At the end of a game the `ori_` line freed reserves against castles 8 turns away and fed the soldiers to the front; the enemy bought speed 3 in the same turn as its strike and took the emptied castles (iteration 32, 30 games lost on castles at the limit). Counting the speed it could buy fixed those games and still lost the mirror match (14.5 of 34): what loses a bot's games against its own line is not always what loses them against the others.
 - **Keeping the enemy's castles under attack freezes a bot that won't spend under attack, on the training maps.** The hosted bot's rules buy and send nothing from a castle an enemy group is bound for; a founder that keeps a group of production-times-walk-plus-one walking at every enemy castle beat its parent 23 of 36 and every player of the league on training (89 points up), and fell 12 points below its parent on holdout (iteration 33's `harrier`). Against the hosted bot itself, which has that rule, it is untested.
+- **Freeze the castle the enemy strikes from, not all of them.** One group of production-times-walk-plus-one kept walking at the enemy castle nearest ours beat its parent 25 of 38 and rose 80 points on training and 51 on holdout (iteration 34's `harrier_front`); the same groups at every enemy castle had fallen on holdout (iteration 33), and at castles that could upgrade lost the mirror match. One frozen castle costs the enemy its front; many cost us more than they freeze.
+- **Freed reserves should strike, not feed.** Keeping the reserve against every enemy castle when feeding, while the end of the game frees it for strikes, beat its parent 19.5 of 38 and 21.5 of 30 on holdout, 83 points up there (iteration 34's `growtrickle_feedkeep`). Stopping all late feeding had lost (iteration 32).
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -2061,3 +2063,72 @@ Holdout maps (`iteration-33-holdout`, 3,724 matches, exit 0):
 | level2 | 718 | 0.000 | 0 | 0 | 392 |
 
 **Time:** 14 minutes (iteration 32: 10). Adding the maps and the baseline: 1.3 minutes (266 new matches), with the holdout baseline played beside the writing of the candidates. The gate, 1,944 matches in 8 minutes, is the slowest step; holdout selection 2 minutes.
+
+## Iteration 34: freeze the enemy's front, and freed reserves don't feed
+
+**Date:** 2026-11-22. **Maps:** 19 training, 15 holdout: **the map set grew** again before the first measurement (nothing promoted in iterations 32 and 33, and `harrier` rose on training and fell on holdout), with `inlet` (training, `league new-map inlet --seed 3401`) and `brine` (holdout, seed 3402). **Matches:** 5,054 in the baseline (266 new), 7,106 in the training selection round robin, 5,040 in the holdout selection for the two that passed. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`stallfeed_growtrickle`'s games on the training maps):
+
+1. **The late emptying again, on the new map.** On `inlet` the champion lost 14 games on castles at the limit to every older bot of the line, as on `bight` in iteration 32: against `ori_hold`, turn 292, castle 0 fed 920 soldiers to the front (`feed>2 0:920 late reserve freed 0:869`), and was taken on turn 297. Iteration 32 stopped all feeding in the last 30 turns and lost the mirror match. **Idea (a), another form:** feeding keeps the reserve against every enemy castle; the freed reserve pays only for strikes.
+2. **`harrier` (iteration 33) froze the whole enemy and traded soldiers with bots that don't freeze.** It lost holdout points to the `hold_` line, which keeps upgrading and striking under attack. **Ideas, two forms of the founder, without map geometry:** (b) harass only the enemy castle nearest ours, the one its staging and strikes come from; (c) harass only enemy castles that could pay their next upgrade now.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `harrier_front` | stallfeed_growtrickle | (b) A founder: one group walks at the enemy castle nearest ours, its production times the walk plus one (at most 20), from the nearest fully upgraded castle, before feeding. | 2477 (2397) | 25/38 | 2216 (2165), 17/30 | **promoted** (the champion) |
+| `growtrickle_feedkeep` | stallfeed_growtrickle | (a) Feeding keeps the reserve against every enemy castle at any turn. | 2401 (2397) | 19.5/38 | 2248 (2165), 21.5/30 | **promoted** |
+| `harrier_upgrades` | stallfeed_growtrickle | (c) A founder: groups only at enemy castles that could pay their next production or speed level. | 2389 (2397) | 17/38 | not played | **rejected**: below its parent in both rules, though it took 8 more points from `finish_speed` and 6 from `hold_exactstrike`. |
+
+All three passed the gate in one `--focus` run (2,052 matches, 8 minutes): no failed turn, slowest turns 24 to 33 ms.
+
+**Status changes:** `harrier_front` and `growtrickle_feedkeep` active; `harrier_front`, first on training, is the champion (`growtrickle_feedkeep` is first on holdout). `stallfeed_growtrickle` stays active (`harrier_front` scores a point less than it against `ori_like`; `growtrickle_feedkeep` less against several). With eight active bots, the two lowest rated that another active bot matches or beats everywhere are retired: `hold_exactstrike` and `ori_hold_exact` (both by `harrier_front`, which also matches `exact_stallfeed`); six stay active. With eight retired, the two lowest rated are deleted: `finish_speed` (2131) and `safe_hold` (2140). `hold_exactstrike`, retired, is now the only bot of the `hold_` line left.
+
+Training maps (`iteration-34-train`, 5,054 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_front | 2449 | 0.788 | 405 | 148 | 55 |
+| growtrickle_feedkeep | 2378 | 0.714 | 362 | 144 | 102 |
+| stallfeed_growtrickle | 2370 | 0.706 | 355 | 148 | 105 |
+| endreserve_stallfeed | 2358 | 0.692 | 339 | 163 | 106 |
+| sameturn_endreserve | 2346 | 0.678 | 334 | 157 | 117 |
+| sameturn_stallfeed (retired) | 2285 | 0.607 | 255 | 228 | 125 |
+| exact_sameturn (retired) | 2275 | 0.595 | 252 | 219 | 137 |
+| exact_stallfeed | 2236 | 0.548 | 217 | 232 | 159 |
+| ori_hold (retired) | 2231 | 0.542 | 207 | 245 | 156 |
+| ori_hold_exact (retired) | 2221 | 0.530 | 208 | 229 | 171 |
+| ori_mimic (sparring) | 2216 | 0.525 | 198 | 242 | 168 |
+| ori_finish (retired) | 2214 | 0.522 | 200 | 235 | 173 |
+| hold_exactstrike (retired) | 2162 | 0.462 | 268 | 26 | 314 |
+| level1 | 1962 | 0.169 | 0 | 180 | 352 |
+| ori_like (sparring) | 1940 | 0.257 | 143 | 26 | 439 |
+| level2 | 1000 | 0.000 | 0 | 0 | 532 |
+| level3 | 1000 | 0.000 | 0 | 0 | 532 |
+
+Holdout maps (`iteration-34-holdout`, 3,990 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| growtrickle_feedkeep | 2173 | 0.807 | 330 | 115 | 35 |
+| harrier_front | 2142 | 0.779 | 318 | 112 | 50 |
+| stallfeed_growtrickle | 2087 | 0.724 | 283 | 129 | 68 |
+| endreserve_stallfeed | 2073 | 0.709 | 268 | 145 | 67 |
+| sameturn_endreserve | 2053 | 0.689 | 258 | 145 | 77 |
+| sameturn_stallfeed (retired) | 2011 | 0.642 | 216 | 184 | 80 |
+| exact_sameturn (retired) | 1998 | 0.627 | 209 | 184 | 87 |
+| exact_stallfeed | 1922 | 0.542 | 166 | 188 | 126 |
+| ori_finish (retired) | 1910 | 0.527 | 160 | 186 | 134 |
+| ori_hold_exact (retired) | 1902 | 0.519 | 155 | 188 | 137 |
+| ori_hold (retired) | 1882 | 0.496 | 151 | 174 | 155 |
+| ori_mimic (sparring) | 1876 | 0.490 | 149 | 172 | 159 |
+| hold_exactstrike (retired) | 1729 | 0.342 | 164 | 0 | 316 |
+| level1 | 1646 | 0.171 | 0 | 144 | 276 |
+| ori_like (sparring) | 1637 | 0.267 | 128 | 0 | 352 |
+| level3 | 1000 | 0.005 | 2 | 0 | 418 |
+| level2 | 719 | 0.000 | 0 | 0 | 420 |
+
+**Champion:** `harrier_front`, 2449 on training and 2142 on holdout (`stallfeed_growtrickle` 2370 and 2087 in the same tables). The training table's scale is still unanchored (`level3` wins nothing there); on holdout `level3` won 2 games.
+
+**Where it still loses:** `circle` and the line's mirror draws; against `ori_like` it scored a point less than its parent. Whether freezing the enemy's front pays against the hosted bot, whose rules it is aimed at, is the question the check against the real opponent should answer before it is trusted.
+
+**Time:** 15 minutes (iteration 33: 14). Maps and baseline 1 minute; gate 8 minutes (the slowest step); holdout selection 4.7 minutes (1,050 matches: two candidates and two new holdout maps).
