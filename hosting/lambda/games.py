@@ -1,25 +1,35 @@
 """The hosted bot's record of its real games, kept in S3 as zips.
 
-A hosted bot sees a game only through its turn deliveries: the board of every
-generation it plays, its own answer and its own log lines. The game tells it
-neither that the game ended nor how, and its demo endpoint is for the roster's
-players, not their bots. So the bot keeps every turn it plays, and once the
-game is over (its last turn, or no new turn long after the last one's
-deadline) packs them into ``games/<id>/game-<id>.zip``:
+The bot keeps every turn it plays, after submitting it: the board, its answer,
+its log lines, the server's status and the time it took. When the game ends,
+the game POSTs a ``GameEndedDelivery`` to the bot's ``/game-ended`` (#413 of
+the game): the outcome, the final generation and a link that downloads the
+game's demo, with every team's logs. The bot downloads it and packs the game
+into ``games/<id>/game-<id>.zip``:
 
-- ``demo.json``: a demo in the game's own format (schema 2), one frame per
-  turn the bot played, with the bot's log lines; ``league digest`` and the
-  demo viewer open it. It lacks the final generation, the outcome and the
-  other teams' logs, which only the game has.
+- ``demo.json``: the game's own demo; ``league digest`` and the demo viewer
+  open it.
 - ``turns.jsonl``: each turn's commands, memory, time to play and whether the
   server took the answer.
 - ``game.json``: the summary the home page shows.
+- ``game-ended.json``: the end of the game as it was delivered, without its
+  demo link.
+- ``digest.txt``: ``league digest`` of the demo: the timeline, each team's
+  logistics and the events.
+- ``README.txt``: what each file is.
 
-The result is estimated from the last board the bot saw, and says so.
+A download that fails is tried again whenever the games are read, until the
+link expires. A game whose end never arrives (a runner that failed, or a game
+played before the game sent ends) is packed from the turns the bot kept, once
+no turn came long after the last one's deadline: its demo stops at the bot's
+last turn and lacks the other teams' logs, and its result is estimated from
+the last board the bot saw, and says so.
 """
 
 from __future__ import annotations
 
+import gzip
+import importlib
 import io
 import json
 import zipfile
@@ -136,6 +146,11 @@ def turn_key(game_id: int, turn_number: int) -> str:
     return f"{PREFIX}{game_id}/turns/{turn_number:05d}.json"
 
 
+def end_key(game_id: int) -> str:
+    """The key of a game's end, as it was delivered."""
+    return f"{PREFIX}{game_id}/game-ended.json"
+
+
 def zip_key(game_id: int) -> str:
     """The key of a finished game's zip."""
     return f"{PREFIX}{game_id}/game-{game_id}.zip"
@@ -213,6 +228,7 @@ def record_turn(
     play_ms: float,
     maps: KnownMaps,
     now: datetime,
+    detail: str = "",
 ) -> dict[str, Any]:
     """Keep one played turn and update its game's summary; returns the summary.
 
@@ -228,6 +244,7 @@ def record_turn(
         "turn": turn,
         "result": result,
         "submit_status": submitted,
+        "submit_detail": detail or None,
         "play_ms": round(play_ms, 1),
     }
     store.put(turn_key(game_id, number), _json(record), "application/json")
@@ -334,22 +351,12 @@ def build_demo(summary: dict[str, Any], turns: list[dict[str, Any]], now: dateti
         "teams": teams,
         "frames": frames,
         "logs": logs,
-        # The game's outcome isn't sent to a bot; game.json has the estimate.
+        # Only the game's own demo has the outcome; game.json has the result.
         "outcome": None,
     }
 
 
-def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
-    """Pack a game into its zip and mark it finished; returns the summary."""
-    summary = json.loads(store.get(game_key(game_id)) or b"null")
-    if not summary:
-        return None
-    turns = _read_turns(store, game_id)
-    if not turns:
-        return None
-    result, note = estimate_result(summary)
-    summary.update(status="finished", result=result, result_note=note, finished_at=_now_text(now))
-    summary["zip"] = zip_key(game_id)
+def _turn_lines(turns: list[dict[str, Any]]) -> str:
     lines = [
         json.dumps(
             {
@@ -358,6 +365,7 @@ def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
                 "received_at": record["received_at"],
                 "play_ms": record["play_ms"],
                 "submit_status": record["submit_status"],
+                "submit_detail": record.get("submit_detail"),
                 "commands": record["result"].get("commands", []),
                 "memory": record["result"].get("memory"),
             },
@@ -365,13 +373,194 @@ def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
         )
         for record in turns
     ]
+    return "".join(line + "\n" for line in lines)
+
+
+_README = """Island Battles game {game_id}, played by the hosted bot {bot} as team {team}.
+
+demo.json        The game's demo ({demo}). Open it with `league digest`, `league unpack` or
+                 the game's demo viewer; `league digest` also takes this zip as it is.
+digest.txt       `league digest` of the demo: the timeline, each team's logistics and the events.
+turns.jsonl      One line per turn the bot played: its commands and memory, how long it took,
+                 the server's status for its answer, and the server's reason when it refused it.
+game.json        The summary that the bot's home page shows.
+game-ended.json  The end of the game as the game delivered it: the outcome, the final
+                 generation and the bot's last memory (only when the game sent it).
+
+Result: {result}{estimated}. {note}
+"""
+
+_DEMO_KINDS = {
+    "full": "the game's own, with every team's logs and the outcome",
+    "pending": "rebuilt from the bot's turns for now: the game's own is downloaded later",
+    "partial": "rebuilt from the bot's turns: it stops at the bot's last turn, without the other teams' logs",
+}
+
+
+def _digest(demo: bytes) -> str:
+    """The league's digest of a demo, or why there is none."""
+    try:
+        try:
+            module = importlib.import_module("league_tools.digest")
+        except ImportError:
+            module = importlib.import_module("digest")
+        return module.digest(json.loads(demo), key_only=False)
+    except Exception as error:  # noqa: BLE001 - a zip without a digest is still a zip
+        return f"No digest: {type(error).__name__}: {error}\n"
+
+
+def _pack(
+    store: Store,
+    summary: dict[str, Any],
+    demo: bytes,
+    turns: list[dict[str, Any]],
+    end: dict[str, Any] | None,
+) -> None:
+    """Write the game's zip and its summary."""
+    summary["zip"] = zip_key(summary["game_id"])
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("demo.json", json.dumps(build_demo(summary, turns, now), separators=(",", ":")))
-        archive.writestr("turns.jsonl", "\n".join(lines) + "\n")
+        archive.writestr("demo.json", demo)
+        archive.writestr("digest.txt", _digest(demo))
+        archive.writestr("turns.jsonl", _turn_lines(turns))
         archive.writestr("game.json", json.dumps(summary, indent=2))
-    store.put(zip_key(game_id), buffer.getvalue(), "application/zip")
-    store.put(game_key(game_id), _json(summary), "application/json")
+        if end is not None:
+            archive.writestr("game-ended.json", json.dumps(_without_link(end), indent=2))
+        archive.writestr(
+            "README.txt",
+            _README.format(
+                game_id=summary["game_id"],
+                bot=summary["bot"],
+                team=summary["team_color"],
+                demo=_DEMO_KINDS.get(summary.get("demo", "partial"), "?"),
+                result=summary.get("result"),
+                estimated=", estimated" if summary.get("estimated") else "",
+                note=summary.get("result_note") or "",
+            ),
+        )
+    store.put(zip_key(summary["game_id"]), buffer.getvalue(), "application/zip")
+    store.put(game_key(summary["game_id"]), _json(summary), "application/json")
+
+
+def _without_link(end: dict[str, Any]) -> dict[str, Any]:
+    """The end without its demo link, whose token downloads the demo."""
+    return {**end, "demo": {"expires_at": end.get("demo", {}).get("expires_at")}}
+
+
+def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
+    """Pack a game whose end never came from the turns the bot kept, with an estimated result."""
+    summary = json.loads(store.get(game_key(game_id)) or b"null")
+    if not summary:
+        return None
+    turns = _read_turns(store, game_id)
+    if not turns:
+        return None
+    result, note = estimate_result(summary)
+    summary.update(status="finished", result=result, result_note=note, finished_at=_now_text(now))
+    summary.update(estimated=True, demo="partial")
+    demo = json.dumps(build_demo(summary, turns, now), separators=(",", ":")).encode()
+    _pack(store, summary, demo, turns, None)
+    return summary
+
+
+def record_end(store: Store, end: dict[str, Any]) -> None:
+    """Keep a game's end as it was delivered, demo link included, until the demo is in."""
+    store.put(end_key(end["game_id"]), _json(end), "application/json")
+
+
+def _result(outcome: dict[str, Any], color: int) -> str:
+    winner = outcome.get("winner_team_color")
+    if winner is None:
+        return "draw"
+    return "won" if winner == color else "lost"
+
+
+def _opponents(demo: dict[str, Any], color: int) -> list[str]:
+    """The other teams as the demo names them: the team, then its players."""
+    named = []
+    for team in demo.get("teams", []):
+        if team.get("color") == color:
+            continue
+        players = ", ".join(team.get("players") or [])
+        named.append(f"{team.get('name')} ({players})" if players else str(team.get("name")))
+    return named
+
+
+def complete(
+    store: Store,
+    game_id: int,
+    download: Callable[[str], bytes],
+    maps: KnownMaps,
+    bot: str,
+    now: datetime,
+) -> dict[str, Any] | None:
+    """Pack a game whose end was delivered, with the game's own demo; returns the summary.
+
+    When the demo can't be downloaded, the game is packed from the turns the
+    bot kept, with the delivered outcome, and marked to try again while the
+    link lasts.
+    """
+    end = json.loads(store.get(end_key(game_id)) or b"null")
+    if not end:
+        return None
+    old = json.loads(store.get(game_key(game_id)) or b"null") or {}
+    color = end["team_color"]
+    final = end["generation"]
+    ours, theirs = _strength(final, color), [_strength(final, other) for other in _others(final, color)]
+    turns = _read_turns(store, game_id)
+    summary = {
+        "game_id": game_id,
+        "bot": old.get("bot", bot),
+        "team_color": color,
+        "max_generations": old.get("max_generations", end["turn_number"] + 1),
+        "map": old.get("map") or maps.name(final),
+        "first_turn_at": old.get("first_turn_at") or _now_text(now),
+        "updated_at": old.get("updated_at") or _now_text(now),
+        "first_turn": old.get("first_turn", 1),
+        "last_turn": old.get("last_turn", 0),
+        "turns": old.get("turns", 0),
+        "accepted": old.get("accepted", 0),
+        "commands": old.get("commands", 0),
+        "passed": old.get("passed", 0),
+        "slowest_ms": old.get("slowest_ms", 0),
+        "final_turn": end["turn_number"],
+        "castles": ours[0],
+        "soldiers": ours[1],
+        "enemy_castles": sum(team[0] for team in theirs),
+        "enemy_soldiers": sum(team[1] for team in theirs),
+        "status": "finished",
+        "result": _result(end["outcome"], color),
+        "result_note": end["outcome"].get("summary"),
+        "reason": end["outcome"].get("reason"),
+        "estimated": False,
+        "finished_at": _now_text(now),
+        "opponents": old.get("opponents", []),
+    }
+    link = end.get("demo") or {}
+    expires = _time(link.get("expires_at"))
+    demo: bytes | None = None
+    if link.get("url") and (expires is None or now < expires):
+        try:
+            demo = download(link["url"])
+            if demo[:2] == b"\x1f\x8b":
+                demo = gzip.decompress(demo)
+            parsed = json.loads(demo)
+            if parsed.get("format") != "island-battles-demo":
+                raise ValueError("the download is not an Island Battles demo")
+            summary["opponents"] = _opponents(parsed, color)
+        except Exception as error:  # noqa: BLE001 - kept to try again
+            summary["demo_error"] = f"{type(error).__name__}: {error}"[:300]
+            demo = None
+    if demo is not None:
+        summary["demo"] = "full"
+    else:
+        # Packed from the bot's own turns for now, and tried again later.
+        summary["demo"] = "pending" if expires is None or now < expires else "partial"
+        if not turns:
+            store.put(game_key(game_id), _json(summary), "application/json")
+            return summary
+        demo = json.dumps(build_demo(summary, turns, now), separators=(",", ":")).encode()
+    _pack(store, summary, demo, turns, end)
     return summary
 
 
@@ -394,15 +583,23 @@ def all_games(store: Store) -> list[dict[str, Any]]:
     return sorted(games, key=lambda game: game["game_id"], reverse=True)
 
 
-def finish_over_games(store: Store, now: datetime, games: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """Pack every game that is over; returns all summaries, newest first."""
-    games = all_games(store) if games is None else games
+def finish_over_games(
+    store: Store,
+    now: datetime,
+    download: Callable[[str], bytes] | None = None,
+    maps: KnownMaps | None = None,
+) -> list[dict[str, Any]]:
+    """Pack every game that is over, and download the demos still pending; returns all summaries, newest first."""
+    games = all_games(store)
     finished: dict[int, dict[str, Any]] = {}
     for game in games:
-        if is_over(game, now):
+        done: dict[str, Any] | None = None
+        if game.get("demo") == "pending" and download is not None:
+            done = complete(store, game["game_id"], download, maps or KnownMaps({}), game["bot"], now)
+        elif is_over(game, now):
             done = finish(store, game["game_id"], now)
-            if done:
-                finished[game["game_id"]] = done
+        if done:
+            finished[game["game_id"]] = done
     return [finished.get(game["game_id"], game) for game in games]
 
 

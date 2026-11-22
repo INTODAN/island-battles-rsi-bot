@@ -104,4 +104,4 @@ scripts/check.sh                                      # format, lint, types and 
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
 - **No real opponents.** The league has read one real game (the ledger's lessons from it) and played none: every opponent here is a league bot or a default bot.
-- **Real games come back as estimates.** The hosted bot keeps every real game it plays as a zip and lists them on its home page ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)), but a hosted bot is never told how a game ended, so its demo stops at its last turn, without the other teams' logs, and the result is estimated.
+- **Real games are kept, not yet studied.** The hosted bot keeps every real game it plays as a zip with the game's own demo, and lists them on its home page ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)). The iteration skill doesn't read them yet.

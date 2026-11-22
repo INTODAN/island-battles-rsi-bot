@@ -23,20 +23,30 @@ With `GAMES_BUCKET` set, the bot keeps every real game it plays ([`games.py`](ga
 
 | Path | What it is |
 | --- | --- |
-| `GET /` | The home page ([`page.py`](page.py)): whether it is playing, its record, the turns it played, and every game with its result, map, team, turns and a **Zip** button. |
+| `GET /` | The home page ([`page.py`](page.py)): whether it is playing, its record, the turns it played, and every game with its result, opponent, map, team, turns and a **Zip** button. |
+| `POST /game-ended` | Where the game sends the end of each game. |
 | `GET /api/games` | The same as JSON. |
 | `GET /games/<id>.zip?key=…` | Redirects to a 5-minute download of a finished game's zip. `key` is `GAMES_KEY`; the page asks for it once and remembers it in the browser. Without `GAMES_KEY`, anyone may download. |
 | `GET /health` | The bot, and whether it keeps games. |
 
-**A hosted bot sees a game only through its turns.** The game sends it each turn's board, and nothing when the game ends: not the final generation, not the outcome, not the other teams' logs, and its demo endpoint is for the roster's players. So, after submitting each turn, the bot writes the turn (the board, its answer, its logs, the server's status and the time it took) to `games/<id>/turns/` and updates `games/<id>/game.json`. A game is **over** after the bot's last possible turn (`max_generations - 1`), or when no turn came for a minute past the last one's deadline (half an hour when turns have none). Then it is packed into `games/<id>/game-<id>.zip`:
+**How a game is kept.** After submitting each turn, the bot writes it (the board, its answer, its logs, the server's status and, when the server refused the answer, why, and the time it took) to `games/<id>/turns/`, and updates `games/<id>/game.json`. When the game ends, however it ends, the game POSTs a `GameEndedDelivery` to the bot's URL with its last segment replaced by `game-ended`: `<function URL>/game-ended` (INTODAN/island-battles-go#413, the backend README's [The end of a game](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#the-end-of-a-game)). It holds the outcome, the final generation, the bot's last memory and a link that downloads the game's demo, with every team's logs. The bot keeps it as `games/<id>/game-ended.json`, downloads the demo (only from the game's own host), and packs `games/<id>/game-<id>.zip`:
 
-- `demo.json`: a demo in the game's format, one frame per turn the bot played, with its log lines. `league digest` and `league unpack` take the zip itself.
-- `turns.jsonl`: each turn's commands, memory, submit status and time to play.
-- `game.json`: the summary.
+| File | What it is |
+| --- | --- |
+| `demo.json` | The game's own demo. `league digest` and `league unpack` take the zip itself; the demo viewer opens `demo.json`. |
+| `digest.txt` | `league digest` of the demo: the timeline, each team's logistics and the events. |
+| `turns.jsonl` | One line per turn the bot played: its commands and memory, its time to play, and the server's status and reason for its answer. The demo doesn't have these. |
+| `game.json` | The summary the home page shows: the result, the opponents as the demo names them, the map. |
+| `game-ended.json` | The end as delivered, without the demo link. |
+| `README.txt` | What each file is. |
 
-The bot notices that a game is over when the page or the API is read, when a game's zip is asked for, and when a new game starts. **The result is an estimate** from the last board the bot saw: at the turn limit by castles, otherwise the stronger side is taken to have won. The page shows why for each game. The map is named when its castles stand where a map of `maps/` has them, and is otherwise described ("8 castles, 2 teams").
+**When something is missing:**
+- **The download fails.** The zip is packed from the bot's own turns, with the delivered outcome, and the game is marked `pending`. The bot tries again whenever the page, the API or a zip is read, and when a new game starts, until the link expires (7 days).
+- **No end arrives** (a runner that failed, or a game played before the game sent ends). The game is packed once no turn came for a minute past the last one's deadline (half an hour when turns have none). Its demo is rebuilt from the bot's turns, so it stops at the bot's last turn and has no other team's logs. Its result is **estimated** from the last board the bot saw, and the page marks it ≈.
 
-A real game's zip is not committed (AGENTS.md): what it shows goes in the ledger, in words. Keeping a turn costs about three S3 requests, made after the turn is submitted, so they never make a turn late.
+The map is named when its castles stand where a map of `maps/` has them, and is otherwise described ("8 castles, 2 teams").
+
+A real game's zip is not committed (AGENTS.md): it carries players' names and their bots' logs. What it shows goes in the ledger, in words. Keeping a turn costs about three S3 requests, made after the turn is submitted, so they never make a turn late.
 
 ### Setting it up
 

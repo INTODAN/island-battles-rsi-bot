@@ -93,8 +93,16 @@ def _result(game: dict[str, Any]) -> str:
     if game.get("status") != "finished":
         return '<span class="badge playing">Playing</span>'
     result = game.get("result") or "draw"
-    note = escape(f"Estimated: {game.get('result_note') or ''}", quote=True)
-    return f'<span class="badge {result}" title="{note}">{result.capitalize()}</span>'
+    estimated = game.get("estimated", True)
+    note = escape(f"{'Estimated: ' if estimated else ''}{game.get('result_note') or ''}", quote=True)
+    mark = "≈ " if estimated else ""
+    return f'<span class="badge {result}" title="{note}">{mark}{result.capitalize()}</span>'
+
+
+_DEMO_NOTES = {
+    "pending": " · The game's demo isn't downloaded yet: the zip has the bot's own turns for now.",
+    "partial": " · The game never sent its end: the zip has only the bot's own turns.",
+}
 
 
 def _game(game: dict[str, Any], key_required: bool) -> str:
@@ -110,15 +118,18 @@ def _game(game: dict[str, Any], key_required: bool) -> str:
     passed = f" ({game['passed']} passed)" if game.get("passed") else ""
     fields = [
         _field("Result", _result(game)),
+        _field("Opponent", escape(", ".join(game.get("opponents") or []) or "–")),
         _field("Map", escape(str(game.get("map", "–")))),
         _field("Team", str(int(game["team_color"]))),
         _field("Turns", f"{int(game['turns'])}{passed}"),
-        _field("Last turn", f"{int(game['last_turn'])} / {int(game['max_generations']) - 1}"),
-        _field("Updated", _time(game.get("updated_at"))),
+        _field("Last turn", f"{int(game.get('final_turn') or game['last_turn'])} / {int(game['max_generations'])}"),
+        _field("Updated", _time(game.get("finished_at") or game.get("updated_at"))),
     ]
     note = ""
     if game.get("status") == "finished" and game.get("result_note"):
-        note = f'<div class="note">≈ {escape(game["result_note"])}</div>'
+        mark = "≈ " if game.get("estimated", True) else ""
+        demo = _DEMO_NOTES.get(game.get("demo", ""), "")
+        note = f'<div class="note">{mark}{escape(game["result_note"])}{demo}</div>'
     return (
         f'<article class="game"><div class="game-head"><h3>Game {game_id}</h3>{action}</div>'
         f'<div class="fields">{"".join(fields)}</div>{note}</article>'
@@ -180,9 +191,10 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]], key_r
 <section class="stats">{stats}</section>
 <section class="card"><h2>All games</h2>{listed}</section>
 <footer>
-<p>A hosted bot sees only the boards of its own turns and its own logs, so a result is estimated from the last
-board it saw, and a game's demo ends there. Each zip holds <code>demo.json</code>, which
-<code>league digest</code> and the demo viewer open, and <code>turns.jsonl</code>.</p>
+<p>When a game ends, the game sends the bot its outcome and a link to its demo, with every team's logs. Each zip
+holds that demo (<code>demo.json</code>, which <code>league digest</code> and the demo viewer open), its digest,
+and the bot's own record of every turn: its commands, memory, timing and the server's answers. A result marked ≈
+is estimated from the last board the bot saw, for a game that never sent its end.</p>
 <p><a href="{REPOSITORY}">The league's repository</a> · <a href="/api/games">JSON</a></p>
 </footer>
 </main>

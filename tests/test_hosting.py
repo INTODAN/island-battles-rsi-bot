@@ -1,3 +1,4 @@
+import gzip
 import io
 import json
 import sys
@@ -7,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import pytest
 from island_battles_client.fixture import fixture_turn_data
 
 from league_tools import digest
@@ -59,7 +61,7 @@ def test_a_game_that_reaches_its_last_turn_is_packed_into_a_zip_the_digest_reads
     data = store.get(games.zip_key(7))
     assert data is not None
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        assert sorted(archive.namelist()) == ["demo.json", "game.json", "turns.jsonl"]
+        assert sorted(archive.namelist()) == ["README.txt", "demo.json", "digest.txt", "game.json", "turns.jsonl"]
         assert len(archive.read("turns.jsonl").decode().splitlines()) == 4
     path = tmp_path / "game-7.zip"
     path.write_bytes(data)
@@ -98,3 +100,116 @@ def test_the_home_page_lists_the_games() -> None:
     html = page.render("finish_speed", overview, listed, key_required=True)
     assert "Game 7" in html and "/games/7.zip" in html and "1–0–0" in html
     assert "<script>alert" not in page.render("<script>alert(1)</script>", overview, listed, key_required=False)
+
+
+def _end(color: int = 1, winner: int | None = 2, expires: datetime | None = None) -> dict[str, Any]:
+    final = deepcopy(fixture_turn_data()["generation"])
+    final["id"] = 200
+    return {
+        "game_id": 7,
+        "team_color": color,
+        "turn_number": 6,
+        "outcome": {
+            "reason": "last_team_standing",
+            "winner_team_color": winner,
+            "summary": "Red won",
+            "departures": [],
+        },
+        "generation": final,
+        "memory": {"seen": 5},
+        "demo": {
+            "url": "https://island-battles.elidan.org/game/7/demo?token=ibdt1.x.y",
+            "expires_at": (expires or START + timedelta(days=7)).isoformat(),
+        },
+    }
+
+
+def _real_demo() -> bytes:
+    frames = [_turn(number)["generation"] for number in range(1, 6)]
+    demo = {
+        "format": "island-battles-demo",
+        "schema_version": 2,
+        "game_id": 7,
+        "saved_at": START.isoformat(),
+        "teams": [
+            {"color": 1, "name": "Blue", "players": ["finish_speed"]},
+            {"color": 2, "name": "Red", "players": ["Kraken"]},
+        ],
+        "frames": frames,
+        "logs": [{"generation_id": frame["id"], "hidden_team_colors": [], "players": []} for frame in frames],
+        "outcome": {"reason": "last_team_standing", "winner_team_color": 2, "summary": "Red won", "departures": []},
+    }
+    return json.dumps(demo).encode()
+
+
+def test_a_delivered_end_packs_the_games_own_demo_with_the_real_result(tmp_path: Path) -> None:
+    store = games.MemoryStore()
+    for number in range(1, 6):
+        _play(store, number, START)
+    games.record_end(store, _end())
+    links: list[str] = []
+
+    def download(url: str) -> bytes:
+        links.append(url)
+        return gzip.compress(_real_demo())
+
+    summary = games.complete(store, 7, download, MAPS, "finish_speed", START)
+    assert summary is not None
+    assert links == [_end()["demo"]["url"]]
+    assert summary["result"] == "lost" and summary["estimated"] is False and summary["demo"] == "full"
+    assert summary["result_note"] == "Red won" and summary["opponents"] == ["Red (Kraken)"]
+    assert summary["turns"] == 5 and summary["final_turn"] == 6
+
+    data = store.get(games.zip_key(7))
+    assert data is not None
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        names = set(archive.namelist())
+        assert names == {"demo.json", "digest.txt", "turns.jsonl", "game.json", "game-ended.json", "README.txt"}
+        assert json.loads(archive.read("demo.json"))["outcome"]["summary"] == "Red won"
+        assert "Red won" in archive.read("digest.txt").decode()
+        # The link's token stays out of the zip.
+        assert "ibdt1" not in archive.read("game-ended.json").decode()
+    path = tmp_path / "game-7.zip"
+    path.write_bytes(data)
+    assert digest.load_demo(path)["teams"][1]["players"] == ["Kraken"]
+    # A finished game is not estimated over later.
+    assert games.finish_over_games(store, START + timedelta(days=1))[0]["estimated"] is False
+
+
+def test_a_demo_that_fails_to_download_is_tried_again_while_its_link_lasts() -> None:
+    store = games.MemoryStore()
+    for number in range(1, 4):
+        _play(store, number, START)
+    games.record_end(store, _end(winner=None))
+
+    def broken(url: str) -> bytes:
+        raise OSError("connection reset")
+
+    summary = games.complete(store, 7, broken, MAPS, "finish_speed", START)
+    assert summary is not None
+    assert summary["demo"] == "pending" and summary["result"] == "draw" and summary["estimated"] is False
+    assert "connection reset" in summary["demo_error"]
+    assert store.get(games.zip_key(7)) is not None
+    retried = games.finish_over_games(store, START + timedelta(minutes=5), lambda url: _real_demo(), MAPS)
+    assert retried[0]["demo"] == "full"
+
+
+def test_the_handler_takes_a_game_end_at_its_sibling_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    import handler  # noqa: PLC0415 - loads the bot
+
+    store = games.MemoryStore()
+    monkeypatch.setattr(handler, "_store", store)
+    monkeypatch.setattr(handler, "download_demo", lambda url: _real_demo())
+    event = {"requestContext": {"http": {"method": "POST"}}, "rawPath": "/game-ended", "body": json.dumps(_end())}
+    answer = handler.handler(event, None)
+    assert answer["statusCode"] == 202 and json.loads(answer["body"])["kept"] is True
+    assert json.loads(store.get(games.game_key(7)) or b"{}")["demo"] == "full"
+    bad = handler.handler({**event, "body": "{}"}, None)
+    assert bad["statusCode"] == 422
+
+
+def test_a_demo_link_off_the_games_host_is_refused() -> None:
+    import handler  # noqa: PLC0415 - loads the bot
+
+    with pytest.raises(ValueError, match="demo link"):
+        handler.download_demo("https://example.com/game/7/demo?token=x")
