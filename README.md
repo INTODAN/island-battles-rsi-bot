@@ -55,6 +55,8 @@ Deterministic bots give one game per pair, map and side, so the number of maps i
 
 One **iteration** is one pass, and ends as one commit. The [bot-league-iteration skill](.agents/skills/bot-league-iteration/SKILL.md) is the procedure; in short:
 
+0. **Claim.** Iterations run one at a time, each from the last one's ledger entry. `scripts/claim-iteration.sh claim` pushes the branch `claude/league-iteration-N` before anything else, and fails when another session or the automated iteration holds N; `scripts/claim-iteration.sh status` says who does. The iteration's commit replaces the claim on that branch, and the number is free again once it has merged.
+
 1. **Measure.** Play the population and the default bots on the training maps. Most of it comes from the cache.
 2. **Study.** Take the champion's lost and drawn games, and its slow wins, on the training maps. Read the digest, then the turns that decided the game with both bots' logs. Write each finding as: what happened (map, turn), why, and the change that would fix it.
 3. **Vary.** One candidate per idea: `league new` copies a parent, and the agent changes only that directory. Three kinds of ideas: a **fix** of something a game showed, a **graft** of a mechanism another bot has, and, when two iterations promoted nothing, a new **founder** with a different strategy.

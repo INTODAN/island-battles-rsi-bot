@@ -18,9 +18,26 @@ An iteration takes the league from one measured state to the next: it ends with 
 3. [island-battles-rules](../island-battles-rules/SKILL.md) and [writing-a-bot](../writing-a-bot/SKILL.md): the game and the SDK.
 4. [ledger/iterations.md](../../../ledger/iterations.md): where the league stands.
 
+**Claim the number first.** Iterations run one at a time: each starts from the last one's ledger entry and population, so two that start from the same entry measure against a population that one of them will change, and both are called N. Other sessions and the automated iteration may be running too. Before step 0, fetch and claim:
+
+```sh
+git fetch origin
+scripts/claim-iteration.sh claim            # prints "N CLAIM"; keep both
+```
+
+It pushes the branch `claude/league-iteration-N` with an empty commit on `main` that says who claimed it, and only if nobody has. That push is part of the iteration and needs no request; it carries none of the iteration's work. **When it exits 2, N is taken: don't start.** Report who holds it (the script prints it) and stop, unless the request said to wait: then wait until `scripts/claim-iteration.sh status` exits 0 (the other iteration has merged), update from `main`, and claim again. Never take a number from a claim that isn't yours, and never start an iteration without one. The automated iteration claims its own number and says so in its request: there, skip this.
+
+Going on from your own iteration that isn't merged yet, claim the next with `--base` set to that branch: the number comes from its ledger. If you stop before the iteration is done (**When something doesn't work, stop**), give the number back: `scripts/claim-iteration.sh release N CLAIM`.
+
 **Branch.** An iteration is its own branch, `claude/league-iteration-N`, cut from `main`, or from the branch that holds the ledger's last entry while that one isn't merged yet. Never work on another pull request's branch.
 
-**Commit, push, pull request.** Only what the request asks for. The automated iteration commits, pushes and opens its pull request itself, after the iteration: there, leave the working tree to it. Asked to commit, make one commit when the iteration is done, whose message names the iteration and what was promoted and rejected. Don't push or open a pull request unless asked.
+**Commit, push, pull request.** Only what the request asks for, apart from the claim. The automated iteration commits, pushes and opens its pull request itself, after the iteration: there, leave the working tree to it. Asked to commit, make one commit when the iteration is done, whose message names the iteration and what was promoted and rejected. Don't push or open a pull request unless asked. Asked to push, the iteration's commit replaces the claim on its branch, and only while the branch still holds your claim:
+
+```sh
+git push --force-with-lease=refs/heads/claude/league-iteration-N:CLAIM origin HEAD:refs/heads/claude/league-iteration-N
+```
+
+The claim holds until `main` has the iteration's ledger entry. An iteration that is done but not pushed keeps the number: say so in the report, since every other iteration waits for it.
 
 **What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, `ledger/iterations.md`, and the study of each real game the iteration studied (`ledger/studies/<id>.md`, below). Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are allowed only as **When the numbers stop moving** says, and only before the iteration's first measurement.
 
