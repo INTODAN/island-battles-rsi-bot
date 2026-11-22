@@ -38,7 +38,7 @@ Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `
 
 ## Reading the standings
 
-- **Rating** is on the Elo scale with `level3` at 1000, so it compares across tournaments that include `level3`. Compare two bots only within one tournament of the whole population on the same maps: a `--focus` run rates each player from its games against the focused bots alone, and those ratings mean nothing next to another run's.
+- **Rating** is on the Elo scale with the sparring bot `ori_mimic` at 1800 (since the setup after iteration 35; before, `level3` at 1000), so it compares across tournaments that include `ori_mimic`. The ratings of iterations 30 to 35 compare only within their own tables, and `level2` and `level3` are meaningless numbers while they win no game. Compare two bots only within one tournament of the whole population on the same maps: a `--focus` run rates each player from its games against the focused bots alone, and those ratings mean nothing next to another run's.
 - **Score** is points per game (a win 1, a draw 0.5).
 - **Failed turns** must be 0. A failed turn is a turn the bot passed because it raised, was too slow, or sent something the server rejects; the table's last section quotes the first failure of each game. Fix it before reading anything else from that bot's results. A match with a failed turn is played again by the next tournament, so one that only failed because the machine was busy clears itself; one that fails twice is the bot's.
 - **Slowest turn** should stay under 200 ms. A real-time game gives a bot one second, with a network in between. It is measured when a match is played, and a cached result keeps it.
@@ -76,7 +76,7 @@ The game's rules and the SDK are in three skills copied from the game's Python b
 - `candidate`: new and unmeasured. Tournaments leave it out unless `--focus` or `--bots` names it.
 - `active`: in the population, and a possible parent.
 - `retired`: no longer changed, kept as an opponent so that old strengths still have to be beaten.
-- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
+- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. `ori_mimic` is also the rating anchor, so its code never changes: a better imitation is a new sparring bot. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
 
 ## Outside opponents
 

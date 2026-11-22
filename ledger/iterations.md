@@ -1,6 +1,6 @@
 # The league's ledger
 
-One entry per iteration, newest last. An entry says what was measured, what was tried, what was kept and what was learned, so that the next session starts from here and doesn't try a rejected idea again. Ratings have `level3` at 1000.
+One entry per iteration, newest last. An entry says what was measured, what was tried, what was kept and what was learned, so that the next session starts from here and doesn't try a rejected idea again. Ratings have `level3` at 1000 up to iteration 29, no fixed point in iterations 30 to 35 (see the setup after iteration 35), and `ori_mimic` at 1800 from then on.
 
 ## Lessons so far
 
@@ -2215,3 +2215,65 @@ Holdout maps (`iteration-35-holdout`, 4,500 matches, exit 0):
 - **The training scale has lost its anchor** since iteration 30: `level3` and `level2` win no training game, so their ratings are the fit's prior. Within a table ratings compare; across iterations they don't. The holdout scale still has 2 wins for `level3`.
 - **`tests/test_tools.py` depends on `safe_hold`**, a bot the population rules would have deleted in iteration 34.
 - **Time:** the ten iterations took 2 hours 14 minutes, from 19:36 to 21:50, the first of them 25 minutes (an empty cache). Every later iteration was 8 to 16 minutes, nearly all of it playing the gate and the holdout selection at about 4 to 7 matches a second on 4 CPUs.
+
+## Setup after iteration 35: the ratings anchored on `ori_mimic`
+
+**Date:** 2026-11-22. A change of the league's setup, made between iterations and measured with a full tournament on both sets of maps. No bot changed.
+
+**Why.** From iteration 30 the population rules had deleted every bot `level3` ever beat (`frontline`, `frontline_finish` and `finish_safe` in iteration 30, then `finish_speed` and `hold_exactstrike`). In the training tables `level2` and `level3` won no game, so the fit put both at its prior (the one drawn game every player gets against an average player), both printed 1000, and with `level3` fixed at 1000 every rating rose about 370 points. Ratings still compared within a table, but not across iterations, and the champion's rating stopped measuring the league's progress.
+
+**What changed:**
+
+- **The anchor is `ori_mimic` at 1800** (`league_tools/ratings.py`, `RATING_ANCHORS`). It is a sparring bot: never changed, never deleted, and it scores about half its games against the whole field (0.488 on training, 0.463 on holdout), so its games, not the prior, place it. 1800 is about its rating in the training tables of iterations 24 to 29 (1764 to 1829), the last ones in which `level3` still won games, so the training scale goes on from those. On holdout it stood at 1943 to 2101 then, so holdout ratings read about 200 to 300 lower than in those iterations. A tournament without `ori_mimic` has `level3` at 1000; one without either has its mean at 1000. The shift moves every rating in a table by the same amount, so no comparison inside a table changes, and no earlier selection would have gone otherwise.
+- **`ori_mimic` is never to change**, since its code holds the scale: a better imitation of the hosted bot is a new sparring bot. When its score in the whole population's tables falls toward 0.1 the anchor needs moving again, as a change of the setup (README, Ratings).
+- **The replay test plays a bot of its own.** `tests/test_tools.py::test_a_bot_replayed_on_boards_it_made_agrees_fully` replayed `safe_hold` by name, so deleting `safe_hold` under the six-retired rule failed `scripts/check.sh` (iteration 34). It now replays a fixture bot defined in the test, and fails if that bot's send differs by one soldier. `safe_hold` stays retired for now, a seventh retired bot. The next iteration's rules may delete it like any other.
+
+**Measured.** The same population as iteration 35, every match played again (empty cache). Every pair, map and side gave the result iteration 35 recorded: the W/D/L columns are equal row for row. Only the scale moved: training ratings are 406 lower than in iteration 35's table (`harrier_feedkeep` 2470 → 2064), holdout 75 lower (2176 → 2102). On holdout several bots had single turns over 200 ms (`exact_sameturn` 465, `stallfeed_growtrickle` 330, `ori_hold_exact` 329, `ori_hold` 327, `harrier_front` 221, `safe_hold` 208) with no failed turn and the same results. That is the run on a busy 4-CPU container, not changed code (no bot changed), but the next iteration's gate should watch it.
+
+Training maps (`setup-36-train`, 5,700 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2064 | 0.781 | 443 | 123 | 80 |
+| harrier_front | 2031 | 0.748 | 398 | 171 | 77 |
+| harrier_attackers | 2030 | 0.747 | 400 | 165 | 81 |
+| growtrickle_feedkeep | 1969 | 0.682 | 358 | 165 | 123 |
+| stallfeed_growtrickle | 1954 | 0.666 | 349 | 162 | 135 |
+| sameturn_endreserve | 1945 | 0.655 | 338 | 170 | 138 |
+| endreserve_stallfeed | 1942 | 0.652 | 333 | 176 | 137 |
+| sameturn_stallfeed (retired) | 1869 | 0.567 | 251 | 231 | 164 |
+| exact_sameturn (retired) | 1861 | 0.557 | 249 | 222 | 175 |
+| exact_stallfeed (retired) | 1820 | 0.510 | 217 | 225 | 204 |
+| ori_hold (retired) | 1819 | 0.509 | 209 | 240 | 197 |
+| ori_hold_exact (retired) | 1808 | 0.497 | 213 | 216 | 217 |
+| ori_mimic (sparring) | 1800 | 0.488 | 198 | 234 | 214 |
+| safe_hold (retired) | 1709 | 0.390 | 238 | 28 | 380 |
+| ori_like (sparring) | 1543 | 0.251 | 148 | 28 | 470 |
+| level1 | 1528 | 0.140 | 0 | 160 | 410 |
+| level2 | 594 | 0.000 | 0 | 0 | 570 |
+| level3 | 594 | 0.000 | 0 | 0 | 570 |
+
+Holdout maps (`setup-36-holdout`, 4,500 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2102 | 0.786 | 336 | 130 | 44 |
+| growtrickle_feedkeep | 2090 | 0.775 | 328 | 135 | 47 |
+| harrier_attackers | 2049 | 0.735 | 306 | 138 | 66 |
+| harrier_front | 2042 | 0.727 | 302 | 138 | 70 |
+| stallfeed_growtrickle | 2001 | 0.685 | 277 | 145 | 88 |
+| endreserve_stallfeed | 1985 | 0.668 | 260 | 161 | 89 |
+| sameturn_endreserve | 1964 | 0.644 | 248 | 161 | 101 |
+| sameturn_stallfeed (retired) | 1917 | 0.592 | 208 | 188 | 114 |
+| exact_sameturn (retired) | 1912 | 0.586 | 205 | 188 | 117 |
+| exact_stallfeed (retired) | 1838 | 0.504 | 167 | 180 | 163 |
+| ori_hold_exact (retired) | 1820 | 0.484 | 157 | 180 | 173 |
+| ori_hold (retired) | 1813 | 0.476 | 158 | 170 | 182 |
+| ori_mimic (sparring) | 1800 | 0.463 | 153 | 166 | 191 |
+| safe_hold (retired) | 1643 | 0.314 | 160 | 0 | 350 |
+| ori_like (sparring) | 1562 | 0.253 | 129 | 0 | 381 |
+| level1 | 1544 | 0.142 | 0 | 128 | 322 |
+| level3 | 925 | 0.004 | 2 | 0 | 448 |
+| level2 | 644 | 0.000 | 0 | 0 | 450 |
+
+**Champion:** `harrier_feedkeep`, 2064 on training and 2102 on holdout on the new scale. On training it is 264 above `ori_mimic`. In iteration 29's table, the last one where `level3` still won training games, the champion `endreserve_stallfeed` was 165 above it (1981 against 1816), on fewer maps. That is the progress of iterations 30 to 35 in the one measure that spans them. `level2` and `level3` (594 on training) still win nothing there. Their ratings are the prior's and mean nothing.
