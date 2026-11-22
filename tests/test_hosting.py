@@ -106,6 +106,22 @@ def test_the_home_page_lists_the_games() -> None:
     assert "<script>alert" not in page.render("<script>alert(1)</script>", overview, listed)
 
 
+def test_the_home_page_shows_a_games_study(tmp_path: Path) -> None:
+    store = games.MemoryStore()
+    _play(store, 1, START, max_generations=5)
+    listed = games.finish_over_games(store, START + timedelta(hours=1))
+    overview = games.overview(listed, START + timedelta(minutes=5))
+    game_id = int(listed[0]["game_id"])
+    (tmp_path / f"{game_id}.md").write_text("Left home thin at turn 40.\n\nNow keeps a <reserve>.\n3\n4\n")
+    (tmp_path / "notes.md").write_text("not a study")
+    studies = page.load_studies(tmp_path)
+    assert studies == {game_id: ["Left home thin at turn 40.", "Now keeps a <reserve>.", "3"]}
+    html = page.render("finish_speed", overview, listed, studies)
+    assert "What the league learned" in html and "Left home thin at turn 40." in html
+    assert "&lt;reserve&gt;" in html and "<p>4</p>" not in html
+    assert "What the league learned" not in page.render("finish_speed", overview, listed)
+
+
 def _end(color: int = 1, winner: int | None = 2, expires: datetime | None = None) -> dict[str, Any]:
     final = deepcopy(fixture_turn_data()["generation"])
     final["id"] = 200

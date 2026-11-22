@@ -22,7 +22,7 @@ An iteration takes the league from one measured state to the next: it ends with 
 
 **Commit, push, pull request.** Only what the request asks for. The automated iteration commits, pushes and opens its pull request itself, after the iteration: there, leave the working tree to it. Asked to commit, make one commit when the iteration is done, whose message names the iteration and what was promoted and rejected. Don't push or open a pull request unless asked.
 
-**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, and `ledger/iterations.md`. Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are allowed only as **When the numbers stop moving** says, and only before the iteration's first measurement.
+**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, `ledger/iterations.md`, and the study of each real game the iteration studied (`ledger/studies/<id>.md`, below). Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are allowed only as **When the numbers stop moving** says, and only before the iteration's first measurement.
 
 **When something doesn't work, stop.** A tool that crashes, a command from a skill that fails, a check that failed before you changed anything, or a result that can't be right (a bot that wins every game after a small change, a tournament with no matches): stop, and report what you ran and what it printed. Don't work around it, and don't fix the tool inside the iteration. A wrong measurement is worse than no iteration.
 
@@ -77,6 +77,12 @@ The hosted bot keeps every real game it plays (`hosting/lambda/`), and an iterat
 - **Never write a player's name** in the ledger, a bot, a commit or a report: say "the opponent", "a player's bot". The repository is public.
 - **Never copy a real game into the repository**, nor into `maps/` unless its map is a new default map, as **When the numbers stop moving** says.
 - In the ledger entry, say which real games the iteration studied (their ids) and what each showed, in words. The workflow lists their ids in `ledger/real-games.txt`; don't edit that file.
+- **Write each game's study** when the iteration is done, in `ledger/studies/<id>.md`: two or three lines of plain text, no Markdown, one sentence each. The first says the hosted bot's main mistakes in that game, with their turns; the next say what this iteration changed for them: the promoted bot and the fix it carries, or that no candidate for them passed and the mistake still stands. The hosted bot's page shows it under the game, so write it for its owner, who knows the game, and never a player's name. Example:
+
+  ```
+  Sent its home garrison out at turns 40-52 while a 30-soldier stack sat two islands away, and lost home at turn 61.
+  hold_exactstrike, now the champion, keeps a home reserve sized to the nearest enemy stack.
+  ```
 
 ## 3. Vary
 
