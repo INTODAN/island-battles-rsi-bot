@@ -13,6 +13,7 @@ from pathlib import Path
 
 from . import digest as digest_module
 from . import maps, opponents, roster, tournament
+from . import replay as replay_module
 from .paths import MAPS, RUNS
 
 
@@ -60,6 +61,12 @@ def _digest(arguments: argparse.Namespace) -> int:
         window = (int(first), int(last or first))
     demo = digest_module.load_demo(Path(arguments.demo))
     print(digest_module.digest(demo, arguments.every, window, arguments.logs, arguments.key_events), end="")
+    return 0
+
+
+def _replay(arguments: argparse.Namespace) -> int:
+    paths = [Path(demo) for demo in arguments.demo]
+    print(replay_module.run(paths, arguments.bot, arguments.team, arguments.examples), end="")
     return 0
 
 
@@ -151,6 +158,21 @@ def main(argv: list[str] | None = None) -> int:
         help="list only captures, eliminations, upgrades and bursts; a game with over 250 events is listed so anyway",
     )
     study.set_defaults(handler=_digest)
+
+    replay = commands.add_parser(
+        "replay",
+        help="count how closely a bot reproduces one team's commands in saved demos, to build and re-check a "
+        "sparring bot that imitates a real opponent",
+    )
+    replay.add_argument(
+        "demo", nargs="+", help="demos, packed with gzip or not, such as lobby games against the opponent"
+    )
+    replay.add_argument("--bot", required=True, help="the league bot to replay, by name (bots/NAME/bot.py)")
+    replay.add_argument(
+        "--team", type=int, choices=(1, 2), default=2, help="the team's colour to imitate; default 2, the opponent"
+    )
+    replay.add_argument("--examples", type=int, default=4, help="examples listed under each kind of disagreement")
+    replay.set_defaults(handler=_replay)
 
     unpack = commands.add_parser("unpack", help="unpack a demo for the demo viewer, and print its path")
     unpack.add_argument("demo")

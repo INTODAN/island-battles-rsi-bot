@@ -30,7 +30,7 @@ A headless game differs from a lobby's in what it leaves out: no turn deadline (
 
 **Speed.** On a 32-thread desktop, the 504 matches of the whole league (4 bots and the 3 default bots, 14 maps, both sides, 123 turns a game on average) take 5 seconds; a league bot's turn costs about 1 ms, the SDK's reading of the turn included. Bots are deterministic, so a match is decided by the runner's build, the map, the two bots' code, the SDK and the settings. `league tournament` keys its cache on those and on the players' names, and **doesn't play the same match twice**: after a change to one bot, only that bot's matches are played. The runner is built without the commit's stamp, so moving the pin to a commit that leaves the backend alone keeps the cache. A result with a failed turn is never kept, since a turn can time out because the machine was busy: it is played again next time. The timings in a cached result are those of the run that played it; `--no-cache` plays everything again.
 
-**Every match leaves a demo** in `runs/cache/`, the file **Save demo** writes, with both bots' log lines for every turn. `league digest` prints it as text (any demo, a real game's **Save demo** file too), and `league unpack` unpacks it for the demo viewer (`/game/demo-viewer/` of a running backend).
+**Every match leaves a demo** in `runs/cache/`, the file **Save demo** writes, with both bots' log lines for every turn. `league digest` prints it as text (any demo, a real game's **Save demo** file too), `league replay` replays a team's turns in demos through a bot and counts where the bot makes the team's commands (the tool for building a sparring bot from lobby games), and `league unpack` unpacks it for the demo viewer (`/game/demo-viewer/` of a running backend).
 
 ## The game is somewhere else
 
@@ -94,6 +94,7 @@ uv run league digest DEMO --turns 40-55     # those turns whole, with both bots'
 uv run league new NAME --parent PARENT --iteration N --idea "..."
 uv run league status NAME active            # or: candidate, retired, sparring
 uv run league new-map NAME --seed N --set train
+uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot
 uv run league unpack DEMO                   # a plain .json for the demo viewer
 scripts/check.sh                                      # format, lint, types and tests
 ```
@@ -105,4 +106,4 @@ scripts/check.sh                                      # format, lint, types and 
 - **The champion plays nowhere but here.** Shipping it means `island-battles-bot package` and an upload, a hosted bot, or a rated bot name on the leaderboard. Before that it must play real lobby games with `island-battles-bot run`, where turns have deadlines and a network.
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
-- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and `ori_like`, a sparring bot, plays like the hosted bot of the real games; the hosted bot itself is met only in lobby games, by the check before a promotion, until the game's runner can play hosted bots (INTODAN/island-battles-go#407).
+- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in); the hosted bot itself is met only in lobby games, by the check before a promotion, until the game's runner can play hosted bots (INTODAN/island-battles-go#407).

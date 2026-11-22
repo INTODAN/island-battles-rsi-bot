@@ -1,0 +1,10 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never a parent, never counted with the retired bots, never deleted.
+status = "sparring"
+# The bot this one was copied from, or empty for a founder.
+parent = ""
+# The league iteration that created it (ledger/iterations.md).
+iteration = 23
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "A sparring opponent that plays by the rules read off the hosted bot's lobby games of 2026-11-22: need(x) = x + x // 10 + 3 for every capture, speed bought to strike sooner, upgrades and sends only while no single enemy castle could take the castle, neutrals priced like attacks, feeders to the front."

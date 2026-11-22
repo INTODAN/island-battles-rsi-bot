@@ -1,6 +1,6 @@
 ---
 name: bot-league
-description: "The bot league, which is this repository: Python bots that only AI agents write and improve, the league command (tournament, digest, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
+description: "The bot league, which is this repository: Python bots that only AI agents write and improve, the league command (tournament, digest, replay, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
 ---
 
 # The bot league
@@ -29,6 +29,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league new NAME --parent P --iteration N --idea "..."` | Copy bot P to a new candidate. |
 | `uv run league status NAME active` | Change a bot's status: `candidate`, `active` or `retired`. |
 | `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. |
+| `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to `bots/NAME/bot.py` and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
 | `scripts/check.sh` | Format, lint, types and tests of the tools and every bot. Run it before a tournament counts. |
 
@@ -74,7 +75,7 @@ The game's rules and the SDK are in three skills copied from the game's Python b
 - `candidate`: new and unmeasured. Tournaments leave it out unless `--focus` or `--bots` names it.
 - `active`: in the population, and a possible parent.
 - `retired`: no longer changed, kept as an opponent so that old strengths still have to be beaten.
-- `sparring`: a fixed opponent built to play like a real one (`ori_like` plays like the hosted bot of the real games). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
+- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
 
 ## Outside opponents
 

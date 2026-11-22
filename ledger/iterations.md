@@ -1358,3 +1358,59 @@ All six passed the gate: no failed turn, slowest turns 14 to 80 ms with the six 
 
 **Status changes:** none. **Champion:** `safe_hold`, unchanged.
 
+## Setup after iteration 23: a sparring bot built from the hosted bot's commands
+
+**Date:** 2026-11-22. A change of the league's setup, made between iterations and measured with a full tournament on both sets of maps.
+
+**Why.** `ori_like` matched the hosted bot's habits but not its results: as Red against the champion it won 9 of the 17 training maps where the hosted bot won 12 (2026-11-21). A study of every command the hosted bot gave in its saved lobby games (18 games of 2026-11-21, 2,122 turns, and 17 of 2026-11-22, 1,437 turns; each command read off consecutive frames, and checked against the bot's own count of its commands on all but one turn) found rules that fit closely: every capture is sized need(x) = x + x // 10 + 3, x being what the castle will hold when the groups land, plus half of what the enemy's other castles could bring first (exact on 69 of 77 neutral waves and 102 of 115 attacks in the first games); upgrades in the order production 2, 3, 4, speed 2, each the first turn the castle has the soldiers, unless an enemy group is bound for it or one enemy castle could then take it; fully upgraded rear castles send everything to the castle nearest the enemy at 10 or more (477 of 935 moves between its castles were exactly 12). The version of 2026-11-22 also buys speed to strike sooner (speed and a strike from the same castle in one turn 11 times, against once before) and prices neutrals like attacks.
+
+**What changed:**
+
+- **`ori_mimic`**, a sparring bot written from those rules (a founder, not a copy of anyone's code). Given every turn the hosted bot played on 2026-11-22, it makes the hosted bot's exact commands on 75% of them (1,077 of 1,437; the first draft, from the older games only, 49%). In the league it is the strongest player on both sets of maps, and as Red against the champion it wins 10 of the 17 training maps, where the hosted bot won all 17 that day: closer, still weaker.
+- **`league replay`** (`league_tools/replay.py`): replays one team's turns in saved demos through a league bot and counts how often its commands match, by kind (upgrades, neutrals, attacks, defence, feeds). It is how a sparring bot is built and checked again when the opponent changes.
+
+Training maps (`setup-24-train`, 5,100 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_mimic (sparring) | 1790 | 0.812 | 439 | 61 | 78 |
+| safe_hold | 1771 | 0.796 | 443 | 34 | 101 |
+| finish_safe | 1703 | 0.734 | 407 | 34 | 137 |
+| finish_speed | 1685 | 0.716 | 391 | 46 | 141 |
+| hold_finish | 1667 | 0.699 | 375 | 58 | 145 |
+| frontline_hold (retired) | 1651 | 0.683 | 366 | 58 | 154 |
+| ori_like (sparring) | 1650 | 0.682 | 379 | 30 | 169 |
+| frontline | 1642 | 0.674 | 359 | 61 | 158 |
+| frontline_finish | 1635 | 0.667 | 355 | 61 | 162 |
+| speed_margin (retired) | 1442 | 0.472 | 246 | 54 | 278 |
+| outside_player | 1398 | 0.431 | 244 | 10 | 324 |
+| contested_speed (retired) | 1394 | 0.427 | 221 | 52 | 305 |
+| contested_stage (retired) | 1310 | 0.353 | 191 | 26 | 361 |
+| reinforce_timeline (retired) | 1263 | 0.316 | 161 | 43 | 374 |
+| reinforce_contested (retired) | 1214 | 0.279 | 140 | 43 | 395 |
+| level3 | 1000 | 0.065 | 33 | 0 | 477 |
+| level1 | 762 | 0.018 | 0 | 18 | 492 |
+| level2 | 680 | 0.011 | 5 | 1 | 504 |
+
+Holdout maps (`setup-24-holdout`, 3,900 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_mimic (sparring) | 1956 | 0.873 | 374 | 24 | 44 |
+| safe_hold | 1901 | 0.835 | 368 | 2 | 72 |
+| finish_safe | 1801 | 0.753 | 332 | 2 | 108 |
+| finish_speed | 1756 | 0.713 | 311 | 8 | 123 |
+| frontline_finish | 1732 | 0.690 | 295 | 20 | 127 |
+| hold_finish | 1728 | 0.686 | 292 | 22 | 128 |
+| frontline_hold (retired) | 1713 | 0.672 | 286 | 22 | 134 |
+| frontline | 1695 | 0.654 | 279 | 20 | 143 |
+| ori_like (sparring) | 1651 | 0.611 | 270 | 0 | 172 |
+| speed_margin (retired) | 1519 | 0.484 | 213 | 2 | 227 |
+| outside_player | 1489 | 0.457 | 202 | 0 | 240 |
+| contested_speed (retired) | 1425 | 0.400 | 171 | 12 | 259 |
+| contested_stage (retired) | 1361 | 0.348 | 154 | 0 | 288 |
+| reinforce_timeline (retired) | 1337 | 0.330 | 143 | 6 | 293 |
+| reinforce_contested (retired) | 1232 | 0.258 | 110 | 8 | 324 |
+| level3 | 1000 | 0.049 | 19 | 0 | 371 |
+| level1 | 794 | 0.015 | 0 | 12 | 378 |
+| level2 | 534 | 0.003 | 1 | 0 | 389 |
