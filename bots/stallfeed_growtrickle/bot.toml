@@ -1,10 +1,10 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent. sparring: a fixed opponent built to play like a
 # real one; never a parent, never counted with the retired bots, never deleted.
-status = "retired"
+status = "active"
 # The bot this one was copied from, or empty for a founder.
-parent = "frontline"
+parent = "endreserve_stallfeed"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 8
+iteration = 30
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "Near the turn limit a strike counts the target exactly, its soldiers, growth, burst and reinforcements, instead of with the margin, so a level game is finished instead of drawn."
+idea = "An enemy group bound for a castle makes it attacked only when it holds more soldiers than the castle grows before it lands: a trickle the castle outgrows bars nothing, a real strike still freezes the castle's stock."

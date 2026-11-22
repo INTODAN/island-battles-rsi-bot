@@ -51,6 +51,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **A reserve against a castle that can't arrive in time is a hoard.** Bots that keep a reserve against the strongest enemy castle end level games with thousands of soldiers each and draw. Counting only enemy castles whose group could land before the last generation beat the parent 22 of 34 and rose 57 points on training and 52 on holdout (iteration 28's `sameturn_endreserve`).
 - **Freeing an attacked castle entirely is worse than freezing it.** Treating a castle as attacked only when its landings would take it won every game against `level1`'s trickle but lost to the parent 13 of 34 (iteration 28's `sameturn_fallonly`): a castle that spends down to what its landings leave is taken by the next group. Two forms of the idea have now failed; the trickle is worth 9 points a tournament.
 - **The `ori_` line's upgrade order holds against changes to it.** Letting castles that save for an upgrade help pay for neutrals, or making production 4 wait while a near neutral remains, both lost rating to their parent (iteration 29's `endreserve_helpall` and `endreserve_prod4late`), as reordering production did on the `hold_` line in iteration 23. Production first, the hosted bot's order, keeps winning the league.
+- **The trickle is answered by asking whether the castle outgrows it.** An enemy group that holds no more soldiers than the castle produces before it lands is no attack; counting only the others, so that a real strike still freezes the castle's stock, won every game against `level1` and passed every rule (iteration 30's `stallfeed_growtrickle`, 17.5 of 34 against its parent, 15 points up on holdout). The two earlier forms changed what an attacked castle may spend, and lost.
+- **Pricing help like an attack, or holding strike captures, doesn't pay in the league.** Adding to help half of what the enemy could still bring, and topping up enemy castles our strike will take, each lost to the parent 16 of 34 (iteration 30): the extra soldiers are taken from the strikes and staging that decide the race.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1875,3 +1877,75 @@ Holdout maps (`iteration-29-holdout`, 4,368 matches, exit 0):
 **Where it still loses:** `level1`'s 18 draws; `circle`; `gyre` and `claw` to staged strikes.
 
 **Time:** 10 minutes (iteration 28: 11). The gate, 2,244 matches in 6.7 minutes, is the slowest step; the holdout selection took 2 minutes (546 matches); the rest came from the cache in seconds.
+
+## Iteration 30: a trickle the castle outgrows is no attack
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 7,752 in the training selection round robin, 4,862 in the holdout selection. Three candidates from the champion, written one after the other. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`endreserve_stallfeed`'s games on the training maps):
+
+1. **Exact help is overrun by the waves that follow it.** `claw` against `hold_exactstrike` (lost in 68 turns), turns 47 to 51: castle 6 (18 soldiers, production 4) was helped with 8 against groups of 33 and 8 (the log: `help>6 (same turn) 1:8`); the attacker's castles 3 and 4 then sent 4, 4, 16 and 4 more on the next turns, while castle 7 fed the front castle 2 (`feed>2 7:10`) and castle 2 held 38 soldiers 3.6 units away; castle 6 fell on turn 51 with 1 soldier. **Idea (a):** help is priced like an attack: what the castle lacks plus half of what enemy castles that could land by the fall could send.
+2. **A strike's capture is not held.** The same game: the line took the enemy's castle 0 on turn 53 with 4 soldiers and lost it on turn 57 to groups already walking there; `hold()` tops up only neutrals. **Idea (b):** `hold()` also covers enemy castles our groups will take.
+3. **The trickle freeze, a third form.** 18 draws against `level1` again. Iteration 26 capped every attacked castle's spending (half against its parent), iteration 28 lifted every rule from a castle its landings wouldn't take (13 of 34: the castles spent their stock under a real strike). **Idea (c):** an enemy group counts only when it holds more soldiers than the castle produces before it lands, so a real strike still freezes the whole stock.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `stallfeed_growtrickle` | endreserve_stallfeed | (c) An enemy group makes a castle attacked only when it holds more than the castle produces before it lands. | 2002 (1993) | 17.5/34 | 2236 (2221), 13/26 | **promoted** (the champion) |
+| `stallfeed_defmargin` | endreserve_stallfeed | (a) Help adds half of what enemy castles that could land by the fall could send. | 1980 (1993) | 16/34 | not played | **rejected**: below its parent in both rules. |
+| `stallfeed_holdstrike` | endreserve_stallfeed | (b) `hold()` covers enemy castles our groups will take. | 1989 (1993) | 16/34 | not played | **rejected**: below its parent in both rules. |
+
+All three passed the gate in one `--focus` run (2,040 matches, 6.7 minutes): no failed turn, slowest turns 28 to 67 ms. `stallfeed_growtrickle` won all 34 training games and all 26 holdout games against `level1` (its parent 25 and 20) and lost a point to each of four other players on training; on holdout its row equals its parent's except against `level1`.
+
+**Status changes:** `stallfeed_growtrickle` active, the champion. `endreserve_stallfeed` stays active (it scores more against `exact_sameturn`, `finish_safe`, `sameturn_endreserve` and `sameturn_stallfeed`). With nine active bots, the three lowest rated that another active bot matches or beats everywhere on training are retired: `frontline` (by `hold_exactstrike` and the champion), `finish_speed` and `ori_hold` (by the champion and others); six stay active. With nine retired, the three lowest rated are deleted: `finish_safe` (1652), `frontline_finish` (1671) and `frontline` (1674).
+
+**The rating scale lost its anchor.** The deleted bots were the last players `level3` ever beat: in the final tables `level2` and `level3` win nothing, and the fit (one virtual draw each against a fixed average player) then puts both at that prior, so `level3` = 1000 no longer measures anything and every rating jumps by about 370 points. Ratings within one table still compare; ratings from here on can't be put next to earlier iterations'. Keeping a weak player that `level3` beats, or anchoring differently, is a change of the league's setup for a person to decide; it is not made here.
+
+Training maps (`iteration-30-train`, 4,522 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| stallfeed_growtrickle | 2366 | 0.748 | 350 | 114 | 80 |
+| endreserve_stallfeed | 2354 | 0.735 | 335 | 130 | 79 |
+| sameturn_endreserve | 2345 | 0.725 | 329 | 131 | 84 |
+| sameturn_stallfeed (retired) | 2278 | 0.648 | 261 | 183 | 100 |
+| exact_sameturn (retired) | 2272 | 0.642 | 259 | 180 | 105 |
+| exact_stallfeed | 2246 | 0.609 | 235 | 193 | 116 |
+| ori_hold_exact | 2230 | 0.590 | 225 | 192 | 127 |
+| ori_hold (retired) | 2220 | 0.578 | 213 | 203 | 128 |
+| ori_finish (retired) | 2213 | 0.569 | 210 | 199 | 135 |
+| ori_mimic (sparring) | 2198 | 0.551 | 200 | 199 | 145 |
+| hold_exactstrike | 2183 | 0.533 | 274 | 32 | 238 |
+| safe_hold (retired) | 2125 | 0.463 | 236 | 32 | 276 |
+| finish_speed (retired) | 2117 | 0.454 | 232 | 30 | 282 |
+| ori_like (sparring) | 1985 | 0.318 | 160 | 26 | 358 |
+| level1 | 1931 | 0.170 | 0 | 162 | 314 |
+| level2 | 1000 | 0.000 | 0 | 0 | 476 |
+| level3 | 1000 | 0.000 | 0 | 0 | 476 |
+
+Holdout maps (`iteration-30-holdout`, 3,458 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| stallfeed_growtrickle | 2199 | 0.803 | 291 | 86 | 39 |
+| endreserve_stallfeed | 2183 | 0.788 | 279 | 98 | 39 |
+| sameturn_endreserve | 2167 | 0.774 | 273 | 98 | 45 |
+| sameturn_stallfeed (retired) | 2126 | 0.736 | 236 | 140 | 40 |
+| exact_sameturn (retired) | 2111 | 0.721 | 230 | 140 | 46 |
+| exact_stallfeed | 2035 | 0.644 | 193 | 150 | 73 |
+| ori_hold_exact | 2017 | 0.625 | 185 | 150 | 81 |
+| ori_finish (retired) | 2017 | 0.625 | 185 | 150 | 81 |
+| ori_hold (retired) | 1968 | 0.575 | 172 | 134 | 110 |
+| ori_mimic (sparring) | 1943 | 0.548 | 161 | 134 | 121 |
+| hold_exactstrike | 1795 | 0.404 | 164 | 8 | 244 |
+| safe_hold (retired) | 1757 | 0.370 | 150 | 8 | 258 |
+| finish_speed (retired) | 1692 | 0.317 | 132 | 0 | 284 |
+| level1 | 1601 | 0.148 | 0 | 108 | 256 |
+| ori_like (sparring) | 1593 | 0.248 | 103 | 0 | 313 |
+| level3 | 1000 | 0.005 | 2 | 0 | 362 |
+| level2 | 718 | 0.000 | 0 | 0 | 364 |
+
+**Champion:** `stallfeed_growtrickle`, 2366 on training and 2199 on holdout on the unanchored scale; in the selection (anchored as before) it was 2002 against its parent's 1993.
+
+**Where it still loses:** `circle`; staged strikes on `gyre` and `claw` from `hold_exactstrike` and `safe_hold`; draws in the `ori_` line's mirror games.
+
+**Time:** 11 minutes (iteration 29: 10). The gate, 2,040 matches in 6.7 minutes, is the slowest step; holdout selection 2 minutes; the rest from the cache.
