@@ -17,7 +17,7 @@ uv pip install --quiet --target "$out/package" \
   -r "$out/requirements.txt"
 cp bots/__init__.py "$out/package/bots/"
 cp "bots/$bot/"*.py "$out/package/bots/$bot/"
-cp hosting/lambda/handler.py hosting/lambda/games.py hosting/lambda/page.py hosting/lambda/bot "$out/package/"
+cp hosting/lambda/handler.py hosting/lambda/games.py hosting/lambda/owner.py hosting/lambda/page.py hosting/lambda/bot "$out/package/"
 # The league's digest, which games.py puts in each game's zip.
 cp league_tools/digest.py "$out/package/digest.py"
 # The league's maps, which name the map of a real game.

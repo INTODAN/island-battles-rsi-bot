@@ -55,6 +55,8 @@ h2 { font-size: 30px; margin: 4px 0 8px; }
 .empty { color: var(--muted); padding: 16px 0 4px; }
 footer { color: var(--muted); font-size: 14px; margin-top: 32px; }
 footer a { color: var(--text); }
+.sign-in { max-width: 460px; margin-top: 24px; }
+.google-button { min-height: 44px; margin: 8px 0; }
 """
 
 _SCRIPT = """
@@ -63,19 +65,65 @@ const when = new Intl.DateTimeFormat('en-GB', {day: 'numeric', month: 'short', y
 for (const node of document.querySelectorAll('time[datetime]')) {
   node.textContent = when.format(new Date(node.getAttribute('datetime')));
 }
-document.addEventListener('click', (event) => {
-  const link = event.target.closest('a.zip[data-key]');
-  if (!link) return;
-  let key = null;
-  try { key = localStorage.getItem('games-key'); } catch (error) {}
-  if (!key) {
-    key = prompt("The owner's key, to download a game:");
-    if (!key) { event.preventDefault(); return; }
-    try { localStorage.setItem('games-key', key); } catch (error) {}
-  }
-  link.href = link.dataset.href + '?key=' + encodeURIComponent(key);
+document.getElementById('sign-out').addEventListener('click', async (event) => {
+  event.preventDefault();
+  // As the game's Sign out: no silent sign-in until the button is used again.
+  try { localStorage.setItem('owner-signed-out', '1'); } catch (error) {}
+  await fetch('/sign-out', {method: 'POST'});
+  location.reload();
 });
 """
+
+# Sign in with Google as the game's web client does (its googleSignIn.ts): Google's own button,
+# with the same options, and a silent sign-in (auto_select) unless the owner signed out.
+_SIGN_IN_SCRIPT = """
+const clientId = document.body.dataset.clientId;
+const message = document.getElementById('message');
+const button = document.getElementById('google-button');
+let signedOut = false;
+try { signedOut = localStorage.getItem('owner-signed-out') === '1'; } catch (error) {}
+
+async function signIn(response) {
+  if (!response.credential) return;
+  message.textContent = 'Signing you in…';
+  const answer = await fetch('/sign-in', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({credential: response.credential})});
+  if (answer.ok) {
+    try { localStorage.removeItem('owner-signed-out'); } catch (error) {}
+    location.reload();
+    return;
+  }
+  let detail = 'Sign-in failed.';
+  try { detail = (await answer.json()).detail || detail; } catch (error) {}
+  message.textContent = detail.charAt(0).toUpperCase() + detail.slice(1) + '.';
+  google.accounts.id.disableAutoSelect();
+}
+
+window.onGoogleLibraryLoad = () => {
+  const id = google.accounts.id;
+  id.initialize({client_id: clientId, callback: signIn, auto_select: true, cancel_on_tap_outside: false,
+    context: 'signin', itp_support: true, use_fedcm_for_prompt: true});
+  id.renderButton(button, {type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
+    shape: 'rectangular', logo_alignment: 'center',
+    width: Math.round(Math.min(400, Math.max(200, button.clientWidth || 380)))});
+  if (signedOut) id.disableAutoSelect();
+  else id.prompt();
+};
+"""
+
+
+def _head(bot: str) -> str:
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{escape(bot)} · Island Battles bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;600&display=swap">
+<style>{_STYLE}</style>
+</head>"""
 
 
 def _time(text: str | None) -> str:
@@ -105,16 +153,9 @@ _DEMO_NOTES = {
 }
 
 
-def _game(game: dict[str, Any], key_required: bool) -> str:
+def _game(game: dict[str, Any]) -> str:
     game_id = int(game["game_id"])
-    if game.get("zip"):
-        href = f"/games/{game_id}.zip"
-        if key_required:
-            action = f'<a class="zip" href="{href}" data-href="{href}" data-key>Zip</a>'
-        else:
-            action = f'<a class="zip" href="{href}">Zip</a>'
-    else:
-        action = ""
+    action = f'<a class="zip" href="/games/{game_id}.zip">Zip</a>' if game.get("zip") else ""
     passed = f" ({game['passed']} passed)" if game.get("passed") else ""
     fields = [
         _field("Result", _result(game)),
@@ -136,7 +177,7 @@ def _game(game: dict[str, Any], key_required: bool) -> str:
     )
 
 
-def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]], key_required: bool) -> str:
+def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]]) -> str:
     """The home page as HTML."""
     latest = summary["latest"]
     record = summary["record"]
@@ -169,19 +210,9 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]], key_r
         f'<div class="sub">{sub}</div></div>'
         for label, big, sub in cards
     )
-    listed = "".join(_game(game, key_required) for game in games) or '<p class="empty">No games yet.</p>'
+    listed = "".join(_game(game) for game in games) or '<p class="empty">No games yet.</p>'
     live = " live" if summary["live"] else ""
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{escape(bot)} · Island Battles bot</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;600&display=swap">
-<style>{_STYLE}</style>
-</head>
+    return f"""{_head(bot)}
 <body>
 <main>
 <p class="eyebrow">Island Battles bot</p>
@@ -195,10 +226,40 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]], key_r
 holds that demo (<code>demo.json</code>, which <code>league digest</code> and the demo viewer open), its digest,
 and the bot's own record of every turn: its commands, memory, timing and the server's answers. A result marked ≈
 is estimated from the last board the bot saw, for a game that never sent its end.</p>
-<p><a href="{REPOSITORY}">The league's repository</a> · <a href="/api/games">JSON</a></p>
+<p><a href="{REPOSITORY}">The league's repository</a> · <a href="/api/games">JSON</a> ·
+<a href="/" id="sign-out">Sign out</a></p>
 </footer>
 </main>
 <script>{_SCRIPT}</script>
+</body>
+</html>
+"""
+
+
+def render_sign_in(bot: str, client_id: str) -> str:
+    """The page that a visitor who isn't the signed-in owner sees: Google's button, or why there is none."""
+    if client_id:
+        body = (
+            '<div id="google-button" class="google-button"></div>'
+            '<p id="message" class="sub" role="status"></p>'
+            # The callback first, so it is there whenever Google's script loads.
+            f"<script>{_SIGN_IN_SCRIPT}</script>"
+            '<script src="https://accounts.google.com/gsi/client" async></script>'
+        )
+    else:
+        body = '<p class="sub">Sign-in isn\'t set up, so the page stays closed.</p>'
+    return f"""{_head(bot)}
+<body data-client-id="{escape(client_id, quote=True)}">
+<main>
+<p class="eyebrow">Island Battles bot</p>
+<h1>{escape(bot)}</h1>
+<section class="card sign-in">
+<h2>Sign in</h2>
+<p class="intro">This page and the bot's games are its owner's alone. Sign in with the owner's Google account.</p>
+{body}
+</section>
+<footer><p><a href="{REPOSITORY}">The league's repository</a></p></footer>
+</main>
 </body>
 </html>
 """

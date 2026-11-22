@@ -16,8 +16,12 @@ With ``GAMES_BUCKET`` set, it also keeps every turn it plays in that bucket.
 When a game ends, the game POSTs its end to ``/game-ended``, the bot's URL with
 its last segment replaced: the bot downloads the game's demo from the link in
 it and packs the game into a zip (``games.py``). ``GET /`` is the bot's home
-page, which lists the games; ``GET /games/<id>.zip`` downloads one, with
-``?key=`` the value of ``GAMES_KEY`` when that is set.
+page, which lists the games; ``GET /games/<id>.zip`` downloads one.
+
+The home page, ``/api/games`` and the zips are the owner's alone (``owner.py``):
+they need the session that signing in with the owner's Google account gives
+(``POST /sign-in``), or, for a zip, ``?key=`` the value of ``GAMES_KEY``. A turn,
+a game's end and ``/health`` need nothing, since the game and the deploy call them.
 """
 
 from __future__ import annotations
@@ -35,6 +39,7 @@ from typing import Any
 
 import games
 import httpx
+import owner
 import page
 from island_battles_client._generated import BotTurnResult, TurnDelivery
 from island_battles_client.cli import MAX_BODY_BYTES, BotServer, load_play, submit_refusal
@@ -46,8 +51,13 @@ BOT = os.environ.get("BOT") or f"bots.{Path(__file__).with_name('bot').read_text
 TURN_TIMEOUT_SECONDS = float(os.environ.get("TURN_TIMEOUT_SECONDS", "8"))
 # The bucket that keeps the real games; without it nothing is kept.
 GAMES_BUCKET = os.environ.get("GAMES_BUCKET", "")
-# The key that downloads a game's zip; without it anyone may.
+# A key that downloads a game's zip without signing in, for scripts; without it only the owner may.
 GAMES_KEY = os.environ.get("GAMES_KEY", "")
+# Who may open the home page: the Google client ID its button signs in with, the owner's
+# address (or several, comma-separated) and the secret that signs their session.
+OWNER = owner.Owner.from_settings(
+    os.environ.get("GOOGLE_CLIENT_ID", ""), os.environ.get("OWNER_EMAIL", ""), os.environ.get("SESSION_SECRET", "")
+)
 # The map files that name a game's map: packaged next to this file, or the repository's.
 _HERE = Path(__file__).parent
 MAPS = games.KnownMaps.load(*[path for path in (_HERE / "maps", _HERE.parent.parent / "maps") if path.is_dir()])
@@ -162,8 +172,55 @@ def _answer(status: int, body: object) -> dict[str, Any]:
     """A function URL response with a JSON body."""
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json", "Cache-Control": "no-store"},
         "body": json.dumps(body),
+    }
+
+
+def tokeninfo(credential: str) -> dict[str, Any]:
+    """Google's claims of an ID token, once Google says it is genuine."""
+    with httpx.Client(timeout=5.0) as client:
+        response = client.get(owner.TOKENINFO_URL, params={"id_token": credential})
+    if response.status_code != 200:
+        raise owner.Refused("Google didn't accept the credential")
+    return response.json()
+
+
+def _is_owner(event: dict[str, Any]) -> bool:
+    return OWNER.signed_in(owner.cookie_value(event), time.time())
+
+
+def _sign_in(event: dict[str, Any]) -> dict[str, Any]:
+    """Sign the owner in with the ID token that Google's button gave the page."""
+    data = _body(event)
+    try:
+        credential = json.loads(data).get("credential", "") if len(data) <= 8192 else ""
+    except ValueError, AttributeError:
+        credential = ""
+    try:
+        session = OWNER.sign_in(str(credential), tokeninfo, time.time())
+    except owner.Refused as refusal:
+        return _answer(403, {"detail": str(refusal)})
+    except httpx.HTTPError, ValueError:
+        return _answer(502, {"detail": "Google couldn't be asked about the credential; try again"})
+    answer = _answer(200, {"signed_in": True})
+    answer["cookies"] = [owner.set_cookie(session, owner.SESSION_SECONDS)]
+    return answer
+
+
+def _sign_out() -> dict[str, Any]:
+    answer = _answer(200, {"signed_in": False})
+    answer["cookies"] = [owner.set_cookie("", 0)]
+    return answer
+
+
+def _closed() -> dict[str, Any]:
+    """The sign-in page, for whoever isn't the signed-in owner."""
+    client_id = OWNER.client_id if OWNER.ready else ""
+    return {
+        "statusCode": 401,
+        "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
+        "body": page.render_sign_in(_bot.name, client_id),
     }
 
 
@@ -179,14 +236,14 @@ def _home(store: games.Store | None) -> dict[str, Any]:
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render(_bot.name, summary, listed, bool(GAMES_KEY)),
+        "body": page.render(_bot.name, summary, listed),
     }
 
 
-def _zip(store: games.Store, game_id: int, key: str) -> dict[str, Any]:
+def _zip(store: games.Store, game_id: int, allowed: bool) -> dict[str, Any]:
     """Redirect to a short-lived download of a finished game's zip."""
-    if GAMES_KEY and not hmac.compare_digest(key.encode(), GAMES_KEY.encode()):
-        return _answer(403, {"detail": "a game's zip needs the owner's key: ?key=..."})
+    if not allowed:
+        return _answer(403, {"detail": "a game's zip is the owner's: sign in on the home page, or ?key=..."})
     if store.get(games.game_key(game_id)) is None:
         return _answer(404, {"detail": f"no game {game_id}"})
     games.finish_over_games(store, datetime.now(UTC), download_demo, MAPS)
@@ -231,17 +288,24 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     path = event.get("rawPath", "/")
     if method == "GET" and path == "/health":
         return _answer(200, {"name": _bot.bot.spec, "ok": True, "games": _store is not None})
+    if method == "POST" and path == "/sign-in":
+        return _sign_in(event)
+    if method == "POST" and path == "/sign-out":
+        return _sign_out()
     if method == "GET" and path == "/":
-        return _home(_store)
+        return _home(_store) if _is_owner(event) else _closed()
     if method == "GET" and path == "/api/games":
+        if not _is_owner(event):
+            return _answer(401, {"detail": "the games are the owner's: sign in on the home page"})
         listed = _games(_store) if _store else []
         return _answer(200, {"overview": games.overview(listed, datetime.now(UTC)), "games": listed})
     zip_path = _ZIP_PATH.match(path)
     if method == "GET" and zip_path:
         if _store is None:
             return _answer(404, {"detail": "this bot keeps no games"})
-        query = event.get("queryStringParameters") or {}
-        return _zip(_store, int(zip_path.group(1)), query.get("key", ""))
+        key = (event.get("queryStringParameters") or {}).get("key", "")
+        by_key = bool(GAMES_KEY) and hmac.compare_digest(key.encode(), GAMES_KEY.encode())
+        return _zip(_store, int(zip_path.group(1)), by_key or _is_owner(event))
     if method == "POST" and path == "/game-ended":
         return _game_ended(event)
     if method != "POST" or path not in ("/", "/turn"):

@@ -2,6 +2,7 @@ import gzip
 import io
 import json
 import sys
+import time
 import zipfile
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "hosting" / "lambda"))
 
 import games  # noqa: E402
+import owner  # noqa: E402
 import page  # noqa: E402
 
 START = datetime(2026, 11, 21, 20, 0, tzinfo=UTC)
@@ -99,9 +101,9 @@ def test_the_home_page_lists_the_games() -> None:
     listed = games.finish_over_games(store, START + timedelta(hours=1))
     overview = games.overview(listed, START + timedelta(minutes=5))
     assert overview["record"] == {"won": 1, "lost": 0, "draw": 0}
-    html = page.render("finish_speed", overview, listed, key_required=True)
+    html = page.render("finish_speed", overview, listed)
     assert "Game 7" in html and "/games/7.zip" in html and "1–0–0" in html
-    assert "<script>alert" not in page.render("<script>alert(1)</script>", overview, listed, key_required=False)
+    assert "<script>alert" not in page.render("<script>alert(1)</script>", overview, listed)
 
 
 def _end(color: int = 1, winner: int | None = 2, expires: datetime | None = None) -> dict[str, Any]:
@@ -257,3 +259,79 @@ def test_the_games_are_listed_without_reading_their_turns() -> None:
     store.keys = lambda prefix: listed.append(prefix) or keys(prefix)  # type: ignore[method-assign]
     assert [game["game_id"] for game in games.all_games(store)] == [7]
     assert listed == []
+
+
+OWNER = owner.Owner.from_settings("client.apps.googleusercontent.com", "Owner@example.com", "s" * 32)
+NOW = 1_800_000_000.0
+
+
+def _claims(**changes: str) -> dict[str, Any]:
+    claims = {
+        "aud": OWNER.client_id,
+        "iss": "https://accounts.google.com",
+        "exp": str(int(NOW) + 600),
+        "email": "owner@example.com",
+        "email_verified": "true",
+    }
+    return {**claims, **changes}
+
+
+def test_only_the_owners_google_account_signs_in() -> None:
+    session = OWNER.sign_in("token", lambda credential: _claims(), NOW)
+    assert OWNER.signed_in(session, NOW) and not OWNER.signed_in(session, NOW + owner.SESSION_SECONDS + 1)
+    refused = [
+        _claims(email="someone@example.com"),
+        _claims(aud="another.apps.googleusercontent.com"),
+        _claims(iss="https://evil.example.com"),
+        _claims(exp=str(int(NOW) - 1)),
+        _claims(email_verified="false"),
+    ]
+    for claims in refused:
+        with pytest.raises(owner.Refused):
+            OWNER.sign_in("token", lambda credential, claims=claims: claims, NOW)
+    expires = session.split(".")[0]
+    assert not OWNER.signed_in(f"{int(expires) + 100}.{session.split('.')[1]}", NOW)
+    assert not owner.Owner.from_settings(OWNER.client_id, "owner@example.com", "t" * 32).signed_in(session, NOW)
+    closed = owner.Owner.from_settings("", "owner@example.com", "s" * 32)
+    with pytest.raises(owner.Refused):
+        closed.sign_in("token", lambda credential: _claims(), NOW)
+
+
+def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pytest.MonkeyPatch) -> None:
+    import handler  # noqa: PLC0415 - loads the bot
+
+    store = games.MemoryStore()
+    for number in range(1, 6):
+        _play(store, number, START, max_generations=5)
+    monkeypatch.setattr(handler, "_store", store)
+    monkeypatch.setattr(handler, "OWNER", OWNER)
+    monkeypatch.setattr(handler, "GAMES_KEY", "")
+    monkeypatch.setattr(handler, "tokeninfo", lambda credential: _claims(exp=str(int(time.time()) + 600)))
+
+    def get(path: str, **extra: object) -> dict[str, Any]:
+        return handler.handler({"requestContext": {"http": {"method": "GET"}}, "rawPath": path, **extra}, None)
+
+    closed = get("/")
+    assert closed["statusCode"] == 401 and "accounts.google.com/gsi/client" in closed["body"]
+    assert "Game 7" not in closed["body"]
+    assert get("/api/games")["statusCode"] == 401
+    assert get("/games/7.zip")["statusCode"] == 403
+    assert get("/health")["statusCode"] == 200
+
+    sign_in = {"requestContext": {"http": {"method": "POST"}}, "rawPath": "/sign-in"}
+    answer = handler.handler({**sign_in, "body": json.dumps({"credential": "token"})}, None)
+    assert answer["statusCode"] == 200
+    cookie = answer["cookies"][0].split(";")[0]
+    assert "HttpOnly" in answer["cookies"][0] and "Secure" in answer["cookies"][0]
+    home = get("/", cookies=[cookie])
+    assert home["statusCode"] == 200 and "Game 7" in home["body"] and "Sign out" in home["body"]
+    assert get("/", headers={"cookie": f"other=1; {cookie}"})["statusCode"] == 200
+    assert get("/api/games", cookies=[cookie])["statusCode"] == 200
+    assert get("/games/7.zip", cookies=[cookie])["statusCode"] == 302
+
+    monkeypatch.setattr(handler, "tokeninfo", lambda credential: _claims(email="someone@example.com"))
+    refused = handler.handler({**sign_in, "body": json.dumps({"credential": "token"})}, None)
+    assert refused["statusCode"] == 403 and "cookies" not in refused
+    monkeypatch.setattr(handler, "GAMES_KEY", "the-key")
+    assert get("/games/7.zip", queryStringParameters={"key": "the-key"})["statusCode"] == 302
+    assert get("/games/7.zip", queryStringParameters={"key": "wrong"})["statusCode"] == 403
