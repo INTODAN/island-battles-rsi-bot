@@ -9,11 +9,13 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | Path | What it is |
 |---|---|
 | `bots/<name>/bot.py` | A bot: `play(turn)`. Its directory is a package of its own and imports nothing from another bot. |
-| `bots/<name>/bot.toml` | The bot's status (`candidate`, `active` or `retired`), its parent, the iteration that made it and its idea in a sentence. |
+| `bots/<name>/bot.toml` | The bot's status (`candidate`, `active`, `retired` or `sparring`), its parent, the iteration that made it and its idea in a sentence. |
 | `maps/train/` | The maps whose games an agent may study. `claw` is the official game's default map, rebuilt from the first board of a real game. |
 | `maps/holdout/` | The maps that only give numbers: nobody reads their games, so a bot can't be fitted to them. |
 | `league_tools/` | The `league` command: tournaments, ratings, the game digest, the roster and the map maker. |
 | `ledger/iterations.md` | What every iteration tried, measured, kept and learned. The league's memory between sessions. |
+| `opponents.local.toml` (not in git) | Outside opponents: real players' bots that play every tournament from their own projects ([`league_tools/opponents.py`](league_tools/opponents.py)). |
+| `scripts/serve_maps.py`, `scripts/lobby-run.js` | Play a bot against a hosted bot in lobby games on the league's maps, several tabs at once: the check against real opponents. |
 | `tests/`, `scripts/check.sh` | The checks every bot and tool passes before it plays. |
 | `runs/` (not in git) | Results, the result cache and the demos of every match played here. |
 | `runner.toml` | The commit of the game that the league plays. |
@@ -28,7 +30,7 @@ A headless game differs from a lobby's in what it leaves out: no turn deadline (
 
 **Speed.** On a 32-thread desktop, the 504 matches of the whole league (4 bots and the 3 default bots, 14 maps, both sides, 123 turns a game on average) take 5 seconds; a league bot's turn costs about 1 ms, the SDK's reading of the turn included. Bots are deterministic, so a match is decided by the runner's build, the map, the two bots' code, the SDK and the settings. `league tournament` keys its cache on those and on the players' names, and **doesn't play the same match twice**: after a change to one bot, only that bot's matches are played. The runner is built without the commit's stamp, so moving the pin to a commit that leaves the backend alone keeps the cache. A result with a failed turn is never kept, since a turn can time out because the machine was busy: it is played again next time. The timings in a cached result are those of the run that played it; `--no-cache` plays everything again.
 
-**Every match leaves a demo** in `runs/cache/`, the file **Save demo** writes, with both bots' log lines for every turn. `league digest` prints it as text (any demo, a real game's **Save demo** file too), and `league unpack` unpacks it for the demo viewer (`/game/demo-viewer/` of a running backend).
+**Every match leaves a demo** in `runs/cache/`, the file **Save demo** writes, with both bots' log lines for every turn. `league digest` prints it as text (any demo, a real game's **Save demo** file too), `league replay` replays a team's turns in demos through a bot and counts where the bot makes the team's commands (the tool for building a sparring bot from lobby games), and `league unpack` unpacks it for the demo viewer (`/game/demo-viewer/` of a running backend).
 
 ## The game is somewhere else
 
@@ -61,7 +63,7 @@ One **iteration** is one pass, and ends as one commit. The [bot-league-iteration
 What keeps the loop honest:
 
 - **Holdout maps** catch a bot that learned the training maps instead of the game. Their games are never read.
-- **The default bots and the retired bots stay in every tournament**, so a new bot must still beat the old ones, and a strategy that only beats the current champion doesn't win.
+- **The default bots, the retired and sparring bots and the outside opponents stay in every tournament**, so a new bot must still beat the old ones, and a strategy that only beats the current champion doesn't win.
 - **One idea per candidate**, so a result says something about the idea.
 - **The population stays varied**: at most six active bots, and a bot is retired only when another does everything it does better.
 
@@ -90,8 +92,9 @@ uv run league tournament --maps holdout     # or: all, or map names
 uv run league digest DEMO                   # the timeline, the logistics and the events of a game
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
-uv run league status NAME active            # or: candidate, retired
+uv run league status NAME active            # or: candidate, retired, sparring
 uv run league new-map NAME --seed N --set train
+uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot
 uv run league unpack DEMO                   # a plain .json for the demo viewer
 scripts/check.sh                                      # format, lint, types and tests
 ```
@@ -103,4 +106,4 @@ scripts/check.sh                                      # format, lint, types and 
 - **The champion plays nowhere but here.** Shipping it means `island-battles-bot package` and an upload, a hosted bot, or a rated bot name on the leaderboard. Before that it must play real lobby games with `island-battles-bot run`, where turns have deadlines and a network.
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
-- **No real opponents.** The league has read one real game (the ledger's lessons from it) and played none: every opponent here is a league bot or a default bot.
+- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in); the hosted bot itself is met only in lobby games, by the check before a promotion, until the game's runner can play hosted bots (INTODAN/island-battles-go#407).

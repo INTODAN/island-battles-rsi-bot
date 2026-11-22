@@ -1,16 +1,14 @@
-"""Economist that reinforces and counts who else is going to its targets.
+"""Ori-like: a sparring opponent built to play like the hosted bot of the real games.
 
-Iteration 2, from economist_reinforce, with economist_contested's target
-accounting grafted in: what a target holds when a group lands counts the enemy
-groups that land there first and the groups this turn already sent there.
-economist_reinforce came from economist, with sentinel's reinforcement. A castle
-whose soldiers and growth won't hold against the enemy groups heading to it is
-reinforced first, by the nearest own castles whose groups land before the
-first attacker. Then, as economist, every castle buys generation_amount
-levels while it can keep a guard home. With what is left it takes the cheapest
-castle it can afford alone, preferring ones that already produce more, and an
-enemy castle only with ATTACK_MARGIN times its defenders. The bot keeps
-nothing between turns except its memory.
+Sparring bot (iteration 22's setup), on frontline's code. It plays as the
+hosted bot that beats the league did in 30 lobby games (2026-11-21): the home
+buys production up to OPENING_PRODUCTION before it sends anything; neutral
+castles are bought with NEUTRAL_CUSHION soldiers over their price, before any
+strike, so expansion goes on all game; rear castles feed the front in fixed
+batches of BATCH; strikes from the castles nearest a target need STRIKE_MARGIN
+times its defenders. It is never a parent and never changes: it is the
+league's stand-in for that opponent, so its results against a candidate
+should say how the candidate would fare against the real one.
 """
 
 from math import ceil
@@ -105,8 +103,8 @@ class Board:
         self.spent[origin.id] = self.spent.get(origin.id, 0) + amount
         self.sent_to[target.id] = self.sent_to.get(target.id, 0) + amount
 
-    def contested_defenders(self, origin: Castle, target: Castle) -> tuple[int, bool]:
-        """What a group sent now from origin would meet in target, and whether an enemy would hold it.
+    def contested_defenders(self, origin: Castle, target: Castle) -> tuple[int, int, bool]:
+        """What a group sent now from origin would meet in target: soldiers, growth, and whether an enemy holds it.
 
         Enemy groups bound for the target that land no later than this group
         land first: on a neutral castle they fight its soldiers and may take
@@ -122,7 +120,8 @@ class Board:
         )
         if target.team_color != NEUTRAL_TEAM_COLOR:
             reinforcing = sum(soldiers for _, _, soldiers in arrivals)
-            return self.defenders_on_arrival(origin, target) + reinforcing, True
+            growth = self.defenders_on_arrival(origin, target) - target.soldiers
+            return target.soldiers + reinforcing, growth, True
         soldiers = target.soldiers
         enemy_since = None
         for landing, _, amount in arrivals:
@@ -135,9 +134,9 @@ class Board:
             else:
                 soldiers += amount
         if enemy_since is None:
-            return soldiers, False
+            return soldiers, 0, False
         # The castle grows at level 1 from the turn after its capture.
-        return soldiers + max(0, travel - enemy_since), True
+        return soldiers, max(0, travel - enemy_since), True
 
     def buy(self, castle: Castle, upgrade_type: UpgradeType, reserve: int = 0) -> bool:
         """Buy the castle's next level of an upgrade if it leaves the reserve, once a turn."""
@@ -154,23 +153,26 @@ class Board:
 
 # Soldiers a castle keeps home besides what is on its way to attack it.
 GUARD = 4
-# The bot attacks an enemy castle only with this many times its defenders.
-ATTACK_MARGIN = 1.3
+# A neutral castle is taken with this many soldiers over what it will hold.
+NEUTRAL_CUSHION = 5
+# An enemy castle is struck only with this many times its soldiers and reinforcements.
+STRIKE_MARGIN = 1.6
+# A castle sends its spare soldiers to the front once they are this many.
+BATCH = 12
+# While it has one castle, the home buys production up to this level before it sends anything.
+OPENING_PRODUCTION = 3
+# Castles whose groups land within this many turns of the nearest one join a strike.
+STRIKE_SPREAD = 2
+# Every castle buys speed up to this level once its production is at the top.
+SPEED_LEVEL = 2
 
 
-def play(turn: BotTurn) -> BotTurnResult:
-    """Play one turn: a pure function of the turn.
+def reinforce(board: Board, notes: list[str]) -> tuple[int, int]:
+    """Send help to castles that would fall, from castles whose groups land in time.
 
-    Args:
-        turn: The board, this bot's team, the upgrade table and last turn's memory.
-
-    Returns:
-        The commands to run, and the memory for the next turn.
+    Returns the castles short under attack and how many of them stay short.
     """
-    board = Board(turn)
-    notes = []
-    # What each castle lacks to hold against the attacks on their way to it,
-    # and the turns until the first of them lands.
+    turn = board.turn
     shortfall: dict[int, int] = {}
     deadline: dict[int, int] = {}
     for castle in board.own:
@@ -190,8 +192,6 @@ def play(turn: BotTurn) -> BotTurnResult:
     by_id = {castle.id: castle for castle in board.castles}
     for needy_id in sorted(shortfall, key=lambda castle_id: (deadline[castle_id], castle_id)):
         needy = by_id[needy_id]
-        # The nearest helpers first; a group that lands after the attack
-        # only retakes, so it doesn't help.
         helpers = sorted(
             (castle for castle in board.own if castle.id not in shortfall),
             key=lambda castle: (castle.distance(needy), castle.id),
@@ -208,41 +208,129 @@ def play(turn: BotTurn) -> BotTurnResult:
             board.send(helper, needy, amount)
             notes.append(f"{helper.id}+>{needy_id}:{amount}")
             shortfall[needy_id] -= amount
-    unheld = sum(1 for missing in shortfall.values() if missing > 0)
+    return len(shortfall), sum(1 for missing in shortfall.values() if missing > 0)
+
+
+def strike(board: Board, spare: dict[int, int]) -> str:
+    """Strike the cheapest enemy castle that the castles nearest it can take together. Returns the log note."""
+    turn = board.turn
+    best = None
+    for target in board.enemies:
+        ready = sorted(
+            (board.travel_turns(castle, target), castle.id, castle) for castle in board.own if spare[castle.id] >= 1
+        )
+        if not ready:
+            continue
+        nearest = ready[0][0]
+        joining = [(walk, castle) for walk, _, castle in ready if walk <= nearest + STRIKE_SPREAD]
+        last = max(walk for walk, _ in joining)
+        reinforcing = sum(
+            group.soldiers
+            for group in board.groups
+            if group.destination_castle_id == target.id
+            and group.team_color != turn.team_color
+            and board.arrival_turns(group) <= last
+        )
+        friendly = board.heading_to(target, friendly=True)
+        need = ceil((target.soldiers + reinforcing) * STRIKE_MARGIN) + production(turn, target) * last + 1 - friendly
+        total = sum(spare[castle.id] for _, castle in joining)
+        if need < 1 or total < need:
+            continue
+        cost = need + 2 * last - 3 * production(turn, target)
+        if best is None or cost < best[0]:
+            best = (cost, need, target, joining)
+    if best is None:
+        return ""
+    _, need, target, joining = best
+    parts = []
+    for _, castle in joining:
+        amount = spare[castle.id]
+        board.send(castle, target, amount)
+        spare[castle.id] = 0
+        parts.append(f"{castle.id}:{amount}")
+    return f"strike>{target.id} need {need} " + " ".join(parts)
+
+
+def expand(board: Board, castle: Castle, spare: dict[int, int]) -> str:
+    """Take the cheapest neutral castle this castle can afford with the cushion. Returns the log note."""
+    best = None
+    for target in board.neutrals:
+        defenders, growth, enemy_held = board.contested_defenders(castle, target)
+        need = defenders + growth + NEUTRAL_CUSHION
+        need -= board.heading_to(target, friendly=True) + board.sent_to.get(target.id, 0)
+        if need < 1 or need > spare[castle.id]:
+            continue
+        cost = need + 2 * board.travel_turns(castle, target)
+        if best is None or cost < best[0]:
+            best = (cost, need, target)
+    if best is None:
+        return ""
+    _, need, target = best
+    board.send(castle, target, need)
+    spare[castle.id] -= need
+    return f"{castle.id}->{target.id}:{need}"
+
+
+def play(turn: BotTurn) -> BotTurnResult:
+    """Play one turn: a pure function of the turn.
+
+    Args:
+        turn: The board, this bot's team, the upgrade table and last turn's memory.
+
+    Returns:
+        The commands to run, and the memory for the next turn.
+    """
+    board = Board(turn)
+    notes: list[str] = []
+    if len(board.own) == 1 and board.own[0].upgrades[UpgradeType.generation_amount] < OPENING_PRODUCTION:
+        home = board.own[0]
+        if board.buy(home, UpgradeType.generation_amount, reserve=board.heading_to(home, friendly=False)):
+            notes.append(f"opening production@{home.id}")
+        logger.info("turn %d: opening; %s", turn.turn_number, " ".join(notes) or "saving for production")
+        return turn_result(board.commands)
+    short, unheld = reinforce(board, notes)
+    spare: dict[int, int] = {}
     for castle in board.own:
         reserve = board.heading_to(castle, friendly=False) + GUARD
         if board.buy(castle, UpgradeType.generation_amount, reserve=reserve):
             notes.append(f"production@{castle.id}")
-        available = board.left(castle) - reserve
-        if available < 1:
-            continue
-        best = None
-        for target in board.others:
-            defenders, enemy_held = board.contested_defenders(castle, target)
-            if enemy_held:
-                defenders = ceil(defenders * ATTACK_MARGIN)
-            friendly = board.heading_to(target, friendly=True) + board.sent_to.get(target.id, 0)
-            need = defenders + 1 - friendly
-            if need < 1 or need > available:
+        elif (
+            next_upgrade_cost(turn, castle, UpgradeType.generation_amount) is None
+            and castle.upgrades[UpgradeType.speed] < SPEED_LEVEL
+            and board.buy(castle, UpgradeType.speed, reserve=reserve)
+        ):
+            notes.append(f"speed@{castle.id}")
+        spare[castle.id] = max(0, board.left(castle) - reserve)
+    for castle in board.own:
+        if spare[castle.id] >= 1:
+            expanded = expand(board, castle, spare)
+            if expanded:
+                notes.append(expanded)
+    struck = strike(board, spare)
+    if struck:
+        notes.append(struck)
+    if board.enemies and board.own:
+
+        def to_enemy(castle: Castle) -> float:
+            return min(castle.distance(enemy) for enemy in board.enemies)
+
+        front = min(board.own, key=lambda castle: (to_enemy(castle), castle.id))
+        moves = []
+        for castle in board.own:
+            if castle.id == front.id or spare[castle.id] < BATCH or to_enemy(front) >= to_enemy(castle):
                 continue
-            # A castle that already produces more is worth more.
-            cost = need + 2 * board.travel_turns(castle, target) - 3 * production(turn, target)
-            if best is None or cost < best[0]:
-                best = (cost, need, target)
-        if best is not None:
-            board.send(castle, best[2], best[1])
-            contested = (
-                "!" if best[2].team_color == NEUTRAL_TEAM_COLOR and board.heading_to(best[2], friendly=False) else ""
-            )
-            notes.append(f"{castle.id}->{best[2].id}{contested}:{best[1]}")
-    bought = int((turn.memory or {}).get("bought", 0)) + sum("production@" in note for note in notes)
+            board.send(castle, front, BATCH)
+            moves.append(f"{castle.id}:{BATCH}")
+            spare[castle.id] -= BATCH
+        if moves:
+            notes.append(f"stage>{front.id} " + " ".join(moves))
     logger.info(
-        "turn %d: %d castles producing %d a turn, %d short under attack (%d unheld); %s (! = contested neutral)",
+        "turn %d: %d castles producing %d a turn, %d short under attack (%d unheld); %s",
         turn.turn_number,
         len(board.own),
         sum(production(turn, castle) for castle in board.own),
-        len(shortfall),
+        short,
         unheld,
         " ".join(notes) or "saving",
     )
-    return turn_result(board.commands, memory={"bought": bought})
+    return turn_result(board.commands)

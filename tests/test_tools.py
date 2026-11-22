@@ -1,12 +1,13 @@
 """The league's tools: ratings, the tournament's summary, the digest and the roster."""
 
+import gzip
 import json
 import re
 from pathlib import Path
 
 import pytest
 
-from league_tools import digest, engine, maps, ratings, roster, tournament
+from league_tools import digest, engine, maps, ratings, replay, roster, tournament
 
 
 def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
@@ -276,3 +277,91 @@ def test_a_local_checkout_of_the_game_replaces_the_pinned_commit(
 ) -> None:
     monkeypatch.setenv(engine.LOCAL_SOURCE_VARIABLE, str(tmp_path))
     assert engine.source() == tmp_path.resolve()
+
+
+def test_outside_opponents_come_from_the_local_file(tmp_path: Path) -> None:
+    from league_tools import opponents
+
+    project = tmp_path / "their_bot"
+    (project / ".venv" / "bin").mkdir(parents=True)
+    (project / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (project / "bot.py").write_text("def play(turn): ...\n", encoding="utf-8")
+    config = tmp_path / "opponents.local.toml"
+    config.write_text(f'[opponents.outside_player]\ndirectory = "{project}"\n', encoding="utf-8")
+    loaded = opponents.load_opponents(config)
+    assert list(loaded) == ["outside_player"]
+    spec = loaded["outside_player"].specification()
+    assert spec["worker"] == [str(project / ".venv/bin/python"), "-m", "island_battles_client.worker", "bot:play"]
+    assert spec["directory"] == str(project)
+    before = loaded["outside_player"].fingerprint()
+    # The project's virtual environment isn't its code; its own files are.
+    (project / ".venv" / "lib.py").write_text("x = 1\n", encoding="utf-8")
+    assert loaded["outside_player"].fingerprint() == before
+    (project / "bot.py").write_text("def play(turn): return None\n", encoding="utf-8")
+    assert loaded["outside_player"].fingerprint() != before
+    assert opponents.load_opponents(tmp_path / "missing.toml") == {}
+
+
+def test_an_outside_opponent_needs_its_interpreter(tmp_path: Path) -> None:
+    from league_tools import opponents
+
+    config = tmp_path / "opponents.local.toml"
+    config.write_text(f'[opponents.outside_player]\ndirectory = "{tmp_path}"\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="no interpreter"):
+        opponents.load_opponents(config)
+
+
+def test_sparring_is_a_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(roster, "BOTS", tmp_path)
+    (tmp_path / "rival").mkdir()
+    (tmp_path / "rival" / "bot.py").write_text("def play(turn): ...\n", encoding="utf-8")
+    roster.write_bot(roster.Bot(name="rival", status="sparring", parent="", iteration=22, idea="plays like a rival"))
+    assert roster.load_bot("rival").status == "sparring"
+
+
+def replay_demo() -> dict:
+    """Two boards: blue's castle 0 buys production and sends 46 soldiers at red's castle 2, which makes the third."""
+    group = {
+        "id": 0,
+        "team_color": 1,
+        "soldiers": 46,
+        "x": -2.5,
+        "y": 0,
+        "origin_castle_id": 0,
+        "destination_castle_id": 2,
+        "clash_radius": 0.25,
+        "upgrades": {"speed": 1},
+    }
+    first = {
+        "id": 1,
+        "castles": [castle(0, 1, 60, -3), castle(1, 0, 5, 0), castle(2, 2, 10, 3)],
+        "soldier_groups": [],
+        "clashes": [],
+    }
+    second = {
+        "id": 2,
+        "castles": [castle(0, 1, 4, -3, {"generation_amount": 2}), castle(1, 0, 5, 0), castle(2, 2, 11, 3)],
+        "soldier_groups": [group],
+        "clashes": [],
+    }
+    return {"frames": [first, second, second | {"id": 3}]}
+
+
+def test_replay_reads_a_known_send_and_upgrade_off_the_boards() -> None:
+    first, second = replay.team_commands(replay_demo(), 1)[:2]
+    assert first["upgrades"] == [{"castle": 0, "type": "generation_amount", "level": 2, "cost": 10}]
+    assert [(send["origin"], send["dest"], send["amount"]) for send in first["sends"]] == [(0, 2, 46)]
+    assert first["sends"][0]["distance"] == 6.0
+    assert second["upgrades"] == [] and second["sends"] == []
+
+
+def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path) -> None:
+    demo = replay_demo()
+    path = tmp_path / "game.json.gz"
+    path.write_bytes(gzip.compress(json.dumps(demo).encode()))
+    report = replay.replay([("game", digest.load_demo(path))], "safe_hold", color=1)
+    assert report.stats["turns"] == 2
+    assert report.stats["exact"] == report.stats["loose"] == 2  # turn 2: neither the team nor the bot did anything
+    assert (report.stats["upgrade tp"], report.stats["neutral team"], report.stats["attack tp"]) == (1, 0, 1)
+    assert report.stats["attack team"] == report.stats["attack bot"] == 1
+    assert "exact turn match" in report.text() and "bot: safe_hold" in report.text()

@@ -15,6 +15,7 @@ from typing import Any
 import island_battles_client
 
 from . import engine, ratings
+from .opponents import load_opponents
 from .paths import BOTS, CACHE, LEAGUE, MAPS, RUNS
 from .roster import ANCHOR, fingerprint, load_bot
 
@@ -68,10 +69,13 @@ def has_holdout(maps: list[Path]) -> bool:
 
 
 def player_specification(name: str) -> dict[str, Any]:
-    """The runner's description of a player: a default bot or a league bot."""
+    """The runner's description of a player: a default bot, an outside opponent or a league bot."""
     anchor = ANCHOR.fullmatch(name)
     if anchor:
         return {"default_level": int(anchor.group(1))}
+    outside = load_opponents().get(name)
+    if outside is not None:
+        return outside.specification()
     return {
         "worker": [sys.executable, "-m", "island_battles_client.worker", load_bot(name).entry],
         "directory": str(LEAGUE),
@@ -85,6 +89,9 @@ def player_fingerprint(name: str, sdk: str) -> str:
     """What decides how a player plays: its code, and for a league bot the SDK."""
     if ANCHOR.fullmatch(name):
         return name
+    outside = load_opponents().get(name)
+    if outside is not None:
+        return outside.fingerprint()
     return fingerprint(BOTS / name) + sdk
 
 

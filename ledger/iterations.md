@@ -28,6 +28,22 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Pay a neutral exactly only where the enemy can't strike it back.** Paying every neutral exactly took castles with 1 soldier next to the enemy and lost them (iteration 9's `hold_exact`, 5 of 18 against its parent); paying exactly only neutrals that no enemy castle is nearer to than the attacker beat its parent 10 of 18 and was promoted (iteration 10's `finish_safe`), and beat the player's bot in 24 of 28 games.
 - **Speed for the rear pays.** Buying speed level 2 in a rear castle before its first batch to the front, instead of after its production tops out, beat its parent 12 of 18 (iteration 10's `finish_speed`): soldiers that walk half as long are soldiers that fight.
 - **A front that buys nothing is a front that loses.** Keeping the front castle's soldiers for strikes alone, with no production or speed bought there, lost to its parent 1 of 18 (iteration 10's `finish_front`): the front is where the staged soldiers are, and the levels they buy there pay even when the castle later falls.
+- **A castle taken exactly must also outlast the next enemy castle along.** "No enemy castle nearer than the attacker" wasn't safe: `finish_safe` took castles with 1 soldier on `strait` and lost them within one to five turns to enemy castles a little farther away. Adding to an exact price what the enemy castles within five turns of the capture could send, less the castle's growth, beat its parent 14 of 20 and rose 198 points on the holdout maps (iteration 13's `safe_hold`).
+- **Landing every castle's group on one turn is not enough without a front.** A founder that plans waves, each castle launching on the turn that lands its group with the others', beat the champion 11 of 20 head to head but rated 220 below it: without staging its castles walk long and its rear never fights (iteration 13's `converge`, 8 of 34 points on `islands`).
+- **Rear speed for long walks wins the real opponents and loses the holdout maps.** Buying speed in rear castles whose walk to the front is over 8 turns beat its parent 16 of 26 and the player's bot 34 of 42 games, the best of any bot, but fell 91 points below its parent on the holdout maps (iteration 17's `hold_speedfar`; `skerry` 17/30 against 22, `twin-keeps` 23 against 29). Three candidates have now risen on training and fallen on holdout (`margin_landings`, `hold_retake`, `hold_speedfar`).
+- **Local fronts shorten the lines and win the training maps, not yet the holdout maps.** Staging each rear castle to its own nearest castle nearer the enemy, instead of to one front, beat its parent 21 of 28, its best mirror score since iteration 9, and rose 63 points on training (`crossing` 32/34 against 22, `sound` 30 against 21), but lost 25 on holdout (`scatter` 22/32 against 28; iteration 18's `hold_localfront`). Four candidates have now risen on training and fallen on holdout.
+- **A holdout set that gates every promotion stops being held out.** Six candidates in a row (iterations 16 to 19) rose on the training maps, beat their parent head to head, and fell below it on the holdout maps. On iteration 19's new holdout map `key`, which no bot was ever selected on, both candidates beat the champion (26 and 27 points against 25); on `lagoon`, part of every holdout gate since iteration 13, the champion led them 28 to 22 and 18. A champion is partly the bot that happened to fit the holdout maps it passed, and its descendants regress from that fit. Fresh holdout maps restore the test; a rejected idea retried on them must still come in another form. *Not always the explanation (iteration 20):* `opener_safe` also lost both brand-new holdout maps, `tor` (20 points against 26) and `wick` (24 against 26).
+- **`circle` is won by waiting for the enemy to spend its home.** Every `frontline` bot and the hosted bot buy production 2 and 3 by turn 3, leaving their only castle with 7 soldiers; a bot that buys nothing for 12 turns and strikes the first enemy castle it can take with a speed-2 group took 30 of 34 points on `circle` against its parent's 19 (iteration 21's `ambush`). Everywhere else the same waiting lost (1446 against 1798).
+- **A castle that waits for a better neutral must stop staging too.** Waiting up to four turns of production for the best-value neutral passed every league rule (iteration 22's `hold_bestneutral`: 18 of 34 against its parent, 31 points up on training and 32 on holdout) and then won 1 of 17 lobby games against the hosted bot, against the champion's 4: the waiting castle kept sending its batches of 10 to the front (`wait>4` for 17 turns on `archipelago` while `stage>10 0:10` went on), so it waited without saving and lost the race the idea was for.
+- **Stopping the waiting castle's staging doesn't save the idea.** Iteration 23's `hold_waitnostage` waited for the best neutral and kept the waiting castle out of strikes and staging: 10 of 34 against its parent, 92 points below it, and no win against the hosted bot. Waiting for a neutral loses the league's races whatever the waiting castle does meanwhile.
+- **The hosted bot is a moving target.** The champion that won 4 of 17 lobby games against it on 2026-11-21 won none of the same 17 on 2026-11-22, and lost `circle` in 17 turns where it had drawn at the limit (iteration 23). A record against an opponent someone else maintains holds for the session it was played in.
+- **An upgrade beside a stocked enemy castle hands it over.** On `circle` (2026-11-22) the champion bought production 4 at 34 soldiers, down to 8, with the hosted bot's castle 4 units away holding 34; that turn the hosted bot bought speed 2 and sent 25, its growth on the way counted exactly, and took the castle on turn 17. The league's bots never strike a castle for its upgrade, so nothing in the league punishes this.
+- **Strike exactly when the walk is short.** Counting a target's soldiers, growth, reinforcements and burst exactly (plus 2) for strikes that land within five turns, instead of 1.5 times them, beat its parent 26 of 34, its best mirror score since iteration 7, and rose 83 points on training and 29 on holdout (iteration 24's `hold_exactstrike`). Over a short walk little can change before the landing, and a margin there only lets the target grow back.
+- **Guarding upgrades costs the league and buys the real games.** Skipping an upgrade that would leave the castle to a single enemy castle (at speed 2) took the only draws and the only win any bot got from the hosted bot on 2026-11-22 (`circle` drawn by three such candidates, `claw` won by one), and lost to its parent 10 to 14 of 34 in the league (iteration 24). `ori_mimic` doesn't punish an upgrade the way the hosted bot does: the candidates that guarded most scored worst against it.
+- **The real opponent's own rules, with the league's lessons added, beat the league's best line.** Founders written on `ori_mimic`'s code (the hosted bot's rules read off its games) took the top of both tables in iteration 25: `ori_hold` (helpers under attack may help if they still hold, and a capture the enemy would retake is topped up) and `ori_finish` (strikes over a short walk or near the turn limit count the target exactly) beat their parent 17.5 and 18.5 of 34, rated 1876 and 1855 against its 1836 on training and 1969 and 2020 against 1938 on holdout, and won 58 of 60 games against the player's bot with no loss (2 draws on `circle`). Against the hosted bot itself they won 2 and 1 of 17 games on the board, where every bot of the line before them won none.
+- **Burst levels cost a mirror match its race.** Buying burst levels 2 and 3 on a castle near the enemy (30 soldiers) to burst when an attack would take it lost to the parent 2 of 34 (iteration 25's `exact_burst`): the purchase came at the turn the front's soldiers decided the race, and no league bot's strike ever met a burst it hadn't counted.
+- **A lobby win by the opponent's timeout is not a win.** In long games the hosted bot sometimes failed to answer within 30 seconds and forfeited (7 of 85 games in iteration 25); a tab that the browser slows can make our bot forfeit too (2). Count only games decided on the board.
+- **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
 
@@ -751,3 +767,800 @@ All three passed the gate (no failed turn, slowest turns 10.3, 10.4 and 13.0 ms)
 **Status changes:** none. **Champion:** `finish_speed`, unchanged.
 
 **Next:** iterations 11 and 12 promoted nothing, so iteration 13 starts by adding a training and a holdout map, and one of its candidates is a founder.
+
+## Iteration 13: more maps, and holding safe neutrals
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout: **the map set grew** before this iteration's first measurement, after two iterations that promoted nothing, with `reef` (training, `league new-map reef --seed 1301`: 6 castles, two neutrals of 8 and two of 5) and `lagoon` (holdout, seed 1302). Every rating moved with them. **Matches:** 2,040 in the baseline (`iteration-13-before`, 204 of them new), 3,000 in the training selection round robin, 1,326 in the holdout selection; the final standings are 2,040 training and 1,224 holdout matches. On the new baseline `finish_safe` (1906) leads `finish_speed` (1888), so it is the champion this iteration studies.
+
+**Findings** (`finish_safe`'s games on the training maps):
+
+1. **Safe neutrals are taken with 1 soldier and lost.** `strait`, against `frontline_hold` (lost in 69 turns): castle 6 taken on turn 27 with 1 and lost on turn 32; castle 4 taken on turn 36 with 1 and lost on turn 37; both had no enemy castle nearer than the attacker, but enemy castles a little farther struck them. **Idea (a):** an exact price must also outlast the enemy castles that could land within a few turns of the capture.
+2. **`finish_speed` beats it on `islands` and `gyre`, both sides.** **Idea (b):** graft the rear speed.
+3. **Founder** (two iterations without a promotion): the real opponents land their stacks together; **idea (c):** a bot built around waves whose groups land on one turn.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `safe_hold` | finish_safe | A neutral paid exactly must also outlast what enemy castles could land on it within HOLD_TURNS after the capture. | 1921 (1854) | 14/20 | 2231 (2033) | **promoted** |
+| `safe_speed` | finish_safe | Graft from finish_speed: a rear castle buys speed level 2 before it stages its first batch. | 1854 (1854) | 7/20 | not played | **rejected**: below its parent head to head, level in rating. It beat the player's bot 28 of 32. |
+| `converge` | finish_safe (scaffolding) | A new strategy: no staging; the castles within reach of one enemy castle launch at different turns so that their groups land on it together. | 1632 (1854) | 11/20 | not played | **rejected**: rated 222 below its parent. |
+
+All three passed the gate (no failed turn, slowest turns 11.0, 11.2 and 10.3 ms). Against the player's bot (32 games now, 16 maps): `safe_speed` 28 wins, 4 losses; `finish_safe` 26 and 6; `safe_hold` 24 and 8 (`islands`, `reef`, `lagoon`, `shoals`); `converge` 14, 2 draws, 16 losses.
+
+**Status changes:** `safe_hold` is active; `finish_safe` stays active. With seven active bots, `frontline_hold` (1754 in the selection) is **retired**: `finish_speed`'s row matches or beats it everywhere. That made seven retired bots, so `economist_reinforce` (1328), the lowest-rated, is **deleted**. Active: `safe_hold`, `finish_safe`, `finish_speed`, `hold_finish`, `frontline_finish`, `frontline`; retired: `frontline_hold`, `speed_margin`, `contested_speed`, `contested_stage`, `reinforce_timeline`, `reinforce_contested`.
+
+Training maps (`iteration-13-train`, 2,040 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1902 | 0.836 | 221 | 26 | 33 |
+| finish_safe | 1849 | 0.793 | 209 | 26 | 45 |
+| finish_speed | 1841 | 0.786 | 203 | 34 | 43 |
+| hold_finish | 1768 | 0.720 | 183 | 37 | 60 |
+| frontline_hold (retired) | 1727 | 0.680 | 173 | 35 | 72 |
+| frontline_finish | 1727 | 0.680 | 170 | 41 | 69 |
+| frontline | 1723 | 0.677 | 170 | 39 | 71 |
+| speed_margin (retired) | 1602 | 0.561 | 141 | 32 | 107 |
+| contested_speed (retired) | 1489 | 0.457 | 111 | 34 | 135 |
+| contested_stage (retired) | 1407 | 0.389 | 98 | 22 | 160 |
+| reinforce_timeline (retired) | 1346 | 0.343 | 82 | 28 | 170 |
+| reinforce_contested (retired) | 1301 | 0.311 | 72 | 30 | 178 |
+| level3 | 1000 | 0.042 | 10 | 0 | 230 |
+| level2 | 879 | 0.021 | 5 | 0 | 235 |
+| level1 | 454 | 0.000 | 0 | 0 | 240 |
+
+Holdout maps (`iteration-13-holdout`, 1,224 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2216 | 0.935 | 157 | 0 | 11 |
+| finish_safe | 2017 | 0.821 | 138 | 0 | 30 |
+| finish_speed | 1968 | 0.786 | 128 | 8 | 32 |
+| frontline_finish | 1905 | 0.738 | 118 | 12 | 38 |
+| frontline | 1860 | 0.702 | 112 | 12 | 44 |
+| hold_finish | 1831 | 0.679 | 107 | 14 | 47 |
+| frontline_hold (retired) | 1831 | 0.679 | 107 | 14 | 47 |
+| speed_margin (retired) | 1603 | 0.500 | 84 | 0 | 84 |
+| contested_speed (retired) | 1478 | 0.411 | 67 | 4 | 97 |
+| reinforce_timeline (retired) | 1451 | 0.393 | 65 | 2 | 101 |
+| contested_stage (retired) | 1405 | 0.363 | 61 | 0 | 107 |
+| reinforce_contested (retired) | 1187 | 0.244 | 40 | 2 | 126 |
+| level3 | 1000 | 0.042 | 6 | 0 | 138 |
+| level1 | 526 | 0.000 | 0 | 0 | 144 |
+| level2 | 526 | 0.000 | 0 | 0 | 144 |
+
+**Champion:** `safe_hold`, 1902 on the training maps and 2216 on the holdout maps (`finish_safe` 1849 and 2017 in the same tables).
+
+**Where the champion still loses:** to the player's bot on `islands`, `reef`, `lagoon` and `shoals`.
+
+## Iteration 14: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout (unchanged). **Matches:** 3,000 in the training selection round robin; no holdout selection; the standings are iteration 13's.
+
+**Findings** (`safe_hold`'s games):
+
+1. **The rear never buys its own production while the front holds plenty.** `reef`, against the player's bot (lost in 150 turns): production 9 against 12 from turn 36 to the end; home castle 0 at production 3 from turn 11, castle 4 at 2, while front castle 2, at production 4 and speed 2, held 100 to 190 soldiers. **Idea (a):** once the front is at the top of production and holds more than any enemy castle, the rear keeps its soldiers for its own levels.
+2. **The home behind the front is staged empty.** `strait`, against `frontline` (lost in 68 turns): home castle 0 held 18 on turn 39 and fell to one strike. **Idea (b):** a rear castle stages only what leaves it more than the nearest enemy castle holds.
+3. **The margin keeps a rich front idle.** `reef` again: 150 to 190 soldiers in one castle against enemy castles of 50 to 113. **Idea (c):** when the bot's soldiers are 1.5 times the enemy's, strike exactly.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `hold_rearfund` | safe_hold | Once the front castle's production is at the top and it holds more than the strongest enemy castle, rear castles keep their soldiers for their own production instead of staging. | 1861 (1899) | 10/20 | **rejected**: half against its parent, rated below it; it still lost `reef` to the player's bot. |
+| `hold_stageguard` | safe_hold | A rear castle stages only what leaves it more soldiers than the nearest enemy castle holds. | 1792 (1899) | 7/20 | **rejected**: below its parent in both rules (16/34 on `claw` and `gyre`, parent 30). |
+| `hold_rich` | safe_hold | When the bot's soldiers outnumber the enemy's by half again, a strike counts the target exactly instead of with the margin. | 1889 (1899) | 10/20 | **rejected**: half against its parent, rated below it. |
+
+All three passed the gate (slowest turns 11.6, 10.7 and 9.9 ms). Against the player's bot each won 24 of 32 or fewer, as the parent did.
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+## Iteration 15: nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 10 training, 6 holdout (unchanged). **Matches:** 3,000 in the training selection round robin; no holdout selection; the standings are iteration 13's.
+
+**Findings** (`safe_hold`'s `islands` game against the player's bot, lost in 114 turns):
+
+1. **Big neutrals need two castles, and expansion uses one.** Turns 11 to 110: two castles at production 2 each held 8 to 16 soldiers while neutrals of 15 and 20 on the bot's side stayed neutral. **Idea (a):** the castles nearest a neutral take it together when no one alone can.
+2. **Strikes take every spare soldier, so production stops at level 2.** Same turns: production 4 for 100 turns; no castle held the 24 for level 3. **Idea (b):** a castle joins a strike only with what its next production level doesn't need.
+3. **Strikes trickle.** 36 to 44 soldiers walking at castle 5 in groups of 1 to 8 at any time, 136 lost in clashes. **Idea (c):** one strike per target until it lands (iteration 11's `speed_onestrike`, on the new champion).
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `hold_poolneutral` | safe_hold | A neutral castle that no castle can afford alone is taken by the castles nearest it together. | 1759 (1916) | 8/20 | **rejected**: below its parent in both rules (16/34 on `islands`, parent 30). |
+| `hold_strikefund` | safe_hold | A castle joins a strike only with the spare soldiers it doesn't need for its next production level. | 1944 (1916) | 8/20 | **rejected**: lost to its parent head to head, though it rated 28 above it (`claw` 32/34 and `crossing` 26/34, parent 27 and 20). |
+| `hold_onestrike` | safe_hold | One strike at a time per enemy castle. | 1902 (1916) | 9/20 | **rejected**: below its parent in both rules; it beat the player's bot 26 of 32 (parent 24). |
+
+All three passed the gate (slowest turns 11.6, 11.1 and 12.4 ms).
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+**Next:** iterations 14 and 15 promoted nothing: iteration 16 adds maps and a founder. `hold_strikefund` is the second candidate in three iterations to rate above its parent and lose the mirror match; with 10 training maps the mirror match is 20 games, most of them decided the same way from both sides.
+
+## Iteration 16: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 11 training, 7 holdout: **the map set grew** before the first measurement, after two iterations without a promotion, with `shelf` (training, seed 1601, 8 castles) and `cays` (holdout, seed 1602, 13 castles). **Matches:** 2,244 in the baseline (`iteration-16-before`), 3,300 in the training selection, 1,442 in the holdout selection; the final standings are 2,244 training and 1,428 holdout matches. `safe_hold` stays the champion on the new baseline (1931).
+
+**Findings:**
+
+1. **Founder:** the player's bot, which beats every league bot on `islands` and `reef`, plans: it schedules launches from several castles to land together, ranks neutrals by return, keeps soldiers for its next level, reinforces and bursts to save castles, and punishes enemy castles that just weakened (its own log lines). **Idea (a):** a bot built that way, with no front.
+2. **Late help is never sent** (iteration 12's finding 2, against the hosted bot on `delta`). **Idea (b):** retake, on the new champion.
+3. **No league bot uses bursts to defend.** **Idea (c):** a castle that would fall with no help in time bursts when the burst saves it.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `planner` | safe_hold (scaffolding) | A new strategy, after the player's bot: no front; every castle saves for its next production level, big neutrals are taken by several castles at once, and enemy castles by waves whose groups land on one turn. | 1505 (1852) | 5/22 | not played | **rejected**: below its parent in both rules (3/34 on `archipelago`). |
+| `hold_retake` | safe_hold | A castle that would fall is also helped by castles whose groups land up to RETAKE_TURNS after the attack, sized to take it back. | 1884 (1852) | 14/22 | 2077 (2189) | **rejected**: its holdout rating is 112 below its parent's. |
+| `hold_burstsave` | safe_hold | A castle that would fall with no help in time buys burst potential and bursts when the burst makes it hold. | 1852 (1852) | 11/22 | not played | **rejected**: it never fired; every game is its parent's. A burst of 4 for 10 soldiers is never worth it to a castle without burst levels, and the league's castles have none. |
+
+All three passed the gate (slowest turns 23.7, 17.4 and 15.9 ms). Against the player's bot (36 games, 18 maps) every candidate but `planner` won 24, as the parent did; it now beats the league's bots on `shelf` and `cays` too.
+
+**Status changes:** none.
+
+Training maps (`iteration-16-train`, 2,244 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1931 | 0.847 | 247 | 28 | 33 |
+| finish_safe | 1881 | 0.808 | 235 | 28 | 45 |
+| finish_speed | 1839 | 0.773 | 217 | 42 | 49 |
+| hold_finish | 1780 | 0.719 | 199 | 45 | 64 |
+| frontline_hold (retired) | 1742 | 0.683 | 189 | 43 | 76 |
+| frontline_finish | 1729 | 0.670 | 182 | 49 | 77 |
+| frontline | 1725 | 0.667 | 182 | 47 | 79 |
+| speed_margin (retired) | 1592 | 0.539 | 149 | 34 | 125 |
+| contested_speed (retired) | 1521 | 0.474 | 129 | 34 | 145 |
+| contested_stage (retired) | 1410 | 0.380 | 106 | 22 | 180 |
+| reinforce_timeline (retired) | 1388 | 0.364 | 98 | 28 | 182 |
+| reinforce_contested (retired) | 1316 | 0.312 | 80 | 32 | 196 |
+| level3 | 1000 | 0.038 | 10 | 0 | 254 |
+| level2 | 880 | 0.019 | 5 | 0 | 259 |
+| level1 | 456 | 0.000 | 0 | 0 | 264 |
+
+Holdout maps (`iteration-16-holdout`, 1,428 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2259 | 0.929 | 182 | 0 | 14 |
+| finish_safe | 2096 | 0.837 | 164 | 0 | 32 |
+| finish_speed | 2003 | 0.770 | 147 | 8 | 41 |
+| frontline_finish | 1950 | 0.730 | 136 | 14 | 46 |
+| hold_finish | 1918 | 0.704 | 131 | 14 | 51 |
+| frontline | 1911 | 0.699 | 130 | 14 | 52 |
+| frontline_hold (retired) | 1905 | 0.694 | 129 | 14 | 53 |
+| speed_margin (retired) | 1634 | 0.490 | 96 | 0 | 100 |
+| contested_speed (retired) | 1522 | 0.413 | 79 | 4 | 113 |
+| reinforce_timeline (retired) | 1474 | 0.383 | 74 | 2 | 120 |
+| contested_stage (retired) | 1441 | 0.362 | 71 | 0 | 125 |
+| reinforce_contested (retired) | 1210 | 0.240 | 46 | 2 | 148 |
+| level3 | 1000 | 0.036 | 6 | 0 | 162 |
+| level2 | 724 | 0.006 | 1 | 0 | 167 |
+| level1 | 528 | 0.000 | 0 | 0 | 168 |
+
+**Champion:** `safe_hold`, 1931 on the training maps.
+
+**Next:** iterations 14 to 16 promoted nothing, and two candidates (iteration 7's `margin_landings`, now `hold_retake`) rose on training and fell on the holdout maps: iteration 17 adds training maps and a founder.
+
+## Iteration 17: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 13 training, 8 holdout: **the map set grew** before the first measurement (two iterations without a promotion, and a second candidate that rose on training and fell on holdout), with `sound` and `bight` (training, seeds 1701 and 1702) and `skerry` (holdout, seed 1703). **Matches:** 2,652 in the baseline, 3,900 in the training selection, 1,632 in the holdout selection; the final standings are 2,652 training and 1,632 holdout matches. `safe_hold` stays the champion (1860).
+
+**Findings:**
+
+1. **Rear speed wins the back-and-forth over contested castles.** `sound`, `safe_hold` against `finish_speed` (lost in 102 turns): castle 3 changed hands six times between turns 18 and 41, and `finish_speed`'s castles, with speed bought on turns 10 and 26, retook it each time sooner. Iteration 13's graft of that speed (`safe_speed`) lost 7 of 20. **Idea (a):** rear speed only for walks longer than 8 turns.
+2. **Strikes from the front walk at speed level 2.** **Idea (b):** the front buys speed level 3 once its production is at the top.
+3. **Founder:** every `frontline` bot sends its soldiers out all game; **idea (c):** a counter-puncher that holds and strikes only enemy castles whose soldiers just fell.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `hold_speedfar` | safe_hold | A rear castle buys speed level 2 before staging when its walk to the front is longer than SPEED_WALK turns. | 1852 (1810) | 16/26 | 2073 (2164) | **rejected**: its holdout rating is 91 below its parent's. Against the player's bot: 34 wins, 8 losses. |
+| `hold_frontspeed` | safe_hold | The front castle buys speed level 3 once its production is at the top. | 1815 (1810) | 13/26 | not played | **rejected**: half against its parent. Against the player's bot: 32 wins, 2 draws, 8 losses. |
+| `counter` | safe_hold (scaffolding) | A new strategy: no front and no staging; every castle builds and holds, and the bot strikes only enemy castles whose soldiers just fell. | 1688 (1810) | 13/26 | not played | **rejected**: half against its parent, rated 122 below it. |
+
+All three passed the gate (slowest turns 12.5, 10.8 and 12.2 ms). The parent beat the player's bot 30 of 42 games.
+
+**Status changes:** none.
+
+Training maps (`iteration-17-train`, 2,652 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1860 | 0.846 | 293 | 30 | 41 |
+| finish_safe | 1797 | 0.797 | 275 | 30 | 59 |
+| finish_speed | 1778 | 0.780 | 263 | 42 | 59 |
+| hold_finish | 1728 | 0.736 | 244 | 48 | 72 |
+| frontline_hold (retired) | 1680 | 0.692 | 229 | 46 | 89 |
+| frontline_finish | 1670 | 0.683 | 222 | 53 | 89 |
+| frontline | 1656 | 0.669 | 218 | 51 | 95 |
+| speed_margin (retired) | 1491 | 0.514 | 169 | 36 | 159 |
+| contested_speed (retired) | 1430 | 0.459 | 149 | 36 | 179 |
+| contested_stage (retired) | 1317 | 0.365 | 122 | 22 | 220 |
+| reinforce_timeline (retired) | 1312 | 0.361 | 117 | 29 | 218 |
+| reinforce_contested (retired) | 1254 | 0.319 | 100 | 32 | 232 |
+| level3 | 1000 | 0.058 | 18 | 0 | 294 |
+| level2 | 789 | 0.018 | 5 | 1 | 306 |
+| level1 | 350 | 0.000 | 0 | 0 | 312 |
+
+Holdout maps (`iteration-17-holdout`, 1,632 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2182 | 0.911 | 204 | 0 | 20 |
+| finish_safe | 2053 | 0.830 | 186 | 0 | 38 |
+| finish_speed | 1954 | 0.754 | 165 | 8 | 51 |
+| frontline_finish | 1922 | 0.728 | 156 | 14 | 54 |
+| hold_finish | 1885 | 0.696 | 149 | 14 | 61 |
+| frontline | 1880 | 0.692 | 148 | 14 | 62 |
+| frontline_hold (retired) | 1864 | 0.679 | 145 | 14 | 65 |
+| speed_margin (retired) | 1662 | 0.509 | 114 | 0 | 110 |
+| contested_speed (retired) | 1586 | 0.451 | 99 | 4 | 121 |
+| reinforce_timeline (retired) | 1517 | 0.402 | 89 | 2 | 133 |
+| contested_stage (retired) | 1449 | 0.357 | 80 | 0 | 144 |
+| reinforce_contested (retired) | 1241 | 0.246 | 54 | 2 | 168 |
+| level3 | 1000 | 0.031 | 6 | 0 | 186 |
+| level2 | 727 | 0.005 | 1 | 0 | 191 |
+| level1 | 533 | 0.000 | 0 | 0 | 192 |
+
+**Champion:** `safe_hold`, 1860 on the training maps.
+
+## Iteration 18: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 14 training, 9 holdout: **the map set grew** before the first measurement (iterations 16 and 17 promoted nothing), with `haven` (training, seed 1801) and `spit` (holdout, seed 1802). **Matches:** 2,856 in the baseline, 4,200 in the training selection, 1,836 in the holdout selection. `safe_hold` stays the champion (1804).
+
+**Findings** (`safe_hold`'s games):
+
+1. **Its soldiers walk to one front from every lane.** `delta` against `hold_finish` (lost in about 130 turns): 57% of its soldiers walking, 5.9 units a send, 160 in groups on turn 71, 322 lost in clashes; it lost `delta` to five players and `crossing` to six. **Idea (a):** each rear castle stages to its own nearest castle nearer the enemy.
+2. **A strike sends every joining castle's spare.** Same game: castles emptied by strikes. **Idea (b):** a strike sends what it needs.
+3. **Founder:** both real opponents keep winning the walk; **idea (c):** speed first in every castle.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `hold_localfront` | safe_hold | Each rear castle stages to its own front: the nearest own castle that is nearer the enemy than it is. | 1803 (1740) | 21/28 | 2157 (2182) | **rejected**: its holdout rating is 25 below its parent's (241 of 288 holdout points against 246). |
+| `hold_needstrike` | safe_hold | A strike sends what it needs, from the nearest joining castles first; the rest stays home. | 1754 (1740) | 17/28 | 2129 (2182) | **rejected**: its holdout rating is 53 below its parent's (`skerry` 14/32 against 23). |
+| `sprinter` | safe_hold (scaffolding) | A new strategy: speed first; every castle buys speed level 2 before any production level. | 1621 (1740) | 11/28 | not played | **rejected**: below its parent in both rules (9/34 on `archipelago`). |
+
+All three passed the gate (slowest turns 14.5, 12.7 and 12.7 ms). Against the player's bot (46 games, 23 maps): `hold_needstrike` 34 wins as its parent did; `hold_localfront` 26; `sprinter` 26.
+
+**Status changes:** none.
+
+Training maps (`iteration-18-train`, 2,856 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1804 | 0.837 | 313 | 30 | 49 |
+| finish_safe | 1753 | 0.796 | 297 | 30 | 65 |
+| finish_speed | 1717 | 0.765 | 279 | 42 | 71 |
+| hold_finish | 1683 | 0.735 | 263 | 50 | 79 |
+| frontline_hold (retired) | 1650 | 0.704 | 252 | 48 | 92 |
+| frontline_finish | 1638 | 0.693 | 244 | 55 | 93 |
+| frontline | 1635 | 0.690 | 244 | 53 | 95 |
+| speed_margin (retired) | 1438 | 0.505 | 180 | 36 | 176 |
+| contested_speed (retired) | 1386 | 0.459 | 162 | 36 | 194 |
+| contested_stage (retired) | 1272 | 0.365 | 132 | 22 | 238 |
+| reinforce_timeline (retired) | 1247 | 0.346 | 121 | 29 | 242 |
+| reinforce_contested (retired) | 1203 | 0.314 | 107 | 32 | 253 |
+| level3 | 1000 | 0.074 | 25 | 0 | 311 |
+| level2 | 725 | 0.016 | 5 | 1 | 330 |
+| level1 | 287 | 0.000 | 0 | 0 | 336 |
+
+Holdout maps (`iteration-18-holdout`, 1,836 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2220 | 0.913 | 230 | 0 | 22 |
+| finish_safe | 2049 | 0.802 | 202 | 0 | 50 |
+| finish_speed | 2003 | 0.766 | 189 | 8 | 55 |
+| frontline_finish | 1960 | 0.730 | 177 | 14 | 61 |
+| hold_finish | 1931 | 0.706 | 171 | 14 | 67 |
+| frontline_hold (retired) | 1922 | 0.698 | 169 | 14 | 69 |
+| frontline | 1912 | 0.690 | 167 | 14 | 71 |
+| speed_margin (retired) | 1701 | 0.516 | 130 | 0 | 122 |
+| contested_speed (retired) | 1610 | 0.448 | 111 | 4 | 137 |
+| reinforce_timeline (retired) | 1523 | 0.389 | 97 | 2 | 153 |
+| contested_stage (retired) | 1459 | 0.349 | 88 | 0 | 164 |
+| reinforce_contested (retired) | 1269 | 0.250 | 62 | 2 | 188 |
+| level3 | 1000 | 0.028 | 6 | 0 | 210 |
+| level2 | 729 | 0.005 | 1 | 0 | 215 |
+| level1 | 535 | 0.000 | 0 | 0 | 216 |
+
+**Champion:** `safe_hold`, unchanged.
+
+## Iteration 19: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 15 training, 10 holdout: **the map set grew** before the first measurement, with `firth` (training, seed 1901) and `key` (holdout, seed 1902). **Matches:** 3,060 in the baseline, 4,500 in the training selection, 2,040 in the holdout selection. `safe_hold` stays the champion (1837).
+
+**Findings:**
+
+1. **A front per lane rose on training and fell on holdout** (iteration 18). **Idea (a):** in another form, each rear castle stages along its shortest route to the enemy: the castle nearer the enemy that minimizes the walk there plus its own distance to the enemy.
+2. **Strikes take castles that the enemy retakes**, as neutrals were before `safe_hold`. **Idea (b):** a strike must leave the captured castle able to outlast the enemy castles within five turns of it.
+3. **Founder:** the hosted bot that beat the champion on `claw` bought production 2 and 3 on turns 1 and 2 before sending anything. **Idea (c):** that opening.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `hold_route` | safe_hold | Each rear castle stages to the own castle nearer the enemy that makes its route to the enemy shortest. | 1861 (1792) | 21/30 | 2071 (2112) | **rejected**: holdout rating 41 below its parent's. On the new holdout map `key`: 26 points against 25. |
+| `opener` | safe_hold (scaffolding) | A new strategy from the hosted bot's opening: the home castle buys production up to level 3 before any castle sends a soldier. | 1837 (1792) | 21/30 | 2079 (2112) | **rejected**: holdout rating 33 below its parent's (`key` 27 against 25, `lagoon` 18 against 28). Against the player's bot it won 42 of 50 games, the best of any bot. |
+| `hold_strikehold` | safe_hold | A strike must also leave the captured castle able to outlast the enemy castles that could land on it within HOLD_TURNS after the capture. | 1702 (1792) | 14/30 | not played | **rejected**: below its parent in both rules. Against the player's bot it won 40 of 50. |
+
+All three passed the gate (slowest turns 11.2, 10.4 and 13.4 ms). The parent beat the player's bot in 36 of 50 games.
+
+**Status changes:** none.
+
+Training maps (`iteration-19-train`, 3,060 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1837 | 0.848 | 341 | 30 | 49 |
+| finish_safe | 1782 | 0.805 | 323 | 30 | 67 |
+| finish_speed | 1715 | 0.748 | 293 | 42 | 85 |
+| hold_finish | 1694 | 0.729 | 280 | 52 | 88 |
+| frontline_hold (retired) | 1673 | 0.710 | 273 | 50 | 97 |
+| frontline | 1657 | 0.694 | 264 | 55 | 101 |
+| frontline_finish | 1649 | 0.687 | 260 | 57 | 103 |
+| speed_margin (retired) | 1464 | 0.514 | 198 | 36 | 186 |
+| contested_speed (retired) | 1399 | 0.457 | 174 | 36 | 210 |
+| contested_stage (retired) | 1291 | 0.369 | 144 | 22 | 254 |
+| reinforce_timeline (retired) | 1261 | 0.346 | 131 | 29 | 260 |
+| reinforce_contested (retired) | 1206 | 0.307 | 113 | 32 | 275 |
+| level3 | 1000 | 0.069 | 25 | 0 | 335 |
+| level2 | 726 | 0.015 | 5 | 1 | 354 |
+| level1 | 288 | 0.000 | 0 | 0 | 360 |
+
+Holdout maps (`iteration-19-holdout`, 2,040 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2148 | 0.904 | 252 | 2 | 26 |
+| finish_safe | 1991 | 0.796 | 222 | 2 | 56 |
+| finish_speed | 1931 | 0.746 | 205 | 8 | 67 |
+| frontline_finish | 1906 | 0.725 | 195 | 16 | 69 |
+| hold_finish | 1890 | 0.711 | 191 | 16 | 73 |
+| frontline_hold (retired) | 1866 | 0.689 | 185 | 16 | 79 |
+| frontline | 1850 | 0.675 | 181 | 16 | 83 |
+| speed_margin (retired) | 1661 | 0.507 | 142 | 0 | 138 |
+| contested_speed (retired) | 1587 | 0.446 | 123 | 4 | 153 |
+| reinforce_timeline (retired) | 1564 | 0.429 | 119 | 2 | 159 |
+| contested_stage (retired) | 1465 | 0.357 | 100 | 0 | 180 |
+| reinforce_contested (retired) | 1326 | 0.275 | 76 | 2 | 202 |
+| level3 | 1000 | 0.025 | 6 | 0 | 234 |
+| level2 | 734 | 0.004 | 1 | 0 | 239 |
+| level1 | 541 | 0.000 | 0 | 0 | 240 |
+
+**Champion:** `safe_hold`, unchanged.
+
+**Next:** fresh holdout maps before the first measurement, and the strongest rejected ideas in other forms.
+
+## Iteration 20: fresh holdout maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 16 training, 12 holdout: **the map set grew** before the first measurement, with `rill` (training, seed 2001) and two holdout maps, `tor` and `wick` (seeds 2002 and 2003): two, because the holdout set is the one that has gated every promotion. **Matches:** 3,264 in the baseline, 4,800 in the training selection, 2,448 in the holdout selection. `safe_hold` stays the champion (1847).
+
+**Findings:**
+
+1. **Iteration 19's founder opened well and lost the old holdout maps.** **Idea (a):** the opening only when no enemy castle could take the home during it.
+2. **Lanes, a third form:** iterations 18 and 19 chose the castle to stage to by its distance to any enemy castle. **Idea (b):** each rear castle stages to the own castle nearest the enemy castle nearest it.
+3. **Front speed, in another form** (iteration 17's `hold_frontspeed` took half against its parent): **idea (c):** speed level 3 at the front only when its strikes would walk more than 8 turns.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout rating (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `opener_safe` | safe_hold (scaffolding) | A new strategy from the hosted bot's opening: while it has one castle and no enemy castle could take it during the opening, the home buys production up to level 3 before sending anything. | 1866 (1830) | 23/32 | 2042 (2103) | **rejected**: holdout rating 61 below its parent's, on the new holdout maps too (`tor` 20 against 26, `wick` 24 against 26). Against the player's bot it won 48 of 56, the best of any bot. |
+| `hold_lanefront` | safe_hold | Each rear castle stages to the front of its own lane: the own castle nearest to the enemy castle nearest it. | 1840 (1830) | 15/32 | not played | **rejected**: lost to its parent head to head. |
+| `hold_frontlong` | safe_hold | The front castle buys speed level 3 when its production is at the top and its strikes would walk more than SPEED_WALK turns. | 1838 (1830) | 16/32 | not played | **rejected**: half against its parent. |
+
+All three passed the gate (slowest turns 15.2, 13.9 and 13.4 ms). The parent beat the player's bot 42 of 56.
+
+**Status changes:** none.
+
+Training maps (`iteration-20-train`, 3,264 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1847 | 0.844 | 363 | 30 | 55 |
+| finish_safe | 1780 | 0.790 | 339 | 30 | 79 |
+| finish_speed | 1724 | 0.741 | 311 | 42 | 95 |
+| hold_finish | 1716 | 0.734 | 302 | 54 | 92 |
+| frontline_hold (retired) | 1697 | 0.717 | 295 | 52 | 101 |
+| frontline | 1688 | 0.709 | 290 | 55 | 103 |
+| frontline_finish | 1676 | 0.698 | 284 | 57 | 107 |
+| speed_margin (retired) | 1475 | 0.511 | 208 | 42 | 198 |
+| contested_speed (retired) | 1403 | 0.449 | 180 | 42 | 226 |
+| contested_stage (retired) | 1303 | 0.368 | 154 | 22 | 272 |
+| reinforce_timeline (retired) | 1277 | 0.349 | 139 | 35 | 274 |
+| reinforce_contested (retired) | 1219 | 0.308 | 119 | 38 | 291 |
+| level3 | 1000 | 0.065 | 25 | 0 | 359 |
+| level2 | 727 | 0.014 | 5 | 1 | 378 |
+| level1 | 290 | 0.000 | 0 | 0 | 384 |
+
+Holdout maps (`iteration-20-holdout`, 2,448 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2141 | 0.902 | 302 | 2 | 32 |
+| finish_safe | 1984 | 0.795 | 266 | 2 | 68 |
+| finish_speed | 1919 | 0.741 | 245 | 8 | 83 |
+| hold_finish | 1899 | 0.723 | 233 | 20 | 83 |
+| frontline_finish | 1899 | 0.723 | 233 | 20 | 83 |
+| frontline_hold (retired) | 1878 | 0.705 | 227 | 20 | 89 |
+| frontline | 1851 | 0.682 | 219 | 20 | 97 |
+| speed_margin (retired) | 1663 | 0.518 | 174 | 0 | 162 |
+| contested_speed (retired) | 1550 | 0.429 | 141 | 6 | 189 |
+| reinforce_timeline (retired) | 1497 | 0.390 | 129 | 4 | 203 |
+| contested_stage (retired) | 1476 | 0.375 | 126 | 0 | 210 |
+| reinforce_contested (retired) | 1313 | 0.277 | 90 | 6 | 240 |
+| level3 | 1000 | 0.028 | 8 | 0 | 280 |
+| level2 | 686 | 0.003 | 1 | 0 | 287 |
+| level1 | 493 | 0.000 | 0 | 0 | 288 |
+
+**Champion:** `safe_hold`, unchanged.
+
+## Iteration 21: more maps, nothing promoted
+
+**Date:** 2026-11-21. **Maps:** 17 training, 13 holdout: **the map set grew** before the first measurement, with `loch` (training, seed 2101) and `fen` (holdout, seed 2102). **Matches:** 3,468 in the baseline, 5,100 in the training selection; no holdout selection. `safe_hold` stays the champion (1876).
+
+**Findings:**
+
+1. **`circle` is drawn by mirrors.** The hosted bot's `circle` games and every `frontline` bot's: production 2 on turn 1 and 3 on turn 3, a home of 7 soldiers on turn 4, then 1,142 soldiers to 1,141 at the limit. **Idea (a), founder:** wait, and strike the first enemy castle that falls below what the home can land on it.
+2. **The home falls to one strike** (`strait` and `islands`, iterations 14 and 18). Guarding every rear castle lost (iteration 14). **Idea (b):** guard the home alone.
+3. **Rear speed for long walks rose on training and fell on holdout** (iteration 17). **Idea (c):** in another form, only once the race for castles is over.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `ambush` | safe_hold (scaffolding) | A new strategy: for the first AMBUSH_TURNS turns buy nothing; strike the first enemy castle that falls below what a speed-2 group from home can land on it. | 1446 (1798) | 6/34 | **rejected**: below its parent in both rules; it won `circle` 30/34 (parent 19) and `haven` 34/34. |
+| `hold_homeguard` | safe_hold | The home castle stages only what leaves it more than the strongest enemy castle within HOME_WALK turns of it holds. | 1775 (1798) | 17/34 | **rejected**: half against its parent, rated below it. |
+| `hold_latespeed` | safe_hold | Once no neutral castle is on the bot's side, a rear castle whose walk to the front is longer than SPEED_WALK turns buys speed level 2 before staging. | 1779 (1798) | 14/34 | **rejected**: below its parent in both rules. Against the player's bot it won 50 of 60 (parent 46). |
+
+All three passed the gate (slowest turns 13.6, 13.3 and 14.3 ms).
+
+**Status changes:** none.
+
+Training maps (`iteration-21-train`, 3,468 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1876 | 0.853 | 391 | 30 | 55 |
+| finish_safe | 1785 | 0.782 | 357 | 30 | 89 |
+| finish_speed | 1747 | 0.748 | 335 | 42 | 99 |
+| hold_finish | 1733 | 0.735 | 323 | 54 | 99 |
+| frontline_hold (retired) | 1714 | 0.718 | 316 | 52 | 108 |
+| frontline | 1702 | 0.707 | 309 | 55 | 112 |
+| frontline_finish | 1690 | 0.696 | 303 | 57 | 116 |
+| speed_margin (retired) | 1485 | 0.508 | 221 | 42 | 213 |
+| contested_speed (retired) | 1412 | 0.445 | 191 | 42 | 243 |
+| contested_stage (retired) | 1319 | 0.372 | 166 | 22 | 288 |
+| reinforce_timeline (retired) | 1290 | 0.350 | 149 | 35 | 292 |
+| reinforce_contested (retired) | 1228 | 0.307 | 127 | 38 | 311 |
+| level3 | 1000 | 0.061 | 25 | 0 | 383 |
+| level2 | 728 | 0.013 | 5 | 1 | 402 |
+| level1 | 291 | 0.000 | 0 | 0 | 408 |
+
+Holdout maps (`iteration-21-holdout`, 2,652 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 2070 | 0.882 | 320 | 2 | 42 |
+| finish_safe | 1962 | 0.805 | 292 | 2 | 70 |
+| finish_speed | 1895 | 0.750 | 269 | 8 | 87 |
+| frontline_finish | 1878 | 0.736 | 258 | 20 | 86 |
+| hold_finish | 1859 | 0.720 | 251 | 22 | 91 |
+| frontline_hold (retired) | 1840 | 0.703 | 245 | 22 | 97 |
+| frontline | 1828 | 0.692 | 242 | 20 | 102 |
+| speed_margin (retired) | 1619 | 0.514 | 187 | 0 | 177 |
+| contested_speed (retired) | 1502 | 0.423 | 151 | 6 | 207 |
+| reinforce_timeline (retired) | 1445 | 0.382 | 137 | 4 | 223 |
+| contested_stage (retired) | 1420 | 0.365 | 133 | 0 | 231 |
+| reinforce_contested (retired) | 1280 | 0.280 | 99 | 6 | 259 |
+| level3 | 1000 | 0.035 | 11 | 0 | 301 |
+| level2 | 630 | 0.003 | 1 | 0 | 311 |
+| level1 | 438 | 0.000 | 0 | 0 | 312 |
+
+**Champion:** `safe_hold`, 1876 on the training maps, champion since iteration 13.
+
+**Where it stands after iterations 12 to 21:** one promotion (`safe_hold`, iteration 13) in ten iterations. Seven candidates beat the champion head to head and rated above it on training, and six of them fell below it on the holdout maps. The map set grew from 10 and 6 to 17 and 13 maps. Against the player's bot the champion wins 46 of 60 games; five rejected candidates won more (`opener_safe` 48 of 56, `hold_latespeed` 50 of 60).
+
+## Setup after iteration 21: real opponents in the league
+
+**Date:** 2026-11-21. A change of the league's setup, asked for by the people who run it, made between iterations and measured with a full tournament on both sets of maps.
+
+**Why.** The champion, `safe_hold`, played the hosted bot of the real games in lobbies on the league's maps (as Blue, 21 maps before the run was stopped): 4 wins (`archipelago`, `far-shores`, `gyre`, `loch`), a draw at the limit (`circle`) and 16 losses (`bight`, `claw`, `crossing`, `delta`, `firth`, `haven`, `islands`, `reef`, `rill`, `shelf`, `sound`, `strait` and the holdout maps `atoll`, `cays`, `fen`, `key`). Its predecessor `finish_speed` had won `crossing`, `islands`, `strait` and `far-shores` against it. In every lost training game the hosted bot took a third, often a fourth, neutral castle between turns 23 and 64 while `safe_hold` stopped at one or two, then out-produced it (10 to 15 against 3 to 10 by turn 61), with 34 to 55% of its soldiers walking to `safe_hold`'s 51 to 67%. The league had promoted a bot that beats the league and loses to the real opponent.
+
+**What changed:**
+
+- **Outside opponents** (`league_tools/opponents.py`, `opponents.local.toml`, not in git): a player's bot plays every tournament from its own project, like a default bot. The player's bot of iterations 8 to 21 is the first.
+- **A `sparring` status** for fixed opponents that play like a real one, never parents, never counted with the retired bots, never deleted. **`ori_like`** is the first: `frontline`'s code with the hosted bot's habits from its 30 lobby games (production 3 at home before anything, neutrals bought with a cushion of 5 before strikes, batches of 12 to the front, strikes at 1.6 times the defenders). Against `safe_hold` it reproduces the hosted bot's result on 10 of the 17 training maps (it wins 9 where the hosted bot won 12); 18 settings were tried and these matched best. It is a stand-in, not a copy.
+- **The check against real opponents** before a promotion (the iteration skill): a candidate that passed the holdout maps plays the hosted bot in lobby games on the training maps, five tabs at once (`scripts/serve_maps.py`, `scripts/lobby-run.js`), and is promoted only if it wins at least as many as the champion. The champion's record to beat: `safe_hold`, 4 wins of 17 training maps.
+- **Six candidates per iteration when subagents write them**, a smaller model allowed, every diff read before it plays.
+
+Training maps (`setup-22-train`, 4,522 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1782 | 0.822 | 431 | 32 | 81 |
+| finish_safe | 1714 | 0.763 | 399 | 32 | 113 |
+| finish_speed | 1683 | 0.733 | 377 | 44 | 123 |
+| hold_finish | 1677 | 0.728 | 368 | 56 | 120 |
+| ori_like | 1664 | 0.715 | 375 | 28 | 141 |
+| frontline_hold (retired) | 1660 | 0.711 | 359 | 56 | 129 |
+| frontline | 1644 | 0.696 | 349 | 59 | 136 |
+| frontline_finish | 1637 | 0.688 | 345 | 59 | 140 |
+| speed_margin (retired) | 1437 | 0.489 | 244 | 44 | 256 |
+| outside_player | 1398 | 0.452 | 242 | 8 | 294 |
+| contested_speed (retired) | 1388 | 0.443 | 219 | 44 | 281 |
+| contested_stage (retired) | 1309 | 0.373 | 191 | 24 | 329 |
+| reinforce_timeline (retired) | 1260 | 0.334 | 161 | 41 | 342 |
+| reinforce_contested (retired) | 1207 | 0.294 | 140 | 40 | 364 |
+| level3 | 1000 | 0.069 | 33 | 0 | 443 |
+| level2 | 679 | 0.012 | 5 | 1 | 470 |
+| level1 | 243 | 0.000 | 0 | 0 | 476 |
+
+Holdout maps (`setup-22-holdout`, 3,458 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| safe_hold | 1916 | 0.865 | 359 | 2 | 55 |
+| finish_safe | 1824 | 0.796 | 330 | 2 | 84 |
+| finish_speed | 1769 | 0.748 | 307 | 8 | 101 |
+| frontline_finish | 1738 | 0.719 | 289 | 20 | 107 |
+| hold_finish | 1733 | 0.714 | 286 | 22 | 108 |
+| frontline_hold (retired) | 1717 | 0.700 | 280 | 22 | 114 |
+| frontline | 1697 | 0.680 | 273 | 20 | 123 |
+| ori_like | 1655 | 0.639 | 266 | 0 | 150 |
+| speed_margin (retired) | 1522 | 0.510 | 212 | 0 | 204 |
+| outside_player | 1496 | 0.486 | 202 | 0 | 214 |
+| contested_speed (retired) | 1421 | 0.418 | 171 | 6 | 239 |
+| contested_stage (retired) | 1363 | 0.370 | 154 | 0 | 262 |
+| reinforce_timeline (retired) | 1335 | 0.349 | 143 | 4 | 269 |
+| reinforce_contested (retired) | 1223 | 0.272 | 110 | 6 | 300 |
+| level3 | 1000 | 0.052 | 19 | 0 | 345 |
+| level2 | 533 | 0.003 | 1 | 0 | 363 |
+| level1 | 341 | 0.000 | 0 | 0 | 364 |
+
+## Iteration 22: six candidates, and the first check against the real opponent
+
+**Date:** 2026-11-21. **Maps:** 17 training, 13 holdout (unchanged since the setup). **Matches:** 8,500 in the training selection round robin (six candidates, the outside opponent and the sparring bot in the field), plus the holdout selection for the one that passed. The baseline is the setup's standings (`setup-22-train`), the same population. Six candidates, written in parallel by subagents (a smaller model), every diff read before it played.
+
+**Findings** (the champion's lobby games against the hosted bot, training maps only):
+
+1. **On compact maps the hold check makes the bot's own neutrals unaffordable.** `haven`, turns 12 to 36: castle 7 (25 soldiers, 2.7 units from home) stayed neutral while the bot logged "saving"; its price summed every enemy castle within five turns of it. **Idea (a):** count only the strongest one.
+2. **Strikes before neutrals** (`islands`, iteration 15's finding 2, now with the real opponent's evidence). **Idea (b):** neutrals first.
+3. **The hosted bot buys a neutral with 4 or 5 soldiers to spare**; the bot pays 1.4 times a contested neutral. **Idea (c):** a cushion of 5 instead.
+4. **The first neutral is the only affordable one, not the best one.** `bight`, turn 1: 16 soldiers to the contested centre castle 3 (taken with 1, lost on turn 23) while castle 4, 2.8 units from home, waited until turn 66. **Idea (d):** wait up to four turns for the best neutral.
+5. **Rear castles stay at production 2** (home at 2 until turn 83 on `far-shores`, 90 on `crossing`). **Ideas (e) and (f):** fixed batches of 12 to the front; or rear castles reach production 3 before staging.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Hosted bot | Decision |
+|---|---|---|---|---|---|---|---|
+| `hold_bestneutral` | safe_hold | A castle waits up to WAIT_TURNS for the neutral with the best return instead of taking a worse one it can afford now. | 1828 (1797) | 18/34 | 1942 (1910) | 1 win, 1 draw, 15 losses (champion: 4 wins) | **rejected** by the check against the real opponent. |
+| `hold_nearthreat` | safe_hold | A neutral paid exactly must outlast the strongest single enemy castle that could land on it within HOLD_TURNS, not all of them together. | 1791 (1797) | 16/34 | not played | not played | **rejected**: below its parent in both rules. |
+| `hold_batch12` | safe_hold | Rear castles stage fixed batches of BATCH soldiers instead of all their spare. | 1790 (1797) | 17/34 | not played | not played | **rejected**: half against its parent, rated below it. |
+| `hold_rear3` | safe_hold | A rear castle saves for its next production level, up to level 3, before it stages. | 1765 (1797) | 17/34 | not played | not played | **rejected**: half against its parent, rated below it. Against the player's bot it won 50 of 60 (parent 46). |
+| `hold_expandfirst` | safe_hold | Neutrals before strikes. | 1755 (1797) | 12/34 | not played | not played | **rejected**: below its parent in both rules. |
+| `hold_cushion` | safe_hold | A contested neutral costs what it needs exactly plus NEUTRAL_CUSHION soldiers, not NEUTRAL_MARGIN times. | 1737 (1797) | 12/34 | not played | not played | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 60 to 75 ms with the six tournaments running at once.
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+**The check against the real opponent, in practice:** five lobby tabs played the 17 training maps in about 20 minutes, one tab losing time to a start button that stayed disabled (`lobby-run.js` now retries it). The check rejected the only candidate the league would have promoted.
+
+## Iteration 23: six ways to expand faster, and the opponent moved
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 8,500 in the training selection round robin, 3,900 in the holdout selection for the one that passed. Six candidates from the champion, written in parallel by subagents (a smaller model), every diff read before it played; one (`hold_jointneutral`) failed the purity test for a constant set from another constant and was fixed to the literal before the gate.
+
+**Findings** (the champion's lobby games against the hosted bot of 2026-11-21, training maps):
+
+1. **Production comes before neutrals.** `play()` buys production on every castle before `expand()`: on `shelf` the front castle bought production 2, 3 and 4 on turns 15 to 25, 60 soldiers, while the hosted bot took the neutrals of 30 and 23. **Ideas (a)** the top production level after expansion; **(e)** with (b) below.
+2. **Only one castle can buy a neutral.** On `crossing`, turns 28 to 30, the hosted bot took the 25-soldier middle neutral with groups from three castles at once (8 + 16 + 6 + 6) while the champion's castles held 6, 14 and 18 and never took it. **Idea (b):** castles take a neutral together.
+3. **The waiting castle staged** (iteration 22's `hold_bestneutral`). **Idea (c):** wait for the best neutral and keep the waiting castle home.
+4. **Strikes and staging start before the expansion ends.** **Idea (d):** an opening without either until the bot has four castles.
+5. **Safe neutrals are taken with 1 soldier** (`reef`, `crossing`, `bight`, `shelf`); the hosted bot leaves 3 to 6. **Idea (f):** a cushion of 3 on a safe neutral.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Player's bot (parent's), of 60 | Hosted bot, of 17 | Decision |
+|---|---|---|---|---|---|---|---|---|
+| `hold_cushion3` | safe_hold | (f) A safe neutral is paid SAFE_CUSHION (3) soldiers more than its exact price. | 1834 (1813) | 19/34 | 1781 (1914) | 40 (46) | 1 win (`gyre`) | **rejected**: 133 below its parent on the holdout maps. |
+| `hold_prodlast` | safe_hold | (a) Production level 4 and speed only after strikes and expansion. | 1705 (1813) | 14/34 | not played | 46 (46) | 0 | **rejected**: below its parent in both rules. |
+| `hold_waitnostage` | safe_hold | (c) Wait up to 4 turns for the best neutral, the waiting castle out of strikes and staging. | 1721 (1813) | 10/34 | not played | 51 (46) | 0 | **rejected**: below its parent in both rules. |
+| `hold_jointneutral` | safe_hold | (b) Castles landing within 2 turns of each other take a neutral together. | 1711 (1813) | 10/34 | not played | 46 (46) | 0 of 11 played | **rejected**: below its parent in both rules. |
+| `hold_expander` | safe_hold | (a) and (b) together. | 1638 (1813) | 8/34 | not played | 48 (46) | 0 of 6 played | **rejected**: below its parent in both rules. |
+| `hold_opening` | safe_hold | (d) No strikes or staging while the bot has under 4 castles, neutrals remain and it is turn 80 or earlier. | 1637 (1813) | 7/34 | not played | 54 (46) | not played | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 14 to 80 ms with the six tournaments running at once.
+
+**The check against the real opponent, as a measure.** Five candidates, rejected by the league, played the hosted bot anyway (one per tab, each on its own port) to see whether the league and the real opponent agree. Some tabs lost games to a lobby that showed the new map late (`lobby-run.js` now waits for it and retries a map). The results were far below the champion's 4 wins of the day before, so the champion played its five best maps again in the same session, then all 17: **it lost all 17**, `circle` in 17 turns. The hosted bot had changed since the previous day, and the rule that compared a candidate with a record from another day compared nothing; the iteration skill now has the champion play in the same session. The 17 games' demos were saved for study (not in git).
+
+**Status changes:** none. **Champion:** `safe_hold`, unchanged.
+
+## Setup after iteration 23: a sparring bot built from the hosted bot's commands
+
+**Date:** 2026-11-22. A change of the league's setup, made between iterations and measured with a full tournament on both sets of maps.
+
+**Why.** `ori_like` matched the hosted bot's habits but not its results: as Red against the champion it won 9 of the 17 training maps where the hosted bot won 12 (2026-11-21). A study of every command the hosted bot gave in its saved lobby games (18 games of 2026-11-21, 2,122 turns, and 17 of 2026-11-22, 1,437 turns; each command read off consecutive frames, and checked against the bot's own count of its commands on all but one turn) found rules that fit closely: every capture is sized need(x) = x + x // 10 + 3, x being what the castle will hold when the groups land, plus half of what the enemy's other castles could bring first (exact on 69 of 77 neutral waves and 102 of 115 attacks in the first games); upgrades in the order production 2, 3, 4, speed 2, each the first turn the castle has the soldiers, unless an enemy group is bound for it or one enemy castle could then take it; fully upgraded rear castles send everything to the castle nearest the enemy at 10 or more (477 of 935 moves between its castles were exactly 12). The version of 2026-11-22 also buys speed to strike sooner (speed and a strike from the same castle in one turn 11 times, against once before) and prices neutrals like attacks.
+
+**What changed:**
+
+- **`ori_mimic`**, a sparring bot written from those rules (a founder, not a copy of anyone's code). Given every turn the hosted bot played on 2026-11-22, it makes the hosted bot's exact commands on 75% of them (1,077 of 1,437; the first draft, from the older games only, 49%). In the league it is the strongest player on both sets of maps, and as Red against the champion it wins 10 of the 17 training maps, where the hosted bot won all 17 that day: closer, still weaker.
+- **`league replay`** (`league_tools/replay.py`): replays one team's turns in saved demos through a league bot and counts how often its commands match, by kind (upgrades, neutrals, attacks, defence, feeds). It is how a sparring bot is built and checked again when the opponent changes.
+
+Training maps (`setup-24-train`, 5,100 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_mimic (sparring) | 1790 | 0.812 | 439 | 61 | 78 |
+| safe_hold | 1771 | 0.796 | 443 | 34 | 101 |
+| finish_safe | 1703 | 0.734 | 407 | 34 | 137 |
+| finish_speed | 1685 | 0.716 | 391 | 46 | 141 |
+| hold_finish | 1667 | 0.699 | 375 | 58 | 145 |
+| frontline_hold (retired) | 1651 | 0.683 | 366 | 58 | 154 |
+| ori_like (sparring) | 1650 | 0.682 | 379 | 30 | 169 |
+| frontline | 1642 | 0.674 | 359 | 61 | 158 |
+| frontline_finish | 1635 | 0.667 | 355 | 61 | 162 |
+| speed_margin (retired) | 1442 | 0.472 | 246 | 54 | 278 |
+| outside_player | 1398 | 0.431 | 244 | 10 | 324 |
+| contested_speed (retired) | 1394 | 0.427 | 221 | 52 | 305 |
+| contested_stage (retired) | 1310 | 0.353 | 191 | 26 | 361 |
+| reinforce_timeline (retired) | 1263 | 0.316 | 161 | 43 | 374 |
+| reinforce_contested (retired) | 1214 | 0.279 | 140 | 43 | 395 |
+| level3 | 1000 | 0.065 | 33 | 0 | 477 |
+| level1 | 762 | 0.018 | 0 | 18 | 492 |
+| level2 | 680 | 0.011 | 5 | 1 | 504 |
+
+Holdout maps (`setup-24-holdout`, 3,900 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_mimic (sparring) | 1956 | 0.873 | 374 | 24 | 44 |
+| safe_hold | 1901 | 0.835 | 368 | 2 | 72 |
+| finish_safe | 1801 | 0.753 | 332 | 2 | 108 |
+| finish_speed | 1756 | 0.713 | 311 | 8 | 123 |
+| frontline_finish | 1732 | 0.690 | 295 | 20 | 127 |
+| hold_finish | 1728 | 0.686 | 292 | 22 | 128 |
+| frontline_hold (retired) | 1713 | 0.672 | 286 | 22 | 134 |
+| frontline | 1695 | 0.654 | 279 | 20 | 143 |
+| ori_like (sparring) | 1651 | 0.611 | 270 | 0 | 172 |
+| speed_margin (retired) | 1519 | 0.484 | 213 | 2 | 227 |
+| outside_player | 1489 | 0.457 | 202 | 0 | 240 |
+| contested_speed (retired) | 1425 | 0.400 | 171 | 12 | 259 |
+| contested_stage (retired) | 1361 | 0.348 | 154 | 0 | 288 |
+| reinforce_timeline (retired) | 1337 | 0.330 | 143 | 6 | 293 |
+| reinforce_contested (retired) | 1232 | 0.258 | 110 | 8 | 324 |
+| level3 | 1000 | 0.049 | 19 | 0 | 371 |
+| level1 | 794 | 0.015 | 0 | 12 | 378 |
+| level2 | 534 | 0.003 | 1 | 0 | 389 |
+
+## Iteration 24: the strike at a short walk counts exactly
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 9,282 in the training selection round robin, 4,368 in the holdout selection for the one that passed; `ori_mimic` of the setup above in the field. Six candidates from the champion, written in parallel by subagents (a smaller model), every diff read before it played.
+
+**Findings** (the champion's 17 lobby games against the hosted bot of 2026-11-22, all lost, demos saved for study):
+
+1. **An upgrade that one enemy castle can punish.** `circle`, turn 13: production 4 at 34 soldiers, 8 left, the enemy's castle 4 units away at 34; it bought speed 2 and sent 25, enough to the soldier, and took the castle on turn 17. **Ideas (a)** skip such an upgrade; **(b)** spend nothing, upgrade or send, below what keeps the castle from any single enemy castle.
+2. **Fresh captures retaken within one to four turns** (`haven` castles 4 and 5, `rill` castles 4 and 5): the enemy sends at a neutral as soon as it sees our group walking there, sized for what we will leave, and the champion helps only castles it owns. **Idea (c):** top up a capture that an enemy group bound for it would take.
+3. **The opponent keeps no reserve** (its castles at 0 to 3 soldiers after every upgrade, its rear castles at 4 to 8 between batches) and the champion strikes only with 1.5 times the defenders. **Idea (d):** strikes that land within five turns count the target exactly.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Player's bot (parent's), of 60 | Hosted bot, of 17 (champion: 0) | Decision |
+|---|---|---|---|---|---|---|---|---|
+| `hold_exactstrike` | safe_hold | (d) A strike whose last group lands within SHORT_STRIKE (5) turns counts the target exactly, plus STRIKE_EXTRA (2). | 1871 (1788) | 26/34 | 1928 (1899) | 48 (46) | 0 | **promoted** |
+| `hold_topup` | safe_hold | (c) Top up a neutral our group is bound for when an enemy group bound for it would take it. | 1785 (1788) | 18/34 | not played | 46 (46) | 0 | **rejected**: rated below its parent. |
+| `hold_upsafe` | safe_hold | (a) Skip an upgrade that would leave the castle to one enemy castle at speed 2. | 1752 (1788) | 14/34 | not played | 42 (46) | 0, `circle` drawn | **rejected**: below its parent in both rules. |
+| `hold_upsafe_topup` | safe_hold | (a) and (c). | 1721 (1788) | 13/34 | not played | 42 (46) | 0, `circle` drawn | **rejected**: below its parent in both rules. |
+| `hold_upsafe_exact` | safe_hold | (a) and (d). | 1763 (1788) | 11/34 | not played | 44 (46) | not played | **rejected**: below its parent in both rules. |
+| `hold_upsafe_all` | safe_hold | (b) Upgrades and sends keep what holds the castle against any single enemy castle; strikes as the parent. | 1663 (1788) | 10/34 | not played | 44 (46) | 1 (`claw`), `circle` drawn | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 27 to 43 ms with the six tournaments running at once. The selection was first played with a first draft of `ori_mimic` in the field and played again once the setup above was committed; the decisions were the same (`hold_exactstrike` 1861 against 1773 then).
+
+**The check against the real opponent:** the champion's record of the same session was 0 of 17; `hold_exactstrike` lost all 17 too, so it was not worse, and it was promoted. The candidates the league rejected played as a measure (above): the upgrade guards gave the only points. A background tab's timers slow to one a minute, which made two tabs look stuck; `lobby-run.js` now waits in a worker.
+
+**Status changes:** `hold_exactstrike` active (the champion). `safe_hold` retired: `hold_exactstrike` did as well or better against every player that stays in the league (it scored a point less than its parent only against `hold_upsafe_exact`, a rejected candidate). With seven retired bots, `reinforce_contested`, the lowest rated of them (1227), is deleted.
+
+Training maps (`iteration-24-train`, 5,100 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| hold_exactstrike | 1814 | 0.822 | 458 | 34 | 86 |
+| ori_mimic (sparring) | 1779 | 0.792 | 428 | 60 | 90 |
+| safe_hold (retired) | 1736 | 0.753 | 416 | 38 | 124 |
+| finish_safe | 1680 | 0.697 | 385 | 36 | 157 |
+| finish_speed | 1663 | 0.680 | 369 | 48 | 161 |
+| hold_finish | 1636 | 0.652 | 348 | 58 | 172 |
+| ori_like (sparring) | 1633 | 0.649 | 360 | 30 | 188 |
+| frontline_hold (retired) | 1622 | 0.637 | 339 | 58 | 181 |
+| frontline | 1611 | 0.625 | 331 | 61 | 186 |
+| frontline_finish | 1604 | 0.619 | 327 | 61 | 190 |
+| speed_margin (retired) | 1423 | 0.433 | 226 | 48 | 304 |
+| outside_player | 1391 | 0.403 | 228 | 10 | 340 |
+| contested_speed (retired) | 1368 | 0.382 | 198 | 46 | 334 |
+| contested_stage (retired) | 1283 | 0.311 | 167 | 26 | 385 |
+| reinforce_timeline (retired) | 1266 | 0.298 | 153 | 39 | 386 |
+| level3 | 1000 | 0.055 | 28 | 0 | 482 |
+| level1 | 795 | 0.018 | 0 | 18 | 492 |
+| level2 | 641 | 0.007 | 3 | 1 | 506 |
+
+Holdout maps (`iteration-24-holdout`, 3,900 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_mimic (sparring) | 1943 | 0.860 | 369 | 22 | 51 |
+| hold_exactstrike | 1897 | 0.826 | 360 | 10 | 72 |
+| safe_hold (retired) | 1868 | 0.803 | 350 | 10 | 82 |
+| finish_safe | 1771 | 0.717 | 315 | 4 | 123 |
+| finish_speed | 1729 | 0.676 | 295 | 8 | 139 |
+| hold_finish | 1688 | 0.636 | 270 | 22 | 150 |
+| frontline_finish | 1688 | 0.636 | 271 | 20 | 151 |
+| frontline_hold (retired) | 1675 | 0.622 | 264 | 22 | 156 |
+| frontline | 1652 | 0.600 | 255 | 20 | 167 |
+| ori_like (sparring) | 1621 | 0.568 | 251 | 0 | 191 |
+| outside_player | 1484 | 0.434 | 192 | 0 | 250 |
+| speed_margin (retired) | 1481 | 0.432 | 190 | 2 | 250 |
+| contested_speed (retired) | 1398 | 0.360 | 155 | 8 | 279 |
+| contested_stage (retired) | 1334 | 0.310 | 137 | 0 | 305 |
+| reinforce_timeline (retired) | 1308 | 0.292 | 127 | 4 | 311 |
+| level3 | 1000 | 0.041 | 16 | 0 | 374 |
+| level1 | 828 | 0.015 | 0 | 12 | 378 |
+| level2 | 568 | 0.003 | 1 | 0 | 389 |
+
+## Iteration 25: the hosted bot's rules, with the league's lessons
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 9,282 in the training selection round robin, 4,862 in the holdout selection for the two that passed. Six candidates written in parallel by subagents (a smaller model), every diff read before it played. Four of them are **founders** on the sparring bot `ori_mimic`'s code, which the iteration skill now allows: the sparring bot is then the parent in every rule, and stays as it is. `ori_mimic`'s reserve, counted up one soldier at a time, was replaced by the same number computed directly (identical commands on 300 random boards, eight times faster; its slowest turn had reached 1.4 s with six tournaments running).
+
+**Findings:**
+
+1. **`ori_mimic`, the hosted bot's rules, is the strongest player in the league** (iteration 24's tables) and loses to its original on the board only a little less than the league's bots. **Ideas:** found new bots on it, with what the league knows that the hosted bot doesn't.
+2. **The hosted bot never bursts and sizes every capture need(P) = P + P // 10 + 3**; a burst of 8 as its group lands beats that for any castle under about 50. No league bot bursts. **Idea (a):** burst defence.
+3. **`ori_mimic` draws more than any bot (60 of 578 training games)**: its price adds half of what the target's neighbours could bring, so a level game is never finished. **Idea (b):** exact strikes over a short walk and near the turn limit (iteration 8's and iteration 24's lessons).
+4. **Its defence takes help only from castles no enemy group is bound for, and it never helps a capture the enemy will retake** (the league's oldest lesson: a castle taken with 1 soldier falls unless another castle reinforces it). **Idea (c):** both.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Player's bot, of 60 | Hosted bot, of 17 (champion: 0) | Decision |
+|---|---|---|---|---|---|---|---|---|
+| `ori_hold` | ori_mimic | A new strategy (c): a castle under attack may help another if it still holds, help counts its turn's earlier sends, and a capture an enemy group would retake is topped up to hold. | 1876 (1836) | 17.5/34 | 1969 (1938) | 58, 2 draws, 0 lost | 2 wins (`islands`, `reef`), 1 draw (`rill`) | **promoted** (the champion) |
+| `ori_finish` | ori_mimic | A new strategy (b): strikes over a walk of 5 turns or less, or near the turn limit, cost what the target will hold plus 2 and its burst instead of need(P). | 1855 (1836) | 18.5/34 | 2020 (1938) | 58, 2 draws, 0 lost | 1 win (`loch`), and one by the hosted bot's timeout (`haven`) | **promoted** |
+| `ori_burst` | ori_mimic | A new strategy (a): burst levels up to 3 near the enemy, and a burst when the landing that takes a castle is this turn. | 1728 (1836) | 8/34 | not played | 56, 2 draws | 0 on the board (1 draw) | **rejected**: below its parent in both rules. |
+| `ori_burst_finish` | ori_mimic | (a) and (b). | 1738 (1836) | 7.5/34 | not played | 56, 2 draws | 0 on the board | **rejected**: below its parent in both rules. |
+| `exact_burst_upsafe` | hold_exactstrike | (a) and iteration 24's upgrade guard. | 1583 (1818) | 7/34 | not played | 40, 2 draws | not played | **rejected**: below its parent in both rules. |
+| `exact_burst` | hold_exactstrike | (a) on the champion. | 1576 (1818) | 2/34 | not played | 42, 2 draws | not played | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 11 to 61 ms.
+
+**The check against the real opponent:** the champion `hold_exactstrike` had lost all 17 that session; `ori_mimic` itself, played as a measure, won 2 on the board (`firth`, `islands`) and drew `reef`. Seven of the 85 games ended by the hosted bot's timeout and two by ours (a tab the browser slowed); the founders' unfinished and forfeited maps were played again in two tabs, all lost.
+
+**Status changes:** `ori_hold` and `ori_finish` active; `ori_hold` is the champion (first on training, 1811; `ori_finish` first on holdout, 2062). With eight active bots, `finish_safe` is retired (`hold_exactstrike` matches or beats it against everyone); no other active bot is matched everywhere, so seven stay active. With seven retired, `reinforce_timeline`, the lowest rated, is deleted.
+
+Training maps (`iteration-25-train`, 5,712 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_hold | 1811 | 0.791 | 430 | 108 | 74 |
+| ori_finish | 1795 | 0.776 | 425 | 100 | 87 |
+| hold_exactstrike | 1781 | 0.763 | 449 | 36 | 127 |
+| ori_mimic (sparring) | 1764 | 0.747 | 401 | 112 | 99 |
+| safe_hold (retired) | 1713 | 0.694 | 405 | 40 | 167 |
+| finish_speed | 1653 | 0.631 | 361 | 50 | 201 |
+| finish_safe (retired) | 1652 | 0.629 | 366 | 38 | 208 |
+| hold_finish | 1614 | 0.588 | 330 | 60 | 222 |
+| frontline | 1606 | 0.579 | 323 | 63 | 226 |
+| ori_like (sparring) | 1601 | 0.574 | 336 | 30 | 246 |
+| frontline_hold (retired) | 1601 | 0.574 | 321 | 60 | 231 |
+| frontline_finish | 1600 | 0.573 | 319 | 63 | 230 |
+| speed_margin (retired) | 1413 | 0.379 | 206 | 52 | 354 |
+| outside_player | 1380 | 0.350 | 208 | 12 | 392 |
+| contested_speed (retired) | 1351 | 0.325 | 172 | 54 | 386 |
+| contested_stage (retired) | 1285 | 0.273 | 153 | 28 | 431 |
+| level1 | 1022 | 0.050 | 0 | 54 | 490 |
+| level3 | 1000 | 0.044 | 24 | 0 | 520 |
+| level2 | 648 | 0.006 | 3 | 0 | 541 |
+
+Holdout maps (`iteration-25-holdout`, 4,368 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_finish | 2062 | 0.870 | 378 | 58 | 32 |
+| ori_hold | 2006 | 0.831 | 358 | 62 | 48 |
+| ori_mimic (sparring) | 1978 | 0.810 | 348 | 62 | 58 |
+| hold_exactstrike | 1907 | 0.750 | 346 | 10 | 112 |
+| safe_hold (retired) | 1875 | 0.720 | 332 | 10 | 126 |
+| finish_safe (retired) | 1789 | 0.637 | 296 | 4 | 168 |
+| finish_speed | 1747 | 0.594 | 274 | 8 | 186 |
+| frontline_finish | 1730 | 0.577 | 260 | 20 | 188 |
+| hold_finish | 1723 | 0.571 | 256 | 22 | 190 |
+| frontline_hold (retired) | 1711 | 0.558 | 250 | 22 | 196 |
+| frontline | 1696 | 0.543 | 244 | 20 | 204 |
+| ori_like (sparring) | 1647 | 0.494 | 231 | 0 | 237 |
+| speed_margin (retired) | 1521 | 0.376 | 173 | 6 | 289 |
+| outside_player | 1506 | 0.363 | 170 | 0 | 298 |
+| contested_speed (retired) | 1443 | 0.312 | 138 | 16 | 314 |
+| contested_stage (retired) | 1383 | 0.269 | 126 | 0 | 342 |
+| level1 | 1106 | 0.043 | 0 | 36 | 380 |
+| level3 | 1000 | 0.024 | 10 | 0 | 406 |
+| level2 | 462 | 0.000 | 0 | 0 | 416 |
