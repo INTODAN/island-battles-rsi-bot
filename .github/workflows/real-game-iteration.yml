@@ -19,8 +19,8 @@
 #            come from the cache.
 #   study    Claude, the first half: steps 0 to 3 (measure, study, write the
 #            candidates and rematch them) and the hand-over, the start of the
-#            ledger entry. Its diff goes on as an artifact once the scope and
-#            name checks pass.
+#            ledger entry. Its diff, carried into a clean checkout, goes on
+#            as an artifact once the scope, name and bot checks pass there.
 #   gate     N runners each play a shard of every match with a candidate, on
 #            the training and the holdout maps.
 #   select   Claude, the second half: steps 4 to 7 from the hand-over, every
@@ -28,9 +28,11 @@
 #            request and the merge, as before.
 #
 # The runners share what they played through artifacts that hold league games
-# only (runs/cache: results and demos of league bots) and the first half's
-# diff, never a real game: a public repository's artifacts are public. N is
-# RSI_SHARDS.
+# only (runs/cache: results and demos of league bots, from runners Claude never
+# ran on) and the first half's diff, never a real game: a public repository's
+# artifacts are public. After each Claude step nothing runs from its working
+# tree: the paths an iteration may change are carried into a fresh checkout,
+# whose own tools check, commit and push them. N is RSI_SHARDS.
 #
 # One iteration runs at a time. Games that arrive meanwhile wait in one queued
 # run, which studies all of them: GitHub keeps one pending run per concurrency
@@ -82,7 +84,7 @@ jobs:
       base: ${{ steps.claim.outputs.base }}
       shards: ${{ steps.shards.outputs.shards }}
       count: ${{ steps.shards.outputs.count }}
-      cache: ${{ steps.shards.outputs.cache }}
+      cache: ${{ steps.claim.outputs.cache }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -103,7 +105,7 @@ jobs:
             exit 1
           fi
 
-      - name: The shards and the cache's key
+      - name: The shards
         id: shards
         env:
           COUNT: ${{ vars.RSI_SHARDS || '8' }}
@@ -111,7 +113,6 @@ jobs:
           [[ "$COUNT" =~ ^[1-9][0-9]?$ ]] || { echo "::error::RSI_SHARDS must be a number from 1 to 99"; exit 1; }
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "shards=[$(seq -s, 1 "$COUNT")]" >> "$GITHUB_OUTPUT"
-          echo "cache=league-$(sha256sum runner.toml | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -164,7 +165,8 @@ jobs:
           private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
 
       # Every later job checks out the claim's parent: the main that the
-      # iteration starts from.
+      # iteration starts from. The cache's key comes from its game pin, which
+      # may have moved while the run waited.
       - name: Claim the iteration's number
         if: steps.games.outputs.ids != ''
         id: claim
@@ -183,7 +185,9 @@ jobs:
           echo "n=$n" >> "$GITHUB_OUTPUT"
           echo "claim=$claim" >> "$GITHUB_OUTPUT"
           echo "branch=claude/league-iteration-$n" >> "$GITHUB_OUTPUT"
-          echo "base=$(git rev-parse "$claim^")" >> "$GITHUB_OUTPUT"
+          base=$(git rev-parse "$claim^")
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "cache=league-$(git show "$base:runner.toml" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
   # The population's round robin on the training and the holdout maps, a shard
   # per runner. From a warm cache each shard plays nothing and takes a minute.
@@ -300,22 +304,63 @@ jobs:
             Candidates may be written by subagents on the sonnet model, as the skill allows.
 
       - name: The first half finished
-        id: handover
         run: |
           if [ -f runs/rsi/stopped.txt ]; then
             echo "::error::the iteration stopped"
             cat runs/rsi/stopped.txt
             exit 1
           fi
-          candidates=$(uv run --locked league roster --json | python3 -c \
-            'import json, sys; print(",".join(b["name"] for b in map(json.loads, sys.stdin) if b["status"] == "candidate"))')
+
+      # From here on nothing runs from the working tree, which Claude could
+      # have changed anywhere (the tools, scope.py, .github/actions, .git):
+      # only the paths an iteration may change are carried into a fresh
+      # checkout of the base, and its own tools check them. What this runner
+      # played isn't passed on either: Claude could have written results into
+      # runs/cache that the gate's runners would trust.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.claim.outputs.base }}
+          path: clean
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Carry the first half into the clean checkout
+        id: handover
+        run: |
+          for path in bots maps ledger/studies; do
+            if [ -d "$path" ]; then rsync -a --no-links --delete --exclude __pycache__ "$path/" "clean/$path/"; fi
+          done
+          cp ledger/iterations.md clean/ledger/iterations.md
+          cp hosting/lambda/bot clean/hosting/lambda/bot
+          candidates=$(python3 -I -c '
+          import pathlib, sys, tomllib
+          names = [p.parent.name for p in sorted(pathlib.Path(sys.argv[1]).glob("*/bot.toml"))
+                   if tomllib.loads(p.read_text()).get("status") == "candidate"]
+          print(",".join(names))' clean/bots)
           [ -n "$candidates" ] || { echo "::error::the first half wrote no candidate"; exit 1; }
           echo "Candidates: $candidates"
           echo "candidates=$candidates" >> "$GITHUB_OUTPUT"
 
+      # Downloaded again, outside the working tree: the name check reads the
+      # demos as they are, not as Claude may have left them.
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_GAMES_READ_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download the real games for the name check
+        working-directory: clean
+        env:
+          BUCKET: ${{ vars.GAMES_BUCKET }}
+          IDS: ${{ needs.claim.outputs.ids }}
+        run: |
+          uv run --locked python hosting/rsi/real_games.py --bucket "$BUCKET" --out "$RUNNER_TEMP/real" --ids "$IDS"
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+
       # The hand-over leaves this runner only once it stays in an iteration's
       # scope and names nobody: the artifact is public.
       - name: The hand-over stays in its scope and names nobody
+        working-directory: clean
         env:
           BASE: ${{ needs.claim.outputs.base }}
         run: |
@@ -323,22 +368,22 @@ jobs:
           git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "The first half of league iteration ${{ needs.claim.outputs.n }}"
-          python3 hosting/rsi/scope.py "$BASE" HEAD --names-from runs/real
-          mkdir -p runs/handover
-          git diff --binary "$BASE" HEAD > runs/handover/first-half.patch
+          python3 hosting/rsi/scope.py "$BASE" HEAD --names-from "$RUNNER_TEMP/real"
+          mkdir -p "$RUNNER_TEMP/handover"
+          git diff --binary "$BASE" HEAD > "$RUNNER_TEMP/handover/first-half.patch"
           git show --stat HEAD
+
+      # The gate's runners run the candidates: they play only once every bot
+      # keeps the league's rules (its imports, its purity) and the tools pass.
+      - name: Checks of the tools and of every bot
+        run: clean/scripts/check.sh
 
       - uses: actions/upload-artifact@v4
         with:
           name: first-half
-          path: runs/handover/first-half.patch
-          retention-days: 1
+          path: ${{ runner.temp }}/handover/first-half.patch
+          retention-days: 3
           overwrite: true
-
-      - uses: ./.github/actions/league-cache-upload
-        if: always()
-        with:
-          name: cache-study
 
   # Every match with a candidate, on the training and the holdout maps, a shard
   # per runner: the gate's, the selection's and the final tables' matches.
@@ -394,6 +439,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Saved before Claude runs, never after: Claude could write results
+      # into runs/cache that every later iteration would trust. What the second
+      # half plays (a failed turn played again, a fixed candidate) is played
+      # again by the next run's warm runners when it matters.
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.claim.outputs.cache }}
@@ -471,6 +520,28 @@ jobs:
             exit 1
           fi
           test -s runs/rsi/commit-message.txt
+          mkdir -p "$RUNNER_TEMP/rsi"
+          cp runs/rsi/commit-message.txt "$RUNNER_TEMP/rsi/"
+          touch runs/rsi/pr-body.md
+          cp runs/rsi/pr-body.md "$RUNNER_TEMP/rsi/"
+
+      # As in the first half: from here on nothing runs from the working tree.
+      # The paths an iteration may change are carried into a fresh checkout of
+      # the base, whose own tools commit, check and push them.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.claim.outputs.base }}
+          path: clean
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Carry the iteration into the clean checkout
+        run: |
+          for path in bots maps ledger/studies; do
+            if [ -d "$path" ]; then rsync -a --no-links --delete --exclude __pycache__ "$path/" "clean/$path/"; fi
+          done
+          cp ledger/iterations.md clean/ledger/iterations.md
+          cp hosting/lambda/bot clean/hosting/lambda/bot
 
       - uses: aws-actions/configure-aws-credentials@v5
         with:
@@ -479,14 +550,16 @@ jobs:
 
       # For the name check alone.
       - name: Download the studied real games
+        working-directory: clean
         env:
           BUCKET: ${{ vars.GAMES_BUCKET }}
           IDS: ${{ needs.claim.outputs.ids }}
         run: |
-          uv run --locked python hosting/rsi/real_games.py --bucket "$BUCKET" --out runs/real --ids "$IDS"
+          uv run --locked python hosting/rsi/real_games.py --bucket "$BUCKET" --out "$RUNNER_TEMP/real" --ids "$IDS"
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
 
       - name: Record the studied games and commit
+        working-directory: clean
         env:
           IDS: ${{ needs.claim.outputs.ids }}
           CLAIMED: ${{ needs.claim.outputs.n }}
@@ -501,18 +574,17 @@ jobs:
           git config user.name "island-battles-rsi[bot]"
           git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           git add -A
-          git commit -q -F runs/rsi/commit-message.txt
+          git commit -q -F "$RUNNER_TEMP/rsi/commit-message.txt"
           git show --stat HEAD
 
       - name: The iteration stays in its scope and names nobody
+        working-directory: clean
         env:
           BASE: ${{ needs.claim.outputs.base }}
-        run: |
-          touch runs/rsi/pr-body.md
-          python3 hosting/rsi/scope.py "$BASE" HEAD --names-from runs/real --also runs/rsi/pr-body.md
+        run: python3 hosting/rsi/scope.py "$BASE" HEAD --names-from "$RUNNER_TEMP/real" --also "$RUNNER_TEMP/rsi/pr-body.md"
 
       - name: Checks of the tools and of every bot
-        run: scripts/check.sh
+        run: clean/scripts/check.sh
 
       - uses: actions/create-github-app-token@v2
         id: app
@@ -525,6 +597,7 @@ jobs:
       # start the deploy. The iteration's commit replaces the claim on the
       # claim's branch, and only if the branch still holds this run's claim.
       - name: Open the pull request and merge it when the checks pass
+        working-directory: clean
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           BRANCH: ${{ needs.claim.outputs.branch }}
@@ -535,7 +608,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
           gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --color 5319e7 \
             --description "A league iteration started by real games, merged without review" --force
-          body=runs/rsi/pr-body.md
+          body="$RUNNER_TEMP/rsi/pr-body.md"
           [ -s "$body" ] || git log -1 --format=%b > "$body"
           printf '\n\nStarted by the real games %s, run %s.\n' "$IDS" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$body"

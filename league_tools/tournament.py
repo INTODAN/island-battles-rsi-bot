@@ -376,11 +376,45 @@ def markdown(summary: dict[str, Any], results: list[dict[str, Any]], listed: lis
     return "\n".join(lines) + "\n"
 
 
-def shard_report(summary: dict[str, Any], results: list[dict[str, Any]], shard: tuple[int, int]) -> str:
-    """What a shard played, without standings: how many matches, and which went wrong."""
-    failed = sum(1 for result in results if "error" not in result and any(s["failed_turns"] for s in result["seats"]))
+def failed_players(results: list[dict[str, Any]]) -> list[str]:
+    """The players that failed a turn in any of the games."""
+    return sorted(
+        {
+            seat["name"]
+            for result in results
+            if "error" not in result
+            for seat in result["seats"]
+            if seat["failed_turns"]
+        }
+    )
+
+
+def shard_summary(results: list[dict[str, Any]], shard: tuple[int, int]) -> dict[str, Any]:
+    """What a shard played, without ratings: a slice of the matches rates nobody.
+
+    Its holdout games' numbers stay unseen too, as the iteration's selection needs.
+    """
+    errors = [
+        {"map": result["map"], "players": result["players"], "error": result["error"]}
+        for result in results
+        if "error" in result
+    ]
+    failed_games = sum(
+        1 for result in results if "error" not in result and any(seat["failed_turns"] for seat in result["seats"])
+    )
+    return {
+        "shard": f"{shard[0]}/{shard[1]}",
+        "matches": len(results),
+        "failed_games": failed_games,
+        "failed_players": failed_players(results),
+        "errors": errors,
+    }
+
+
+def shard_report(summary: dict[str, Any]) -> str:
+    """A shard's summary as text: how many matches, and which went wrong."""
     lines = [
-        f"Shard {shard[0]}/{shard[1]}: {summary['matches']} matches, {failed} with a failed turn, "
+        f"Shard {summary['shard']}: {summary['matches']} matches, {summary['failed_games']} with a failed turn, "
         f"{len(summary['errors'])} not played. No standings: a shard's games rate nobody; "
         "play the tournament without --shard once every shard's cache is in runs/cache."
     ]
@@ -389,16 +423,19 @@ def shard_report(summary: dict[str, Any], results: list[dict[str, Any]], shard: 
 
 
 def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
-    """Play a tournament and write its results, summary and tables under ``runs/<run_id>/``."""
+    """Play a tournament and write its results, summary and tables under ``runs/<run_id>/``.
+
+    A shard's summary has no standings, pairs or maps: the tables come from the
+    whole tournament, played again from the shards' caches together.
+    """
     run_directory = RUNS / run_id
     run_directory.mkdir(parents=True, exist_ok=True)
     results = play(tournament, run_directory)
-    summary = summarize(results) | {"matches": len(results)}
     if tournament.shard:
-        # A slice of the matches rates nobody: the tables come from the whole
-        # tournament, played again from the shards' caches together.
-        table = shard_report(summary, results, tournament.shard)
+        summary = shard_summary(results, tournament.shard)
+        table = shard_report(summary)
     else:
+        summary = summarize(results) | {"matches": len(results), "failed_players": failed_players(results)}
         table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps))
     with (run_directory / "results.jsonl").open("w", encoding="utf-8") as file:
         for result in results:

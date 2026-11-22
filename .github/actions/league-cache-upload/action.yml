@@ -32,5 +32,5 @@ runs:
       with:
         name: ${{ inputs.name }}
         path: runs/upload
-        retention-days: 1
+        retention-days: 3
         overwrite: true

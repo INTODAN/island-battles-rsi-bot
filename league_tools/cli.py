@@ -44,7 +44,7 @@ def _tournament(arguments: argparse.Namespace) -> int:
     summary, table = tournament.run(plan, run_id)
     print(table)
     print(f"Written to {RUNS / run_id}", file=sys.stderr)
-    failed = [row["player"] for row in summary["standings"] if row["failed_turns"]]
+    failed = summary["failed_players"]
     # A shard may hold none of a small tournament's matches; the whole has some.
     empty = not summary["matches"] and not arguments.shard
     if arguments.strict and (failed or summary["errors"] or empty):
