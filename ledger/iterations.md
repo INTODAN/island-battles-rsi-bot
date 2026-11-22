@@ -50,6 +50,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **A castle that can neither upgrade safely nor feed should feed.** Sending the spare soldiers of a castle whose next upgrade would leave it to one enemy castle to the front beat its parent 19 of 34 (iteration 27's `exact_stallfeed`).
 - **A reserve against a castle that can't arrive in time is a hoard.** Bots that keep a reserve against the strongest enemy castle end level games with thousands of soldiers each and draw. Counting only enemy castles whose group could land before the last generation beat the parent 22 of 34 and rose 57 points on training and 52 on holdout (iteration 28's `sameturn_endreserve`).
 - **Freeing an attacked castle entirely is worse than freezing it.** Treating a castle as attacked only when its landings would take it won every game against `level1`'s trickle but lost to the parent 13 of 34 (iteration 28's `sameturn_fallonly`): a castle that spends down to what its landings leave is taken by the next group. Two forms of the idea have now failed; the trickle is worth 9 points a tournament.
+- **The `ori_` line's upgrade order holds against changes to it.** Letting castles that save for an upgrade help pay for neutrals, or making production 4 wait while a near neutral remains, both lost rating to their parent (iteration 29's `endreserve_helpall` and `endreserve_prod4late`), as reordering production did on the `hold_` line in iteration 23. Production first, the hosted bot's order, keeps winning the league.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1800,3 +1801,77 @@ Holdout maps (`iteration-28-holdout`, 5,382 matches, exit 0):
 **Where it still loses:** draws against `level1` (18) and `circle`; the short losses on `gyre` and `claw` to the `hold_`/`frontline` lines' staged strikes.
 
 **Time:** 11 minutes (iteration 27: 8). Step 1: 3 s. Step 2: 1 min. Step 3: 1 min. Step 4: 5.7 min, the gate (2,142 matches), the slowest step. Step 5: selection from the cache in 3 s, holdout 3 min (1,066 matches). Step 6: 4 s. The gate plays every candidate's matches once and the selections reuse them: there is nothing left to cut but the playing itself.
+
+## Iteration 29: the stalled castles' feeding on the champion
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 9,282 in the training selection round robin, 5,928 in the holdout selection. Three candidates from the champion, written one after the other. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`sameturn_endreserve`'s games on the training maps):
+
+1. **The upgrade race loses the race for neutrals.** `gyre` against `safe_hold` (lost in 58 turns, the champion's shortest loss for the fourth iteration running): turns 10 to 18 the log says "saving" every turn while home castle 0 saves for production 4 (bought on turn 19); castles 4 and 6, at production 1 and 2, can't pay a 12-soldier neutral alone, and a castle within three turns of its next upgrade doesn't help pay. `safe_hold` took neutral 3 on turn 19 and had four castles to three from then. **Ideas (a)** castles saving for an upgrade still help pay for neutrals; **(b)** production 4 waits while a neutral nearer to the castle than to any enemy remains.
+2. **The two stalled-feeding bots promoted from the line (iterations 27 and 28) have not met this champion's reserve rule.** **Idea (c):** graft `sameturn_stallfeed`'s feeding of stalled castles.
+3. Unchanged: 18 draws against `level1`, and `circle` (22 of 40 points).
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `endreserve_stallfeed` | sameturn_endreserve | (c) Graft from `sameturn_stallfeed`. | 1995 (1980) | 18.5/34 | 2322 (2315), 15/26 | **promoted** (the champion) |
+| `endreserve_helpall` | sameturn_endreserve | (a) A castle a few turns from its next upgrade still helps pay for a neutral. | 1953 (1980) | 19/34 | not played | **rejected**: rated below its parent (4.5 points fewer against `ori_mimic`, 4 against `ori_like`), though it won the mirror match. |
+| `endreserve_prod4late` | sameturn_endreserve | (b) Production 4 waits while a neutral nearer to the castle than to any enemy remains. | 1957 (1980) | 17/34 | not played | **rejected**: exactly half against its parent, rated below it. |
+
+All three passed the gate in one `--focus` run (2,244 matches, 6.7 minutes): no failed turn, slowest turns 27 to 56 ms.
+
+**Status changes:** `endreserve_stallfeed` active, the champion. `sameturn_endreserve` stays active (it scores 2 more against `finish_speed`). With eleven active bots, three that another active bot matches or beats everywhere on training are retired, lowest rated first: `hold_finish` (by `hold_exactstrike`), `ori_finish` (by `sameturn_endreserve` and others) and `sameturn_stallfeed` (by `endreserve_stallfeed`); eight stay active, none of them matched everywhere. With nine retired, the three lowest rated are deleted: `speed_margin` (1488), `frontline_hold` (1649) and `hold_finish` (1659).
+
+Training maps (`iteration-29-train`, 5,712 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| endreserve_stallfeed | 1981 | 0.775 | 419 | 111 | 82 |
+| sameturn_endreserve | 1966 | 0.760 | 408 | 114 | 90 |
+| sameturn_stallfeed (retired) | 1914 | 0.705 | 341 | 181 | 90 |
+| exact_sameturn (retired) | 1904 | 0.694 | 336 | 178 | 98 |
+| exact_stallfeed | 1868 | 0.653 | 304 | 191 | 117 |
+| ori_hold_exact | 1853 | 0.636 | 294 | 190 | 128 |
+| ori_hold | 1841 | 0.621 | 280 | 200 | 132 |
+| ori_finish (retired) | 1831 | 0.609 | 275 | 196 | 141 |
+| ori_mimic (sparring) | 1816 | 0.591 | 263 | 197 | 152 |
+| hold_exactstrike | 1812 | 0.587 | 340 | 38 | 234 |
+| safe_hold (retired) | 1755 | 0.518 | 296 | 42 | 274 |
+| finish_speed | 1714 | 0.469 | 265 | 44 | 303 |
+| frontline | 1662 | 0.410 | 229 | 44 | 339 |
+| frontline_finish (retired) | 1659 | 0.407 | 227 | 44 | 341 |
+| finish_safe (retired) | 1651 | 0.399 | 224 | 40 | 348 |
+| ori_like (sparring) | 1612 | 0.358 | 204 | 30 | 378 |
+| level1 | 1476 | 0.149 | 0 | 162 | 382 |
+| level3 | 1000 | 0.011 | 6 | 0 | 538 |
+| level2 | 552 | 0.000 | 0 | 0 | 544 |
+
+Holdout maps (`iteration-29-holdout`, 4,368 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| endreserve_stallfeed | 2220 | 0.814 | 342 | 78 | 48 |
+| sameturn_endreserve | 2212 | 0.808 | 339 | 78 | 51 |
+| sameturn_stallfeed (retired) | 2173 | 0.774 | 297 | 130 | 41 |
+| exact_sameturn (retired) | 2163 | 0.765 | 293 | 130 | 45 |
+| exact_stallfeed | 2093 | 0.699 | 255 | 144 | 69 |
+| ori_finish (retired) | 2083 | 0.688 | 250 | 144 | 74 |
+| ori_hold_exact | 2078 | 0.684 | 248 | 144 | 76 |
+| ori_hold | 2030 | 0.635 | 232 | 130 | 106 |
+| ori_mimic (sparring) | 2008 | 0.611 | 221 | 130 | 117 |
+| hold_exactstrike | 1899 | 0.498 | 228 | 10 | 230 |
+| safe_hold (retired) | 1861 | 0.459 | 210 | 10 | 248 |
+| finish_safe (retired) | 1798 | 0.397 | 184 | 4 | 280 |
+| frontline_finish (retired) | 1789 | 0.389 | 178 | 8 | 282 |
+| frontline | 1761 | 0.363 | 166 | 8 | 294 |
+| finish_speed | 1737 | 0.342 | 158 | 4 | 306 |
+| ori_like (sparring) | 1672 | 0.288 | 135 | 0 | 333 |
+| level1 | 1579 | 0.130 | 0 | 108 | 308 |
+| level3 | 1000 | 0.005 | 2 | 0 | 414 |
+| level2 | 719 | 0.000 | 0 | 0 | 416 |
+
+**Champion:** `endreserve_stallfeed`, 1981 on training and 2220 on holdout. With three weak players gone, every rating on these tables is lower than iteration 28's for the same bot (`sameturn_endreserve` 1982 then, 1966 now): compare within a table. `level1` now rates 1476, far above `level3`: it draws 162 of its 544 games, nearly all against the `ori_` line, whose trickle freeze (iterations 26 and 28) has become a large share of its lost points.
+
+**Where it still loses:** `level1`'s 18 draws; `circle`; `gyre` and `claw` to staged strikes.
+
+**Time:** 10 minutes (iteration 28: 11). The gate, 2,244 matches in 6.7 minutes, is the slowest step; the holdout selection took 2 minutes (546 matches); the rest came from the cache in seconds.
