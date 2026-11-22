@@ -10,14 +10,19 @@
 #
 # One iteration runs at a time. Games that arrive meanwhile wait in one queued
 # run, which studies all of them: GitHub keeps one pending run per concurrency
-# group, and ledger/real-games.txt says which games were studied.
+# group, and ledger/real-games.txt says which games were studied. A person's
+# session that runs an iteration claims its number first, as this workflow does
+# (scripts/claim-iteration.sh): while the next number is claimed, the run waits
+# for that iteration to merge, up to RSI_CLAIM_WAIT_MINUTES.
 #
 # Claude's step has no write access anywhere: a read-only GitHub token, no AWS
 # credentials, no git credentials. The App token that pushes and merges is made
-# after it has finished. Setup: hosting/rsi/README.md.
+# after it has finished; the one that pushes the claim before it is revoked at
+# once. Setup: hosting/rsi/README.md.
 #
 # Repository variables: AWS_GAMES_READ_ROLE_ARN, GAMES_BUCKET, RSI_APP_ID,
-# RSI_MODEL (optional, default opus), RSI_GAMES_PER_RUN (optional, default 10).
+# RSI_MODEL (optional, default opus), RSI_GAMES_PER_RUN (optional, default 10),
+# RSI_CLAIM_WAIT_MINUTES (optional, default 90).
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, RSI_APP_PRIVATE_KEY.
 name: Real-game iteration
 
@@ -102,6 +107,53 @@ jobs:
           # The AWS credentials end here: nothing after this step reads S3.
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
 
+      # A person's session may be running the next iteration: it holds the
+      # branch claude/league-iteration-N (scripts/claim-iteration.sh). Wait for
+      # its pull request to merge, then start from main as it is then.
+      - name: Wait until the next iteration's number is free
+        if: steps.games.outputs.ids != ''
+        env:
+          MINUTES: ${{ vars.RSI_CLAIM_WAIT_MINUTES || '90' }}
+        run: |
+          for _ in $(seq "$MINUTES"); do
+            if scripts/claim-iteration.sh status; then
+              git reset -q --hard origin/main
+              git log -1 --oneline
+              exit 0
+            fi
+            sleep 60
+          done
+          echo "::error::the next iteration stayed claimed for $MINUTES minutes; its games wait for the next run"
+          exit 1
+
+      # Its own App token, revoked as soon as the claim is pushed: the token
+      # that pushes the iteration is made after Claude has finished.
+      - uses: actions/create-github-app-token@v2
+        if: steps.games.outputs.ids != ''
+        id: claim_app
+        with:
+          app-id: ${{ vars.RSI_APP_ID }}
+          private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
+
+      - name: Claim the iteration's number
+        if: steps.games.outputs.ids != ''
+        id: claim
+        env:
+          GH_TOKEN: ${{ steps.claim_app.outputs.token }}
+        run: |
+          git config user.name "island-battles-rsi[bot]"
+          git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
+          status=0
+          out=$(CLAIM_PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            scripts/claim-iteration.sh claim --by "the real-game iteration, run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID") || status=$?
+          curl -fsS -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/installation/token || echo "::warning::the claim's token wasn't revoked; it expires within the hour"
+          [ "$status" = 0 ] || { echo "::error::the iteration's number was claimed by someone else meanwhile; its games wait for the next run"; exit 1; }
+          read -r n claim <<< "$out"
+          echo "n=$n" >> "$GITHUB_OUTPUT"
+          echo "claim=$claim" >> "$GITHUB_OUTPUT"
+          echo "branch=claude/league-iteration-$n" >> "$GITHUB_OUTPUT"
+
       # `claude setup-token` wraps the token across two lines in a narrow
       # terminal, and a pasted secret keeps the line break, which fails Claude's
       # step at once with no message. The stripped token no longer matches the
@@ -128,7 +180,9 @@ jobs:
             --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
-            Run a league iteration, by the bot-league-iteration skill, from start to end.
+            Run a league iteration, by the bot-league-iteration skill, from start to end. It is iteration
+            ${{ steps.claim.outputs.n }}, already claimed by this workflow: skip the skill's claim, and number the
+            ledger entry ${{ steps.claim.outputs.n }}.
 
             This run was started by the hosted bot's real games ${{ steps.games.outputs.ids }}. Each is unpacked in
             runs/real/<id>/ (demo.json, digest.txt, turns.jsonl, game.json). Study them first, as the skill's
@@ -164,15 +218,17 @@ jobs:
         id: commit
         env:
           IDS: ${{ steps.games.outputs.ids }}
+          CLAIMED: ${{ steps.claim.outputs.n }}
         run: |
+          n=$(grep -oP '^## Iteration \K[0-9]+' ledger/iterations.md | sort -n | tail -1)
+          if [ "$n" != "$CLAIMED" ]; then
+            echo "::error::the ledger's last entry is iteration $n, but this run claimed iteration $CLAIMED"
+            exit 1
+          fi
           today=$(date -u +%Y-%m-%d)
           for id in ${IDS//,/ }; do echo "$id $today" >> ledger/real-games.txt; done
-          git config user.name "island-battles-rsi[bot]"
-          git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           git add -A
           git commit -q -F runs/rsi/commit-message.txt
-          n=$(grep -oP '^## Iteration \K[0-9]+' ledger/iterations.md | tail -1)
-          echo "branch=claude/league-iteration-$n" >> "$GITHUB_OUTPUT"
           git show --stat HEAD
 
       - name: The iteration stays in its scope and names nobody
@@ -194,14 +250,17 @@ jobs:
 
       # Pushed and merged with the App's token, not GITHUB_TOKEN: a pull
       # request opened with GITHUB_TOKEN runs no checks, and its merge wouldn't
-      # start the deploy.
+      # start the deploy. The iteration's commit replaces the claim on the
+      # claim's branch, and only if the branch still holds this run's claim.
       - name: Open the pull request and merge it when the checks pass
         if: steps.games.outputs.ids != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          BRANCH: ${{ steps.commit.outputs.branch }}
+          BRANCH: ${{ steps.claim.outputs.branch }}
+          CLAIM: ${{ steps.claim.outputs.claim }}
         run: |
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
+          git push --force-with-lease="refs/heads/$BRANCH:$CLAIM" \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
           gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --color 5319e7 \
             --description "A league iteration started by real games, merged without review" --force
           body=runs/rsi/pr-body.md
@@ -218,7 +277,7 @@ jobs:
         if: steps.games.outputs.ids != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          BRANCH: ${{ steps.commit.outputs.branch }}
+          BRANCH: ${{ steps.claim.outputs.branch }}
         run: |
           for _ in $(seq 120); do
             state=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
@@ -228,3 +287,25 @@ jobs:
           done
           echo "::error::the pull request didn't merge within an hour; see its checks"
           exit 1
+
+      # A run that failed before its pull request gives the number back, so
+      # the next iteration, this workflow's or a person's, can take it. Once
+      # the iteration's commit has replaced the claim, the pull request holds
+      # it, and the release does nothing.
+      - uses: actions/create-github-app-token@v2
+        if: failure() && steps.claim.outputs.claim != ''
+        id: release_app
+        with:
+          app-id: ${{ vars.RSI_APP_ID }}
+          private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
+
+      - name: Give the iteration's number back
+        if: failure() && steps.claim.outputs.claim != ''
+        env:
+          GH_TOKEN: ${{ steps.release_app.outputs.token }}
+          N: ${{ steps.claim.outputs.n }}
+          CLAIM: ${{ steps.claim.outputs.claim }}
+        run: |
+          CLAIM_PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            scripts/claim-iteration.sh release "$N" "$CLAIM" \
+            || echo "::warning::the claim wasn't released: the branch holds more than the claim"

@@ -29,6 +29,7 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 
 - **One iteration at a time.** The workflow's concurrency group keeps one run going and one waiting; dispatches that arrive meanwhile replace the waiting one. The waiting run studies every final game that no iteration has studied, up to `RSI_GAMES_PER_RUN` (10), so a burst of games makes one more iteration, not one each. A game left out by the limit is studied by a later run.
 - **The run holds the queue until its pull request has merged**, so the next iteration starts from this one's ledger entry. While an automated iteration's pull request is open (its checks failed, or it didn't merge within an hour), every later run fails at its first step and the games wait: fix or close that pull request, then start the workflow again from the Actions tab.
+- **It claims its iteration's number, as a person's session does** (`scripts/claim-iteration.sh`): the branch `claude/league-iteration-N`, pushed with an App token that is revoked at once, before Claude starts. While a session holds the next number, the run waits for that iteration to merge, up to `RSI_CLAIM_WAIT_MINUTES` (90), and then starts from the new `main`; after that it fails and the games wait for the next run. A run that fails before its pull request gives the number back.
 - **No cap.** Each merge deploys a bot, whose games start more iterations. Each iteration runs on your Claude subscription (`CLAUDE_CODE_OAUTH_TOKEN`), so the iterations share your plan's limits with your own use.
 - **The model** is `RSI_MODEL`, Opus by default; the skill lets it hand candidates to Sonnet subagents. Set it to `sonnet` to spend less.
 - **Nobody plays the other player's bot.** The iteration studies the games that happened; it never starts one (the skill's *No games against another player's bot*).
@@ -71,7 +72,7 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 3. **Settings → General → Allow auto-merge** on.
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.
-6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`.
+6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`, `RSI_CLAIM_WAIT_MINUTES`.
 
 ### AWS (`eu-central-1`, next to the hosted bot)
 
