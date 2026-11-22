@@ -98,6 +98,7 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
         ("D", "bots/old_bot/bot.py"),
         ("M", "ledger/iterations.md"),
         ("M", "ledger/real-games.txt"),
+        ("A", "ledger/studies/471.md"),
         ("M", "hosting/lambda/bot"),
         ("A", "maps/train/new_map.json"),
     ]
@@ -111,6 +112,7 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
         ("M", "hosting/lambda/handler.py"),
         ("M", ".agents/skills/bot-league-iteration/SKILL.md"),
         ("A", "AGENTS.md"),
+        ("A", "ledger/studies/notes.md"),
     ]
     assert scope.out_of_scope(refused) == [f"{status} {path}" for status, path in refused]
 

@@ -146,6 +146,7 @@ jobs:
             - runs/rsi/commit-message.txt: a first line "League iteration N: <what was promoted, or nothing>",
               a blank line, then which candidates were promoted and rejected, and why.
             - runs/rsi/pr-body.md: the skill's report (step 7).
+            Write each studied game's study in ledger/studies/<id>.md, as the skill's "Started by real games" says.
             Candidates may be written by subagents on the sonnet model, as the skill allows.
 
       - name: The iteration finished

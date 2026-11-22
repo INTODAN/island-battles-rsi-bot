@@ -22,7 +22,7 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 | --- | --- |
 | [`notifier.py`](notifier.py) | The Lambda that turns a packed zip into a `repository_dispatch`. |
 | [`real_games.py`](real_games.py) | Lists the games bucket and unpacks the final games no iteration has studied, newest `--limit` first. |
-| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger, `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
+| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger (with `ledger/studies/<id>.md`, the study of a real game that the bot's page shows), `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
 | [`../../.github/workflows/real-game-iteration.yml`](../../.github/workflows/real-game-iteration.yml) | The workflow. |
 
 ## How it behaves
