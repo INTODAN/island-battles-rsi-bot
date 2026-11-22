@@ -55,7 +55,7 @@ h2 { font-size: 30px; margin: 4px 0 8px; }
 .empty { color: var(--muted); padding: 16px 0 4px; }
 footer { color: var(--muted); font-size: 14px; margin-top: 32px; }
 footer a { color: var(--text); }
-.sign-in { max-width: 460px; margin-top: 24px; }
+.sign-in { max-width: 460px; margin: 18vh auto 0; }
 .google-button { min-height: 44px; margin: 8px 0; }
 """
 
@@ -112,13 +112,13 @@ window.onGoogleLibraryLoad = () => {
 """
 
 
-def _head(bot: str) -> str:
+def _head(title: str) -> str:
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{escape(bot)} · Island Battles bot</title>
+<title>{escape(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet"
   href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;600&display=swap">
@@ -212,12 +212,12 @@ def render(bot: str, summary: dict[str, Any], games: list[dict[str, Any]]) -> st
     )
     listed = "".join(_game(game) for game in games) or '<p class="empty">No games yet.</p>'
     live = " live" if summary["live"] else ""
-    return f"""{_head(bot)}
+    return f"""{_head(f"{bot} · Island Battles bot")}
 <body>
 <main>
 <p class="eyebrow">Island Battles bot</p>
 <h1>{escape(bot)}</h1>
-<p class="intro">The champion of an AI-run bot league. Every real game it plays is kept as a zip.</p>
+<p class="intro">Every real game it plays is kept as a zip.</p>
 <div class="status{live}"><span class="dot"></span>{escape(status)}</div>
 <section class="stats">{stats}</section>
 <section class="card"><h2>All games</h2>{listed}</section>
@@ -236,8 +236,8 @@ is estimated from the last board the bot saw, for a game that never sent its end
 """
 
 
-def render_sign_in(bot: str, client_id: str) -> str:
-    """The page that a visitor who isn't the signed-in owner sees: Google's button, or why there is none."""
+def render_sign_in(client_id: str) -> str:
+    """The page that a visitor who isn't the signed-in owner sees: Google's button alone, and nothing about the bot."""
     if client_id:
         body = (
             '<div id="google-button" class="google-button"></div>'
@@ -247,18 +247,14 @@ def render_sign_in(bot: str, client_id: str) -> str:
             '<script src="https://accounts.google.com/gsi/client" async></script>'
         )
     else:
-        body = '<p class="sub">Sign-in isn\'t set up, so the page stays closed.</p>'
-    return f"""{_head(bot)}
+        body = '<p class="sub">Sign-in isn\'t available.</p>'
+    return f"""{_head("Sign in")}
 <body data-client-id="{escape(client_id, quote=True)}">
 <main>
-<p class="eyebrow">Island Battles bot</p>
-<h1>{escape(bot)}</h1>
 <section class="card sign-in">
 <h2>Sign in</h2>
-<p class="intro">This page and the bot's games are its owner's alone. Sign in with the owner's Google account.</p>
 {body}
 </section>
-<footer><p><a href="{REPOSITORY}">The league's repository</a></p></footer>
 </main>
 </body>
 </html>

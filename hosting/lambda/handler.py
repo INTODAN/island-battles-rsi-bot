@@ -220,7 +220,7 @@ def _closed() -> dict[str, Any]:
     return {
         "statusCode": 401,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render_sign_in(_bot.name, client_id),
+        "body": page.render_sign_in(client_id),
     }
 
 
