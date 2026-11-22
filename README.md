@@ -14,8 +14,10 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | `maps/holdout/` | The maps that only give numbers: nobody reads their games, so a bot can't be fitted to them. |
 | `league_tools/` | The `league` command: tournaments, ratings, the game digest, the roster and the map maker. |
 | `ledger/iterations.md` | What every iteration tried, measured, kept and learned. The league's memory between sessions. |
+| `ledger/real-games.txt` | The ids of the hosted bot's real games that an iteration has studied. |
 | `opponents.local.toml` (not in git) | Outside opponents: real players' bots that play every tournament from their own projects ([`league_tools/opponents.py`](league_tools/opponents.py)). |
-| `scripts/serve_maps.py`, `scripts/lobby-run.js` | Play a bot against a hosted bot in lobby games on the league's maps, several tabs at once: the check against real opponents. |
+| `scripts/serve_maps.py`, `scripts/lobby-run.js` | Play a bot against a hosted bot in lobby games on the league's maps, several tabs at once, when a person asks for it. An iteration never plays another player's bot. |
+| `hosting/rsi/`, `.github/workflows/real-game-iteration.yml` | The automated iteration: each real game the hosted bot finishes starts an iteration that studies it and merges itself ([hosting/rsi/README.md](hosting/rsi/README.md)). |
 | `tests/`, `scripts/check.sh` | The checks every bot and tool passes before it plays. |
 | `runs/` (not in git) | Results, the result cache and the demos of every match played here. |
 | `runner.toml` | The commit of the game that the league plays. |
@@ -106,5 +108,5 @@ scripts/check.sh                                      # format, lint, types and 
 - **The champion plays nowhere but here.** Shipping it means `island-battles-bot package` and an upload, a hosted bot, or a rated bot name on the leaderboard. Before that it must play real lobby games with `island-battles-bot run`, where turns have deadlines and a network.
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
-- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in); the hosted bot itself is met only in lobby games, by the check before a promotion, until the game's runner can play hosted bots (INTODAN/island-battles-go#407).
-- **Real games are kept, not yet studied.** The hosted bot keeps every real game it plays as a zip with the game's own demo, and lists them on its home page ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)). The iteration skill doesn't read them yet.
+- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in). The league doesn't play that hosted bot itself: every game against it is one its owner can learn from too. The game's runner can't play hosted bots yet anyway (INTODAN/island-battles-go#407).
+- **Real games are studied one iteration at a time.** The hosted bot keeps every real game it plays as a zip with the game's own demo ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)), and each one starts an automated iteration that studies it ([hosting/rsi/README.md](hosting/rsi/README.md)). Its pull request merges itself when the checks pass, so a bot can reach main and the hosted bot without a person reading it.
