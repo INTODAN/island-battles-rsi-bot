@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from league_tools import digest, engine, maps, ratings, replay, roster, tournament
+from league_tools import digest, engine, maps, ratings, rematch, replay, roster, tournament
 
 
 def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
@@ -365,3 +365,43 @@ def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path) -> None:
     assert (report.stats["upgrade tp"], report.stats["neutral team"], report.stats["attack tp"]) == (1, 0, 1)
     assert report.stats["attack team"] == report.stats["attack bot"] == 1
     assert "exact turn match" in report.text() and "bot: safe_hold" in report.text()
+
+
+def test_rematch_finds_the_first_turn_a_candidate_commands_otherwise() -> None:
+    before = replay.team_commands(replay_demo(), 1)
+    assert rematch.first_difference(before, replay.team_commands(replay_demo(), 1)) is None
+    other = replay_demo()
+    other["frames"][1]["soldier_groups"][0]["soldiers"] = 40
+    after = replay.team_commands(other, 1)
+    assert rematch.first_difference(before, after) == 1
+    assert rematch.describe(before[0]) == "generation_amount 2 at 0, 46 from 0 to 2"
+    assert rematch.describe(after[1]) == "nothing"
+    # A send to castle 0 is not an unseen send.
+    to_home = {"turn": 1, "upgrades": [], "sends": [{"origin": 2, "dest": 0, "amount": 5}]}
+    unseen = {"turn": 1, "upgrades": [], "sends": [{"origin": None, "dest": None, "amount": 5}]}
+    assert rematch.first_difference([to_home], [unseen]) == 1
+    assert rematch.describe(to_home) == "5 from 2 to 0"
+
+
+def test_rematch_seats_the_candidate_where_its_parent_sat(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for kind in ("train", "holdout"):
+        (tmp_path / kind).mkdir()
+        (tmp_path / kind / f"{kind}-map.json").write_text("{}")
+    monkeypatch.setattr(rematch.tournament, "map_files", lambda name: [tmp_path / name.split("-")[0] / f"{name}.json"])
+
+    def game(key: str, map_name: str) -> Path:
+        (tmp_path / f"{key}.json").write_text(json.dumps(result("rival", "parent", "rival", map_name)))
+        demo = tmp_path / f"{key}.json.gz"
+        demo.write_bytes(b"demo")
+        return demo
+
+    (source,) = rematch.plan([game("a", "train-map")], "child", "parent")
+    assert source.seats == ["rival", "child"] and source.map_file.parent.name == "train"
+    with pytest.raises(ValueError, match="holdout"):
+        rematch.plan([game("b", "holdout-map")], "child", "parent")
+    with pytest.raises(ValueError, match="didn't play"):
+        rematch.plan([game("c", "train-map")], "child", "stranger")
+    loose = tmp_path / "saved.json"
+    loose.write_text("{}")
+    with pytest.raises(ValueError, match="not a league game"):
+        rematch.plan([loose], "child", "parent")
