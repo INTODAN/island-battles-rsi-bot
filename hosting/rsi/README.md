@@ -67,7 +67,7 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 ### GitHub
 
 1. **A GitHub App** for the league, installed on this repository alone, with the permissions Contents: read and write, Pull requests: read and write, Issues: read and write (for the label), Metadata: read. Save its id as the repository variable `RSI_APP_ID` and a private key as the secret `RSI_APP_PRIVATE_KEY`.
-2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN`.
+2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN` (`gh secret set CLAUDE_CODE_OAUTH_TOKEN`). In a narrow terminal it prints the token across two lines; the workflow removes the line break that a paste keeps.
 3. **Settings → General → Allow auto-merge** on.
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.
