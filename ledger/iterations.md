@@ -55,6 +55,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Pricing help like an attack, or holding strike captures, doesn't pay in the league.** Adding to help half of what the enemy could still bring, and topping up enemy castles our strike will take, each lost to the parent 16 of 34 (iteration 30): the extra soldiers are taken from the strikes and staging that decide the race.
 - **Defence refinements in the `ori_` line now split its mirror match.** Partial help, pricing help like an attack, cumulative trickles and holding strike captures each took 16 to 17 of 34 against their parent (iterations 30 and 31): the line's games against itself are decided move for move, and a change that acts only under attack changes a few of them either way.
 - **An enemy that buys speed strikes from farther than its speed says.** At the end of a game the `ori_` line freed reserves against castles 8 turns away and fed the soldiers to the front; the enemy bought speed 3 in the same turn as its strike and took the emptied castles (iteration 32, 30 games lost on castles at the limit). Counting the speed it could buy fixed those games and still lost the mirror match (14.5 of 34): what loses a bot's games against its own line is not always what loses them against the others.
+- **Keeping the enemy's castles under attack freezes a bot that won't spend under attack, on the training maps.** The hosted bot's rules buy and send nothing from a castle an enemy group is bound for; a founder that keeps a group of production-times-walk-plus-one walking at every enemy castle beat its parent 23 of 36 and every player of the league on training (89 points up), and fell 12 points below its parent on holdout (iteration 33's `harrier`). Against the hosted bot itself, which has that rule, it is untested.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1995,3 +1996,68 @@ All three passed the gate in one `--focus` run (1,836 matches, 8 minutes): no fa
 **Status changes:** none; the final tables (`iteration-32-train`, `iteration-32-holdout`, exit 0) equal iteration 30's. **Champion:** `stallfeed_growtrickle`, unchanged. **Nothing was promoted twice in a row:** iteration 33 starts by adding a training map and a holdout map, and one of its candidates is a founder.
 
 **Time:** 10 minutes; the gate (8 minutes) is the slowest step.
+
+## Iteration 33: more maps, and a founder that keeps the enemy under attack
+
+**Date:** 2026-11-22. **Maps:** 18 training, 14 holdout: **the map set grew** before this iteration's first measurement, after two iterations that promoted nothing, with `cove` (training, `league new-map cove --seed 3301`: 12 castles, neutrals of 8, 15, 15, 20 and 30 on each side) and `mere` (holdout, seed 3302). Every rating moved with them. **Matches:** 4,788 in the baseline (266 new), 6,732 in the training selection round robin, 4,200 in the holdout selection for the one that passed. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`stallfeed_growtrickle`'s games on the training maps; on `cove` it lost nothing and drew 3 games inside the line):
+
+1. **What the line never does, and what it can't stand.** No `ori_` bot, and not the hosted bot whose rules they copy, buys an upgrade, pays for a neutral or a strike, or feeds the front from a castle that an enemy group is bound for (since iteration 30, a group holding more than the castle produces before it lands). Iterations 31 and 32 changed the line's defence and endgame and promoted nothing. **Idea (a), a founder:** keep one small group walking at every enemy castle, its production times the walk plus one.
+2. **Captures that the next enemy castle retakes.** `delta` against `finish_speed` (lost in 108 turns): the middle castle 2 changed hands six times, each capture leaving 2 to 7 soldiers. **Ideas (b)** top up any castle below its reserve before an enemy group is bound for it; **(c)** an exact short strike also pays half of what the other enemy castles could land on the target within five turns after the capture (iteration 13's lesson, on this line).
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `harrier` | stallfeed_growtrickle | (a) A founder: every enemy castle no group of ours walks to is sent its production times the walk plus one (at most 20), from the nearest fully upgraded castle, before feeding. | 2485 (2396) | 23/36 | 2216 (2228), 12/28 | **rejected** by the holdout maps. On training it scored more than its parent against every player (8 more against `finish_speed`, 5.5 against `ori_hold`); on holdout less against `finish_speed`, `hold_exactstrike` and `safe_hold`. |
+| `growtrickle_holdcapture` | stallfeed_growtrickle | (c) | 2359 (2396) | 17.5/36 | not played | **rejected**: rated below its parent. |
+| `growtrickle_topup` | stallfeed_growtrickle | (b) | not counted | 16/36 | not played | **rejected**: below its parent in both rules (14 points fewer against `ori_mimic`). As played, it didn't count its own groups already walking to the castle, so it could top up the same shortfall on several turns: a flaw of the version measured, not of the idea alone. |
+
+All three passed the gate in one `--focus` run (1,944 matches, 8 minutes): no failed turn, slowest turns 39 to 71 ms.
+
+**Status changes:** none. **Champion:** `stallfeed_growtrickle`, unchanged. Three iterations in a row have promoted nothing; `harrier` is the third bot to rise on training and fall on holdout since iteration 13's list, so the next iteration's candidates should be stated without map geometry, and the idea of freezing the enemy's castles may come back in another form, measured from the start.
+
+Training maps (`iteration-33-train`, 4,788 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| stallfeed_growtrickle | 2389 | 0.760 | 379 | 117 | 80 |
+| endreserve_stallfeed | 2374 | 0.744 | 361 | 135 | 80 |
+| sameturn_endreserve | 2362 | 0.731 | 354 | 134 | 88 |
+| sameturn_stallfeed (retired) | 2293 | 0.653 | 280 | 192 | 104 |
+| exact_sameturn (retired) | 2288 | 0.646 | 279 | 186 | 111 |
+| exact_stallfeed | 2248 | 0.598 | 245 | 199 | 132 |
+| ori_hold (retired) | 2234 | 0.581 | 229 | 211 | 136 |
+| ori_hold_exact | 2233 | 0.580 | 235 | 198 | 143 |
+| ori_finish (retired) | 2218 | 0.562 | 221 | 205 | 150 |
+| ori_mimic (sparring) | 2209 | 0.551 | 214 | 207 | 155 |
+| hold_exactstrike | 2194 | 0.533 | 291 | 32 | 253 |
+| safe_hold (retired) | 2125 | 0.451 | 244 | 32 | 300 |
+| finish_speed (retired) | 2121 | 0.446 | 242 | 30 | 304 |
+| ori_like (sparring) | 1999 | 0.321 | 172 | 26 | 378 |
+| level1 | 1951 | 0.179 | 0 | 180 | 324 |
+| level2 | 1000 | 0.000 | 0 | 0 | 504 |
+| level3 | 1000 | 0.000 | 0 | 0 | 504 |
+
+Holdout maps (`iteration-33-holdout`, 3,724 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| stallfeed_growtrickle | 2224 | 0.808 | 319 | 86 | 43 |
+| endreserve_stallfeed | 2206 | 0.792 | 305 | 100 | 43 |
+| sameturn_endreserve | 2191 | 0.779 | 299 | 100 | 49 |
+| sameturn_stallfeed (retired) | 2141 | 0.732 | 257 | 142 | 49 |
+| exact_sameturn (retired) | 2127 | 0.719 | 251 | 142 | 55 |
+| exact_stallfeed | 2054 | 0.645 | 213 | 152 | 83 |
+| ori_hold_exact | 2030 | 0.621 | 202 | 152 | 94 |
+| ori_finish (retired) | 2030 | 0.621 | 202 | 152 | 94 |
+| ori_hold (retired) | 1987 | 0.576 | 190 | 136 | 122 |
+| ori_mimic (sparring) | 1964 | 0.551 | 179 | 136 | 133 |
+| hold_exactstrike | 1807 | 0.400 | 174 | 10 | 264 |
+| safe_hold (retired) | 1772 | 0.368 | 160 | 10 | 278 |
+| finish_speed (retired) | 1703 | 0.312 | 140 | 0 | 308 |
+| level1 | 1635 | 0.161 | 0 | 126 | 266 |
+| ori_like (sparring) | 1603 | 0.243 | 109 | 0 | 339 |
+| level3 | 1000 | 0.005 | 2 | 0 | 390 |
+| level2 | 718 | 0.000 | 0 | 0 | 392 |
+
+**Time:** 14 minutes (iteration 32: 10). Adding the maps and the baseline: 1.3 minutes (266 new matches), with the holdout baseline played beside the writing of the candidates. The gate, 1,944 matches in 8 minutes, is the slowest step; holdout selection 2 minutes.
