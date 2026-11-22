@@ -11,7 +11,24 @@
 // <map>.json. Demos carry players' names and logs: keep them out of git. See the
 // bot-league-iteration skill, "The check against real opponents".
 (() => {
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // A hidden tab's own timers slow to one a minute after a few minutes in the
+  // background; a worker's don't, so the waits run there.
+  if (!window.__sleepWorker) {
+    const source = 'onmessage = (e) => setTimeout(() => postMessage(e.data), e.data.ms)';
+    window.__sleepWorker = new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })));
+    window.__sleepWaiting = new Map();
+    window.__sleepNext = 0;
+    window.__sleepWorker.onmessage = (e) => {
+      const done = window.__sleepWaiting.get(e.data.id);
+      window.__sleepWaiting.delete(e.data.id);
+      if (done) done();
+    };
+  }
+  const sleep = (ms) => new Promise((r) => {
+    const id = ++window.__sleepNext;
+    window.__sleepWaiting.set(id, r);
+    window.__sleepWorker.postMessage({ id, ms });
+  });
   const btn = (t) => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === t && b.offsetParent !== null);
   const main = () => document.querySelector('main').innerText;
   if (window.__run && !window.__run.done) return 'already running';

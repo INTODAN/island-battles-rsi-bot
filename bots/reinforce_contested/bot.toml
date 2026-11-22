@@ -1,9 +1,0 @@
-# candidate: new and unproven. active: in the population. retired: no longer
-# developed, kept as an opponent.
-status = "retired"
-# The bot this one was copied from, or empty for a founder.
-parent = "economist_reinforce"
-# The league iteration that created it (ledger/iterations.md).
-iteration = 2
-# What this bot tries that its parent doesn't, in a sentence.
-idea = "Graft from economist_contested: size an attack by every group bound for the target, enemy groups that land first and this turn's own sends."
