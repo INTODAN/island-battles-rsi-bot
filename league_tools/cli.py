@@ -11,10 +11,10 @@ import time
 from pathlib import Path
 
 from . import digest as digest_module
-from . import maps, opponents, roster, tournament
+from . import ledger, maps, opponents, roster, tournament
 from . import rematch as rematch_module
 from . import replay as replay_module
-from .paths import MAPS, RUNS
+from .paths import LEDGER, MAPS, RUNS
 
 
 def _tournament(arguments: argparse.Namespace) -> int:
@@ -26,6 +26,19 @@ def _tournament(arguments: argparse.Namespace) -> int:
     focus = [name.strip() for name in arguments.focus.split(",")] if arguments.focus else []
     added = [name.strip() for name in arguments.add.split(",")] if arguments.add else []
     names += [name for name in focus + added if name not in names]
+    known = {bot.name: bot for bot in bots}
+    parents = {
+        name: known[name].parent
+        for name in focus + added
+        if name in known and known[name].parent in known and known[name].parent != name
+    }
+    if arguments.parents:
+        if not focus:
+            raise ValueError("--parents plays each bot of --focus against its parent: name them with --focus")
+        orphans = [name for name in focus if name not in parents]
+        if orphans:
+            raise ValueError(f"no parent of the league to play against: {', '.join(orphans)}")
+        names += [parent for parent in parents.values() if parent not in names]
     names += [f"level{level}" for level in arguments.anchors.split(",") if level]
     if not arguments.no_opponents:
         names += [name for name in opponents.load_opponents() if name not in names]
@@ -34,6 +47,8 @@ def _tournament(arguments: argparse.Namespace) -> int:
         maps=tournament.map_files(arguments.maps),
         focus=focus,
         listed=focus + added,
+        parents=parents,
+        parents_only=arguments.parents,
         max_generations=arguments.max_generations,
         turn_timeout_milliseconds=arguments.turn_timeout_milliseconds,
         parallel=arguments.parallel,
@@ -99,6 +114,11 @@ def _unpack(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _ledger(arguments: argparse.Namespace) -> int:
+    print(ledger.load(LEDGER / "iterations.md", arguments.recent), end="")
+    return 0
+
+
 def _roster(arguments: argparse.Namespace) -> int:
     for bot in roster.load_roster():
         if arguments.json:
@@ -148,6 +168,12 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument(
         "--add",
         help="add these bots, candidates too, to the whole round robin, and list their lost games and longest wins",
+    )
+    play.add_argument(
+        "--parents",
+        action="store_true",
+        help="with --focus: play each focused bot against its parent alone, the head-to-head rule of the selection "
+        "and the gate on those games",
     )
     play.add_argument("--anchors", default="1,2,3", help="default bot levels to add; '' for none")
     play.add_argument(
@@ -210,6 +236,14 @@ def main(argv: list[str] | None = None) -> int:
     unpack.add_argument("demo")
     unpack.add_argument("--output")
     unpack.set_defaults(handler=_unpack)
+
+    brief = commands.add_parser(
+        "ledger",
+        help="print the ledger as an iteration starts from it: the lessons, every candidate tried with its idea "
+        "and decision, and the last entries in full",
+    )
+    brief.add_argument("--recent", type=int, default=3, help="iterations to print in full")
+    brief.set_defaults(handler=_ledger)
 
     listing = commands.add_parser("roster", help="list the bots")
     listing.add_argument("--json", action="store_true")

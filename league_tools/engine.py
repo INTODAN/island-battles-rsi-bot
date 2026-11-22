@@ -7,16 +7,20 @@ server's rules. The league builds it from the commit that ``runner.toml`` names.
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import subprocess
+import sys
 import tomllib
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .paths import ENGINE, RUNNER_PIN, RUNNER_SOURCE
+from .paths import RUNNER, RUNNER_PIN, RUNNER_SOURCE
 
 # A checkout of the game's repository to build the runner from, instead of the
 # pinned commit: for trying a change of the runner or the rules before it is merged.
@@ -57,33 +61,74 @@ def source() -> Path:
     return RUNNER_SOURCE
 
 
-def build() -> str:
-    """Build the runner, and return a hash that names this build.
+@contextlib.contextmanager
+def exclusive(lock_file: Path, waiting: str = "") -> Generator[None]:
+    """Hold a lock that one process at a time may hold, across checkouts.
+
+    The lock goes when the process does, so a crashed holder never blocks
+    the next one.
+
+    Args:
+        lock_file: The file whose lock it is.
+        waiting: Printed when another process holds the lock.
+    """
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
+    with lock_file.open("a") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            if waiting:
+                print(waiting, file=sys.stderr, flush=True)
+            fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
+@dataclass(frozen=True)
+class Build:
+    """A build of the runner: the hash that names it and the binary to run."""
+
+    hash: str
+    binary: Path
+
+
+def build() -> Build:
+    """Build the runner, and return the build.
 
     Go rebuilds only what changed, so this takes a moment when nothing did.
     The hash changes whenever the rules or the runner do, which is what makes
-    a cached result stale.
+    a cached result stale. The binary's file is named by its hash, so another
+    checkout that builds another commit meanwhile can't change what this
+    tournament runs.
 
     Raises:
         RuntimeError: The game's source couldn't be fetched, or the runner didn't build.
     """
-    ENGINE.parent.mkdir(parents=True, exist_ok=True)
-    # Without the commit's stamp and the build's paths, the same sources give
-    # the same binary in every checkout, so the cache survives them.
-    built = subprocess.run(
-        ["go", "build", "-buildvcs=false", "-trimpath", "-o", str(ENGINE), "./backend/cmd/headless-match"],
-        cwd=source(),
-        check=False,
-    )
-    if built.returncode != 0:
-        raise RuntimeError("the headless runner didn't build; see the compiler's messages above")
-    return hashlib.sha256(ENGINE.read_bytes()).hexdigest()
+    with exclusive(RUNNER / "build.lock", "league: waiting for another checkout's build of the runner"):
+        output = RUNNER / f"headless-match.{os.getpid()}"
+        # Without the commit's stamp and the build's paths, the same sources give
+        # the same binary in every checkout, so the cache survives them.
+        built = subprocess.run(
+            ["go", "build", "-buildvcs=false", "-trimpath", "-o", str(output), "./backend/cmd/headless-match"],
+            cwd=source(),
+            check=False,
+        )
+        if built.returncode != 0:
+            output.unlink(missing_ok=True)
+            raise RuntimeError("the headless runner didn't build; see the compiler's messages above")
+        digest = hashlib.sha256(output.read_bytes()).hexdigest()
+        binary = RUNNER / f"headless-match-{digest[:16]}"
+        os.replace(output, binary)
+    return Build(hash=digest, binary=binary)
 
 
-def play(schedule: dict[str, Any], worker_log: Path) -> Iterator[dict[str, Any]]:
+def play(binary: Path, schedule: dict[str, Any], worker_log: Path) -> Iterator[dict[str, Any]]:
     """Play a schedule, and yield each match's line as it ends.
 
     Args:
+        binary: The runner to play it with, from ``build``.
         schedule: The runner's schedule document.
         worker_log: Where the bots' own stderr goes.
 
@@ -93,7 +138,7 @@ def play(schedule: dict[str, Any], worker_log: Path) -> Iterator[dict[str, Any]]
     worker_log.parent.mkdir(parents=True, exist_ok=True)
     with worker_log.open("ab") as errors:
         process = subprocess.Popen(
-            [str(ENGINE)],
+            [str(binary)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=errors,

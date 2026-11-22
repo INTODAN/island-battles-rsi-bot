@@ -16,13 +16,15 @@ From the repository root. The first run installs the Python project, fetches the
 | Command | Use it to |
 |---|---|
 | `uv run league roster` | List the bots with status, parent, iteration and idea. |
+| `uv run league ledger` | The ledger as an iteration starts from it: the lessons, one line for every candidate ever tried, and the last three entries in full. |
 | `uv run league tournament` | Play every active and retired bot and default levels 1 to 3 on the training maps, from both sides, and print the standings. |
 | `... tournament --focus A,B` | Play only the pairs with A or B (candidates too), and list their lost games and longest wins with the demos. The quick way to find what to read. **Its ratings don't count**: they come from those pairs alone. |
 | `... tournament --add A,B` | Add A and B, candidates too, to the whole round robin, with the same lists. The ratings to compare bots by; the cache makes it cost little more than `--focus`. |
+| `... tournament --focus A,B --parents` | Play A and B each against its parent alone (34 games on the training maps): the head-to-head rule of the selection, in seconds. Every run that lists a bot with its parent prints a table of the two: points against the parent, and in a whole round robin their ratings. |
 | `... tournament --maps holdout` | The holdout maps. Also `all`, or map names such as `strait,circle`. |
 | `... tournament --bots A,B --anchors 3` | Choose the bots and the default levels (`--anchors ''` for none). |
 | `... tournament --strict` | Exit with status 1 when a match wasn't played, a player failed a turn or there was no match. |
-| `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. |
+| `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. Every worktree shares the main checkout's cache; one tournament plays at a time, and one that waits says so. |
 | `uv run league digest DEMO` | A game as text: a timeline, each team's logistics and the events. Any demo: a real game's **Save demo** file too. |
 | `... digest DEMO --key-events` | Only the captures, eliminations, upgrades and bursts. A game with over 250 events is listed this way anyway. |
 | `... digest DEMO --turns 40-55 [--logs NAME]` | Those turns whole: the board, the events and the bots' log lines. |
@@ -34,7 +36,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
 | `scripts/check.sh` | Format, lint, types and tests of the tools and every bot. Run it before a tournament counts. |
 
-Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory.
+Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory. The demos the lists point to are in the cache, the main checkout's `runs/cache/` even in a worktree.
 
 ## Reading the standings
 

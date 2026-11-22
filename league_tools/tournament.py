@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -33,6 +34,11 @@ class Tournament:
     focus: list[str] = field(default_factory=list)
     # The players whose lost games and longest wins the tables list.
     listed: list[str] = field(default_factory=list)
+    # Each listed bot's parent, for the table that compares them.
+    parents: dict[str, str] = field(default_factory=dict)
+    # With a focus, play only each focused bot against its parent: the
+    # head-to-head rule, and the gate on those games, in a few seconds.
+    parents_only: bool = False
     max_generations: int = 300
     turn_timeout_milliseconds: int = 2000
     parallel: int = 0
@@ -85,6 +91,7 @@ def player_specification(name: str) -> dict[str, Any]:
     }
 
 
+@functools.cache
 def player_fingerprint(name: str, sdk: str) -> str:
     """What decides how a player plays: its code, and for a league bot the SDK."""
     if ANCHOR.fullmatch(name):
@@ -104,6 +111,13 @@ def match_key(build: str, map_hash: str, seats: list[str], fingerprints: list[st
     return hashlib.sha256(json.dumps([build, map_hash, seats, fingerprints, settings]).encode()).hexdigest()[:32]
 
 
+def _write_atomically(path: Path, text: str) -> None:
+    """Write a file that another checkout's tournament may be reading."""
+    partial = path.with_name(f".{path.name}.{os.getpid()}")
+    partial.write_text(text, encoding="utf-8")
+    os.replace(partial, path)
+
+
 def cached_result(key: str) -> dict[str, Any] | None:
     """A match's cached result, when its demo is still there."""
     result_file, demo_file = CACHE / f"{key}.json", CACHE / f"{key}.json.gz"
@@ -119,11 +133,14 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
     every map from both sides; two default bots never play each other.
     """
     focus = set(tournament.focus)
-    pairs = [
-        pair
-        for pair in combinations(dict.fromkeys(tournament.players), 2)
-        if not all(ANCHOR.fullmatch(name) for name in pair) and (not focus or focus & set(pair))
-    ]
+    if tournament.parents_only:
+        pairs = [(name, tournament.parents[name]) for name in tournament.focus if name in tournament.parents]
+    else:
+        pairs = [
+            pair
+            for pair in combinations(dict.fromkeys(tournament.players), 2)
+            if not all(ANCHOR.fullmatch(name) for name in pair) and (not focus or focus & set(pair))
+        ]
     matches = [
         (map_file, seats) for map_file in tournament.maps for pair in pairs for seats in (list(pair), list(pair[::-1]))
     ]
@@ -155,6 +172,8 @@ def play_matches(
     """
     build = engine.build()
     sdk = fingerprint(SDK)
+    # A bot's code is read once per tournament, not once per match.
+    player_fingerprint.cache_clear()
     settings = [max_generations, turn_timeout_milliseconds]
     planned: dict[str, dict[str, Any]] = {}
     map_hashes: dict[Path, str] = {}
@@ -162,38 +181,54 @@ def play_matches(
         if map_file not in map_hashes:
             map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
         fingerprints = [player_fingerprint(name, sdk) for name in seats]
-        key = match_key(build, map_hashes[map_file], seats, fingerprints, settings)
+        key = match_key(build.hash, map_hashes[map_file], seats, fingerprints, settings)
         planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
     results: dict[str, dict[str, Any]] = {}
-    if use_cache:
-        for key in planned:
-            cached = cached_result(key)
-            if cached is not None:
-                results[key] = cached
-    to_play = [match for key, match in planned.items() if key not in results]
-    print(f"{len(planned)} matches: {len(results)} cached, {len(to_play)} to play", file=sys.stderr)
-    if to_play:
-        CACHE.mkdir(parents=True, exist_ok=True)
-        names = sorted({name for match in to_play for name in match["seats"]})
-        schedule = {
-            "players": {name: player_specification(name) for name in names},
-            "maps": {map_file.stem: str(map_file) for map_file in map_hashes},
-            "matches": to_play,
-            "max_generations": max_generations,
-            "turn_timeout_milliseconds": turn_timeout_milliseconds,
-            "parallel": parallel or os.cpu_count() or 1,
-            "demo_directory": str(CACHE),
-            "compress_demos": True,
-        }
-        for line in engine.play(schedule, run_directory / "workers.log"):
-            results[line["id"]] = line
-            cached = CACHE / f"{line['id']}.json"
-            if "error" not in line and not any(seat["failed_turns"] for seat in line["seats"]):
-                cached.write_text(json.dumps(line), encoding="utf-8")
-            else:
-                # The runner has replaced the demo, so an earlier result of
-                # this match no longer belongs to it.
-                cached.unlink(missing_ok=True)
+
+    def from_cache() -> list[dict[str, Any]]:
+        if use_cache:
+            for key in planned:
+                if key not in results:
+                    cached = cached_result(key)
+                    if cached is not None:
+                        results[key] = cached
+        return [match for key, match in planned.items() if key not in results]
+
+    to_play = from_cache()
+    print(f"{len(planned)} matches: {len(results)} cached, {len(to_play)} to play", file=sys.stderr, flush=True)
+    if not to_play:
+        return [results[key] for key in planned if key in results]
+    CACHE.mkdir(parents=True, exist_ok=True)
+    # One tournament plays at a time on this machine, whichever checkout it
+    # runs from: several at once only slow every turn down (and a turn that
+    # runs out of time fails), and the one that waits finds in the cache
+    # what the other played.
+    with engine.exclusive(CACHE / ".play.lock", "league: waiting for another tournament to finish playing"):
+        before = len(to_play)
+        to_play = from_cache()
+        if len(to_play) < before:
+            print(f"{before - len(to_play)} of them were played meanwhile; {len(to_play)} to play", file=sys.stderr)
+        if to_play:
+            names = sorted({name for match in to_play for name in match["seats"]})
+            schedule = {
+                "players": {name: player_specification(name) for name in names},
+                "maps": {map_file.stem: str(map_file) for map_file in map_hashes},
+                "matches": to_play,
+                "max_generations": max_generations,
+                "turn_timeout_milliseconds": turn_timeout_milliseconds,
+                "parallel": parallel or os.cpu_count() or 1,
+                "demo_directory": str(CACHE),
+                "compress_demos": True,
+            }
+            for line in engine.play(build.binary, schedule, run_directory / "workers.log"):
+                results[line["id"]] = line
+                cached = CACHE / f"{line['id']}.json"
+                if "error" not in line and not any(seat["failed_turns"] for seat in line["seats"]):
+                    _write_atomically(cached, json.dumps(line))
+                else:
+                    # The runner has replaced the demo, so an earlier result of
+                    # this match no longer belongs to it.
+                    cached.unlink(missing_ok=True)
     return [results[key] for key in planned if key in results]
 
 
@@ -286,7 +321,55 @@ def game_line(result: dict[str, Any]) -> str:
     )
 
 
-def markdown(summary: dict[str, Any], results: list[dict[str, Any]], listed: list[str], list_games: bool) -> str:
+def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: bool, maps: str) -> list[str]:
+    """A table of each listed bot next to its parent, with the selection rules its numbers meet.
+
+    Args:
+        summary: What ``summarize`` returned.
+        parents: Each listed bot's parent.
+        whole: Whether every pair played, so that the ratings count.
+        maps: ``train``, ``holdout`` or anything else: which rules apply.
+    """
+    rating = {row["player"]: row["rating"] for row in summary["standings"]}
+    rows = []
+    for name, parent in parents.items():
+        points = summary["pairs"].get(name, {}).get(parent)
+        if points is None:
+            continue
+        cells = [f"`{name}`", f"`{parent}`", f"{points[0]:g}/{points[1]:g}"]
+        if maps != "holdout":
+            cells.append("yes" if points[0] > points[1] / 2 else "no")
+        if whole:
+            above = rating[name] > rating[parent]
+            cells.append(f"{rating[name]} ({rating[parent]})")
+            if maps == "holdout":
+                cells.append("yes" if rating[name] >= rating[parent] else "no")
+            elif maps == "train":
+                cells.append("yes" if above else "no")
+        rows.append("| " + " | ".join(cells) + " |")
+    if not rows:
+        return []
+    header = ["Bot", "Parent", "Points against the parent"]
+    if maps != "holdout":
+        header.append("More than half")
+    if whole:
+        header.append("Rating (parent's)")
+        if maps == "holdout":
+            header.append("Holdout rating not below the parent's")
+        elif maps == "train":
+            header.append("Rated above the parent")
+    lines = ["", "Each listed bot against its parent" + ("" if whole else " (ratings don't count here)") + ":", ""]
+    lines += ["| " + " | ".join(header) + " |", "|---" * len(header) + "|", *rows]
+    return lines
+
+
+def markdown(
+    summary: dict[str, Any],
+    results: list[dict[str, Any]],
+    listed: list[str],
+    list_games: bool,
+    parent_table: list[str] | None = None,
+) -> str:
     """The summary as Markdown tables.
 
     Args:
@@ -295,6 +378,7 @@ def markdown(summary: dict[str, Any], results: list[dict[str, Any]], listed: lis
         listed: The players whose lost games and longest wins are listed.
         list_games: False leaves those lists out, as for holdout maps, whose
             games nobody reads.
+        parent_table: The lines of ``against_parents``, printed after the standings.
     """
     lines = [
         "| Player | Rating | Score | W | D | L | Failed turns | Slowest turn (ms) |",
@@ -306,6 +390,7 @@ def markdown(summary: dict[str, Any], results: list[dict[str, Any]], listed: lis
             f"| {row['player']} | {row['rating']} | {row['score']:.3f} | {row['wins']} | {row['draws']} "
             f"| {row['losses']} | {row['failed_turns']} | {row['slowest_turn_milliseconds']:.1f} |"
         )
+    lines += parent_table or []
 
     def cell(points: list[float] | None) -> str:
         return "" if points is None else f"{points[0]:g}/{points[1]:g}"
@@ -349,7 +434,14 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
     run_directory.mkdir(parents=True, exist_ok=True)
     results = play(tournament, run_directory)
     summary = summarize(results) | {"matches": len(results)}
-    table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps))
+    sets = {file.parent.name for file in tournament.maps}
+    parent_table = against_parents(
+        summary,
+        {name: parent for name, parent in tournament.parents.items() if name in tournament.listed},
+        whole=not tournament.focus,
+        maps=sets.pop() if len(sets) == 1 else "",
+    )
+    table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps), parent_table)
     with (run_directory / "results.jsonl").open("w", encoding="utf-8") as file:
         for result in results:
             file.write(json.dumps(result) + "\n")
