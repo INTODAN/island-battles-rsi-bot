@@ -18,7 +18,7 @@ into ``games/<id>/game-<id>.zip``:
   logistics and the events.
 - ``README.txt``: what each file is.
 
-A download that fails is tried again whenever the games are read, until the
+A download that fails is tried again, one game at a time, whenever the games are read, until the
 link expires. A game whose end never arrives (a runner that failed, or a game
 played before the game sent ends) is packed from the turns the bot kept, once
 no turn came long after the last one's deadline: its demo stops at the bot's
@@ -66,6 +66,10 @@ class Store(Protocol):
         """Every key under prefix."""
         ...
 
+    def children(self, prefix: str) -> list[str]:
+        """The "directories" right under prefix, each ending in "/"."""
+        ...
+
     def download_url(self, key: str, filename: str) -> str:
         """A short-lived URL that downloads the object as filename."""
         ...
@@ -99,6 +103,14 @@ class S3Store:
             found.extend(item["Key"] for item in page.get("Contents", []))
         return found
 
+    def children(self, prefix: str) -> list[str]:
+        """The "directories" right under prefix, each ending in "/"."""
+        found: list[str] = []
+        pages = self.s3.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix, Delimiter="/")
+        for page in pages:
+            found.extend(item["Prefix"] for item in page.get("CommonPrefixes", []))
+        return found
+
     def download_url(self, key: str, filename: str) -> str:
         """A presigned GET valid for five minutes."""
         return self.s3.generate_presigned_url(
@@ -130,6 +142,11 @@ class MemoryStore:
     def keys(self, prefix: str) -> list[str]:
         """Every key under prefix."""
         return sorted(key for key in self.objects if key.startswith(prefix))
+
+    def children(self, prefix: str) -> list[str]:
+        """The "directories" right under prefix, each ending in "/"."""
+        rest = {key[len(prefix) :].split("/", 1)[0] for key in self.objects if key.startswith(prefix)}
+        return sorted(f"{prefix}{name}/" for name in rest if f"{prefix}{name}/" != prefix)
 
     def download_url(self, key: str, filename: str) -> str:
         """The key itself."""
@@ -448,7 +465,13 @@ def _without_link(end: dict[str, Any]) -> dict[str, Any]:
 
 
 def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
-    """Pack a game whose end never came from the turns the bot kept, with an estimated result."""
+    """Pack a game whose end never came from the turns the bot kept, with an estimated result.
+
+    A game whose end was delivered is left to ``complete``, even when its end
+    arrived while this ran: the estimate never replaces the game's own result.
+    """
+    if store.get(end_key(game_id)) is not None:
+        return None
     summary = json.loads(store.get(game_key(game_id)) or b"null")
     if not summary:
         return None
@@ -459,6 +482,8 @@ def finish(store: Store, game_id: int, now: datetime) -> dict[str, Any] | None:
     summary.update(status="finished", result=result, result_note=note, finished_at=_now_text(now))
     summary.update(estimated=True, demo="partial")
     demo = json.dumps(build_demo(summary, turns, now), separators=(",", ":")).encode()
+    if store.get(end_key(game_id)) is not None:
+        return None
     _pack(store, summary, demo, turns, None)
     return summary
 
@@ -565,18 +590,19 @@ def complete(
 
 
 def is_over(summary: dict[str, Any], now: datetime) -> bool:
-    """Whether a game still marked playing is over."""
-    if summary.get("status") == "finished":
+    """Whether a game still marked playing is over without its end: no turn long after the last one's deadline.
+
+    Even after its last possible turn, a game waits for its end, which brings the game's own result.
+    """
+    if summary.get("status") == "finished" or summary.get("demo") == "pending":
         return False
-    if summary["last_turn"] >= summary["max_generations"] - 1:
-        return True
     stale_at = _time(summary.get("stale_at"))
     return stale_at is not None and now >= stale_at
 
 
 def all_games(store: Store) -> list[dict[str, Any]]:
     """Every game's summary, newest first."""
-    keys = [key for key in store.keys(PREFIX) if key.endswith("/game.json")]
+    keys = [f"{directory}game.json" for directory in store.children(PREFIX)]
     with ThreadPoolExecutor(PARALLEL_READS) as pool:
         bodies = list(pool.map(store.get, keys))
     games = [json.loads(body) for body in bodies if body]
@@ -588,14 +614,22 @@ def finish_over_games(
     now: datetime,
     download: Callable[[str], bytes] | None = None,
     maps: KnownMaps | None = None,
+    retries: int = 1,
 ) -> list[dict[str, Any]]:
-    """Pack every game that is over, and download the demos still pending; returns all summaries, newest first."""
+    """Pack every game that is over; returns all summaries, newest first.
+
+    With download, it also tries again the demos still pending, at most
+    retries of them, the newest first, so that a game server that is down
+    can't make a page time out.
+    """
     games = all_games(store)
     finished: dict[int, dict[str, Any]] = {}
     for game in games:
         done: dict[str, Any] | None = None
-        if game.get("demo") == "pending" and download is not None:
-            done = complete(store, game["game_id"], download, maps or KnownMaps({}), game["bot"], now)
+        if game.get("demo") == "pending":
+            if download is not None and retries > 0:
+                retries -= 1
+                done = complete(store, game["game_id"], download, maps or KnownMaps({}), game["bot"], now)
         elif is_over(game, now):
             done = finish(store, game["game_id"], now)
         if done:

@@ -123,11 +123,12 @@ class LambdaBot:
                 maps=MAPS,
                 now=now,
             )
-            if games.is_over(summary, now):
-                games.finish(store, turn.game_id, now)
-            elif turn.turn_number == 1:
-                # A new game: a good moment to pack the games that are over.
-                games.finish_over_games(store, now, download_demo, MAPS)
+            if store.get(games.end_key(turn.game_id)) is not None:
+                # The game's end came before this turn was kept: pack it again with this turn.
+                games.complete(store, turn.game_id, download_demo, MAPS, self.name, now)
+            elif turn.turn_number == 1 and summary["turns"] == 1:
+                # A new game: a good moment to pack the games that are over, without downloads.
+                games.finish_over_games(store, now)
 
         games.safely(keep, _log.error)
 

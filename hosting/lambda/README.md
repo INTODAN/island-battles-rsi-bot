@@ -41,7 +41,7 @@ With `GAMES_BUCKET` set, the bot keeps every real game it plays ([`games.py`](ga
 | `README.txt` | What each file is. |
 
 **When something is missing:**
-- **The download fails.** The zip is packed from the bot's own turns, with the delivered outcome, and the game is marked `pending`. The bot tries again whenever the page, the API or a zip is read, and when a new game starts, until the link expires (7 days).
+- **The download fails.** The zip is packed from the bot's own turns, with the delivered outcome, and the game is marked `pending`. The bot tries again, one game at a time, whenever the page, the API or a zip is read, until the link expires (7 days).
 - **No end arrives** (a runner that failed, or a game played before the game sent ends). The game is packed once no turn came for a minute past the last one's deadline (half an hour when turns have none). Its demo is rebuilt from the bot's turns, so it stops at the bot's last turn and has no other team's logs. Its result is **estimated** from the last board the bot saw, and the page marks it ≈.
 
 The map is named when its castles stand where a map of `maps/` has them, and is otherwise described ("8 castles, 2 teams").

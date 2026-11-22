@@ -52,7 +52,9 @@ def test_a_game_that_reaches_its_last_turn_is_packed_into_a_zip_the_digest_reads
     for number in range(1, 5):
         summary = _play(store, number, START + timedelta(seconds=number), max_generations=5)
     assert summary["turns"] == 4 and summary["accepted"] == 4
-    assert games.is_over(summary, START)
+    # Even after its last turn, a game waits for its end, until no turn came for long.
+    assert not games.is_over(summary, START + timedelta(seconds=5))
+    assert games.is_over(summary, START + timedelta(hours=1))
     done = games.finish(store, 7, START)
     assert done is not None and done["status"] == "finished"
     # Team 1 holds two castles to team 2's one on the last board.
@@ -94,7 +96,7 @@ def test_the_home_page_lists_the_games() -> None:
     store = games.MemoryStore()
     for number in range(1, 5):
         _play(store, number, START, max_generations=5)
-    listed = games.finish_over_games(store, START)
+    listed = games.finish_over_games(store, START + timedelta(hours=1))
     overview = games.overview(listed, START + timedelta(minutes=5))
     assert overview["record"] == {"won": 1, "lost": 0, "draw": 0}
     html = page.render("finish_speed", overview, listed, key_required=True)
@@ -213,3 +215,45 @@ def test_a_demo_link_off_the_games_host_is_refused() -> None:
 
     with pytest.raises(ValueError, match="demo link"):
         handler.download_demo("https://example.com/game/7/demo?token=x")
+
+
+def test_the_estimate_never_replaces_a_delivered_end() -> None:
+    store = games.MemoryStore()
+    for number in range(1, 4):
+        _play(store, number, START)
+    games.record_end(store, _end())
+    full = games.complete(store, 7, lambda url: _real_demo(), MAPS, "finish_speed", START)
+    assert full is not None and full["demo"] == "full"
+    assert games.finish(store, 7, START + timedelta(hours=1)) is None
+    assert games.finish_over_games(store, START + timedelta(hours=1))[0]["result"] == "lost"
+
+
+def test_a_turn_kept_after_the_end_packs_the_game_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    import handler  # noqa: PLC0415 - loads the bot
+    from island_battles_client._generated import TurnDelivery  # noqa: PLC0415
+
+    store = games.MemoryStore()
+    monkeypatch.setattr(handler, "download_demo", lambda url: _real_demo())
+    monkeypatch.setattr(handler.BotServer, "_post", lambda self, delivery, result: (200, "", None))
+    for number in range(1, 3):
+        _play(store, number, START)
+    games.record_end(store, _end())
+    games.complete(store, 7, handler.download_demo, MAPS, "finish_speed", START)
+    # The last turn's record lands after the end was handled.
+    late = {
+        "turn": _turn(3),
+        "submit": {"url": "https://island-battles.elidan.org/generation/commands", "token": "t", "deadline_at": None},
+    }
+    handler._bot.take(TurnDelivery.model_validate(late), store)
+    summary = json.loads(store.get(games.game_key(7)) or b"{}")
+    assert summary["status"] == "finished" and summary["demo"] == "full" and summary["turns"] == 3
+
+
+def test_the_games_are_listed_without_reading_their_turns() -> None:
+    store = games.MemoryStore()
+    _play(store, 1, START)
+    listed: list[str] = []
+    keys = store.keys
+    store.keys = lambda prefix: listed.append(prefix) or keys(prefix)  # type: ignore[method-assign]
+    assert [game["game_id"] for game in games.all_games(store)] == [7]
+    assert listed == []
