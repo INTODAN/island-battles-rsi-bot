@@ -43,5 +43,5 @@ convention = "google"
 testpaths = ["tests"]
 
 [tool.ty.environment]
-# The hosted bot's modules, which its handler and tests import by name.
-extra-paths = ["hosting/lambda"]
+# The hosted bot's and the automated iteration's modules, which their tests import by name.
+extra-paths = ["hosting/lambda", "hosting/rsi"]
