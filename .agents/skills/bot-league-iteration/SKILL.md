@@ -30,7 +30,7 @@ An iteration takes the league from one measured state to the next: it ends with 
 
 The point of the league is to make the bots better faster, so the end-to-end time of an iteration matters, from the first command to the report. Every iteration measures where that time goes and makes the next one shorter. **Never by doing less of the work:** the same games studied, the same findings with their evidence, the same gate and selection. A faster iteration that reads fewer games or skips a check is a worse iteration.
 
-- **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
+- **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, the rematches, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
 - **Speed up what you can inside the iteration**, without changing anything an iteration may not change: run independent commands at the same time (several `digest` runs, the holdout run beside the ledger's writing), study games in parallel with subagents that each return their findings with the digest and log lines, write candidates in parallel as step 3 allows, and don't run a command twice for output you already have.
 - **What only a tool change can speed up** is not changed in this iteration. Write it down with its numbers, and after the iteration make it a separate change to `league_tools/` (or `scripts/`) before the next one starts, measured with a full tournament whose results must equal the cached ones. What only the game or its headless runner can speed up is an issue in INTODAN/island-battles-go, as AGENTS.md says.
 - **Record it.** The ledger entry and the report give the time of each step and the total, the slowest steps, what was done about them, and how the total compares with the last iteration's.
@@ -106,7 +106,21 @@ Rules:
 - **Three candidates** unless the request names another number; **six** when subagents write them. More than six is usually the same idea with different numbers.
 - **A number is not an idea.** Don't make candidates that only differ in a constant. If an idea needs a constant tuned, tune it inside the candidate on the training maps, and count that as the one idea.
 
-Write the candidates yourself, one after the other, measuring each as it is done. When the request asks for subagents, or for more than three candidates, they can be written in parallel (a smaller model, such as Sonnet, writes a candidate well from a precise brief; read every candidate's diff before it plays, since the gate catches crashes and illegal results, not a wrong idea), since candidates don't share files: one subagent per candidate, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. Each subagent finishes by running `uv run league tournament --focus <candidate> --strict --run-id iteration-N-<candidate>`, and reports its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the selection yourself.
+**Check each candidate against its own games first.** Once a candidate is written, play the games its finding came from again, with the candidate in its parent's seat:
+
+```sh
+uv run league rematch DEMO... --bot CANDIDATE
+```
+
+It takes seconds. For each game it gives the result before and after, and the first turn on which the candidate commanded something else than its parent, with both bots' commands and log lines of that turn. Read it before the gate:
+
+- **"its change never acted in this game"**: the code doesn't do what the idea says, or the situation it answers is not what the game showed. Fix the candidate and run it again; don't send it to the gate.
+- **It acted, but not on the turns of the finding, or not as the idea says**: read the turns it names with `digest --turns` and fix the candidate.
+- **It acted as the idea says**: the candidate is ready for the gate, whatever the result. A rematch that turns losses into wins is not evidence that the candidate is better: a change that wins the games it was written from often loses others, and only the gate and the selection say which. Never promote or reject on a rematch.
+
+Rematch only training games, and only the ones the finding came from: it refuses holdout maps. Its matches go to the cache, so the gate doesn't play them again.
+
+Write the candidates yourself, one after the other, measuring each as it is done. When the request asks for subagents, or for more than three candidates, they can be written in parallel (a smaller model, such as Sonnet, writes a candidate well from a precise brief; read every candidate's diff before it plays, since the gate catches crashes and illegal results, not a wrong idea), since candidates don't share files: one subagent per candidate, each given the finding with its evidence (the digest lines and log lines), the parent's name, the candidate's name, and the instruction to read the `bot-league` skill and the template's rules skills and to touch nothing outside `bots/<candidate>/`. Each subagent runs `uv run league rematch` on its finding's demos until its change acts as the idea says, then finishes by running `uv run league tournament --focus <candidate> --strict --run-id iteration-N-<candidate>`, and reports the rematch's first different turns and its lost games. It doesn't run `scripts/check.sh`, which checks every bot and so fails on another subagent's half-written candidate: run it yourself once all of them are done. Do the selection yourself.
 
 ## 4. Gate
 

@@ -115,6 +115,38 @@ def cached_result(key: str) -> dict[str, Any] | None:
 def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
     """Play the tournament's matches, reusing cached results, and return them all.
 
+    Every pair with a focused player (every pair, without a focus) plays on
+    every map from both sides; two default bots never play each other.
+    """
+    focus = set(tournament.focus)
+    pairs = [
+        pair
+        for pair in combinations(dict.fromkeys(tournament.players), 2)
+        if not all(ANCHOR.fullmatch(name) for name in pair) and (not focus or focus & set(pair))
+    ]
+    matches = [
+        (map_file, seats) for map_file in tournament.maps for pair in pairs for seats in (list(pair), list(pair[::-1]))
+    ]
+    return play_matches(
+        matches,
+        run_directory,
+        max_generations=tournament.max_generations,
+        turn_timeout_milliseconds=tournament.turn_timeout_milliseconds,
+        parallel=tournament.parallel,
+        use_cache=tournament.use_cache,
+    )
+
+
+def play_matches(
+    matches: list[tuple[Path, list[str]]],
+    run_directory: Path,
+    max_generations: int = 300,
+    turn_timeout_milliseconds: int = 2000,
+    parallel: int = 0,
+    use_cache: bool = True,
+) -> list[dict[str, Any]]:
+    """Play these matches (a map and its seats, in order), reusing cached results, and return them all.
+
     Bots are deterministic, so a match is decided by the runner's build, the
     map, the two bots' code and the settings. A match with the same key as an
     earlier one is not played again. A result with a failed turn is not kept:
@@ -123,23 +155,17 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
     """
     build = engine.build()
     sdk = fingerprint(SDK)
-    focus = set(tournament.focus)
-    pairs = [
-        pair
-        for pair in combinations(dict.fromkeys(tournament.players), 2)
-        if not all(ANCHOR.fullmatch(name) for name in pair) and (not focus or focus & set(pair))
-    ]
-    settings = [tournament.max_generations, tournament.turn_timeout_milliseconds]
+    settings = [max_generations, turn_timeout_milliseconds]
     planned: dict[str, dict[str, Any]] = {}
-    for map_file in tournament.maps:
-        map_hash = hashlib.sha256(map_file.read_bytes()).hexdigest()
-        for pair in pairs:
-            for seats in (list(pair), list(pair[::-1])):
-                fingerprints = [player_fingerprint(name, sdk) for name in seats]
-                key = match_key(build, map_hash, seats, fingerprints, settings)
-                planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
+    map_hashes: dict[Path, str] = {}
+    for map_file, seats in matches:
+        if map_file not in map_hashes:
+            map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
+        fingerprints = [player_fingerprint(name, sdk) for name in seats]
+        key = match_key(build, map_hashes[map_file], seats, fingerprints, settings)
+        planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
     results: dict[str, dict[str, Any]] = {}
-    if tournament.use_cache:
+    if use_cache:
         for key in planned:
             cached = cached_result(key)
             if cached is not None:
@@ -151,11 +177,11 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
         names = sorted({name for match in to_play for name in match["seats"]})
         schedule = {
             "players": {name: player_specification(name) for name in names},
-            "maps": {map_file.stem: str(map_file) for map_file in tournament.maps},
+            "maps": {map_file.stem: str(map_file) for map_file in map_hashes},
             "matches": to_play,
-            "max_generations": tournament.max_generations,
-            "turn_timeout_milliseconds": tournament.turn_timeout_milliseconds,
-            "parallel": tournament.parallel or os.cpu_count() or 1,
+            "max_generations": max_generations,
+            "turn_timeout_milliseconds": turn_timeout_milliseconds,
+            "parallel": parallel or os.cpu_count() or 1,
             "demo_directory": str(CACHE),
             "compress_demos": True,
         }
@@ -169,6 +195,11 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
                 # this match no longer belongs to it.
                 cached.unlink(missing_ok=True)
     return [results[key] for key in planned if key in results]
+
+
+def points(result: dict[str, Any], player: str) -> float:
+    """A player's points in a game: a win 1, a draw 0.5, a loss 0."""
+    return 0.5 if result["winner"] is None else float(result["winner"] == player)
 
 
 def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -198,8 +229,7 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
             )
             continue
         first, second = result["players"]
-        winner = result["winner"]
-        first_score = 0.5 if winner is None else float(winner == first)
+        first_score = points(result, first)
         games.append((first, second, first_score))
         for name, opponent, score, seat in (
             (first, second, first_score, result["seats"][0]),

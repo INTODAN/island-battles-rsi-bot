@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import digest as digest_module
 from . import maps, opponents, roster, tournament
+from . import rematch as rematch_module
 from . import replay as replay_module
 from .paths import MAPS, RUNS
 
@@ -67,6 +68,24 @@ def _replay(arguments: argparse.Namespace) -> int:
     paths = [Path(demo) for demo in arguments.demo]
     print(replay_module.run(paths, arguments.bot, arguments.team, arguments.examples), end="")
     return 0
+
+
+def _rematch(arguments: argparse.Namespace) -> int:
+    run_id = arguments.run_id or f"rematch-{arguments.bot}"
+    table, results = rematch_module.run(
+        [Path(demo) for demo in arguments.demo],
+        arguments.bot,
+        arguments.replaces,
+        RUNS / run_id,
+        max_generations=arguments.max_generations,
+        turn_timeout_milliseconds=arguments.turn_timeout_milliseconds,
+    )
+    print(table, end="")
+    failed = any(
+        "error" in result or any(seat["failed_turns"] for seat in result["seats"] if seat["name"] == arguments.bot)
+        for result in results
+    )
+    return 1 if failed else 0
 
 
 def _unpack(arguments: argparse.Namespace) -> int:
@@ -173,6 +192,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     replay.add_argument("--examples", type=int, default=4, help="examples listed under each kind of disagreement")
     replay.set_defaults(handler=_replay)
+
+    again = commands.add_parser(
+        "rematch",
+        help="play studied games again with a candidate in its parent's seat: the result, and the first turn it "
+        "commanded something else",
+    )
+    again.add_argument("demo", nargs="+", help="league games' demos, as a tournament listed them (runs/cache/...)")
+    again.add_argument("--bot", required=True, help="the candidate, by name")
+    again.add_argument("--replaces", help="whose seat it takes; default: its parent")
+    again.add_argument("--max-generations", type=int, default=300, help="as the studied games were played")
+    again.add_argument("--turn-timeout-milliseconds", type=int, default=2000, help="as the studied games were played")
+    again.add_argument("--run-id", help="the directory under runs/ for the bots' stderr; default: rematch-BOT")
+    again.set_defaults(handler=_rematch)
 
     unpack = commands.add_parser("unpack", help="unpack a demo for the demo viewer, and print its path")
     unpack.add_argument("demo")
