@@ -53,6 +53,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **The `ori_` line's upgrade order holds against changes to it.** Letting castles that save for an upgrade help pay for neutrals, or making production 4 wait while a near neutral remains, both lost rating to their parent (iteration 29's `endreserve_helpall` and `endreserve_prod4late`), as reordering production did on the `hold_` line in iteration 23. Production first, the hosted bot's order, keeps winning the league.
 - **The trickle is answered by asking whether the castle outgrows it.** An enemy group that holds no more soldiers than the castle produces before it lands is no attack; counting only the others, so that a real strike still freezes the castle's stock, won every game against `level1` and passed every rule (iteration 30's `stallfeed_growtrickle`, 17.5 of 34 against its parent, 15 points up on holdout). The two earlier forms changed what an attacked castle may spend, and lost.
 - **Pricing help like an attack, or holding strike captures, doesn't pay in the league.** Adding to help half of what the enemy could still bring, and topping up enemy castles our strike will take, each lost to the parent 16 of 34 (iteration 30): the extra soldiers are taken from the strikes and staging that decide the race.
+- **Defence refinements in the `ori_` line now split its mirror match.** Partial help, pricing help like an attack, cumulative trickles and holding strike captures each took 16 to 17 of 34 against their parent (iterations 30 and 31): the line's games against itself are decided move for move, and a change that acts only under attack changes a few of them either way.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1949,3 +1950,26 @@ Holdout maps (`iteration-30-holdout`, 3,458 matches, exit 0):
 **Where it still loses:** `circle`; staged strikes on `gyre` and `claw` from `hold_exactstrike` and `safe_hold`; draws in the `ori_` line's mirror games.
 
 **Time:** 11 minutes (iteration 29: 10). The gate, 2,040 matches in 6.7 minutes, is the slowest step; holdout selection 2 minutes; the rest from the cache.
+
+## Iteration 31: nothing promoted
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 6,358 in the training selection round robin; no holdout selection. Three candidates from the champion, written one after the other. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`stallfeed_growtrickle`'s games on the training maps):
+
+1. **The trickle rule judged groups one at a time.** `islands` against `finish_speed` (lost in 81 turns), turns 51 to 57: ten groups of 2 to 8 soldiers from four castles converged on home castle 0, each holding less than the castle grows before it lands, so the castle was never attacked to the bot; on turn 52 castles 2 and 4 struck castle 5 (`strike>5 exact 24 2:13 4:11`) and castle 0 fell on turn 57. **Idea (a):** the groups count together, in landing order.
+2. **A neutral paid from home emptied it.** `loch` against `safe_hold` (lost in 84 turns), turn 56: home castle 0 sent 57 at a neutral of 25 (`take>7 0:57`: need(25) plus half of what nearby enemy castles could bring), needed help on turns 59 and 62 and fell on turn 67. **Idea (b):** graft `finish_safe`'s rule, a neutral no enemy castle is nearer to than our nearest sender costs need() alone.
+3. **All-or-nothing help.** In both games the helpers in time could cover the first capturing landing but not every landing, and sent nothing. **Idea (c):** send all they can when it covers the first capture.
+4. Unchanged: `circle` is drawn by everyone at production 4 (1,144 against 1,142 soldiers on turn 300 against `hold_exactstrike`), and mirror games inside the line end level.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `growtrickle_partialhelp` | stallfeed_growtrickle | (c) | 2392 (2380) | 17/34 | **rejected**: exactly half against its parent, though rated above it. |
+| `growtrickle_safeneutral` | stallfeed_growtrickle | (b) | 2379 (2380) | 17/34 | **rejected**: half against its parent, rated below it (4 points fewer against `ori_like`, 4 more against `hold_exactstrike`). |
+| `growtrickle_cumulative` | stallfeed_growtrickle | (a) | 2374 (2380) | 16.5/34 | **rejected**: below its parent in both rules. |
+
+All three passed the gate in one `--focus` run (1,836 matches, 7 minutes): no failed turn, slowest turns 42 to 55 ms. The ratings are on iteration 30's unanchored scale.
+
+**Status changes:** none; the final tables (`iteration-31-train`, `iteration-31-holdout`, both exit 0) equal iteration 30's. **Champion:** `stallfeed_growtrickle`, unchanged.
+
+**Time:** 9 minutes. The gate (7 minutes) is the slowest step; there was no holdout run.
