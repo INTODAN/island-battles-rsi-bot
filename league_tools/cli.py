@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import os
 import re
@@ -72,10 +71,11 @@ def _replay(arguments: argparse.Namespace) -> int:
 
 def _unpack(arguments: argparse.Namespace) -> int:
     source = Path(arguments.demo)
-    target = Path(arguments.output or RUNS / "view" / source.name.removesuffix(".gz"))
+    name = source.name.removesuffix(".gz")
+    name = name.removesuffix(".zip") + ".json" if name.endswith(".zip") else name
+    target = Path(arguments.output or RUNS / "view" / name)
     target.parent.mkdir(parents=True, exist_ok=True)
-    data = source.read_bytes()
-    target.write_bytes(gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data)
+    target.write_text(json.dumps(digest_module.load_demo(source)))
     print(target)
     return 0
 

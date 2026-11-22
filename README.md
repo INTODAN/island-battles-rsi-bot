@@ -89,7 +89,7 @@ uv run league tournament                    # the population and levels 1-3 on t
 uv run league tournament --focus NAME       # only NAME's matches: its lost games and longest wins
 uv run league tournament --add NAME         # NAME, a candidate too, in the whole round robin
 uv run league tournament --maps holdout     # or: all, or map names
-uv run league digest DEMO                   # the timeline, the logistics and the events of a game
+uv run league digest DEMO                   # the timeline, the logistics and the events of a game (a hosted game's zip too)
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
 uv run league status NAME active            # or: candidate, retired, sparring
@@ -107,3 +107,4 @@ scripts/check.sh                                      # format, lint, types and 
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
 - **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
 - **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in); the hosted bot itself is met only in lobby games, by the check before a promotion, until the game's runner can play hosted bots (INTODAN/island-battles-go#407).
+- **Real games are kept, not yet studied.** The hosted bot keeps every real game it plays as a zip with the game's own demo, and lists them on its home page ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)). The iteration skill doesn't read them yet.
