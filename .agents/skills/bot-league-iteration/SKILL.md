@@ -52,6 +52,21 @@ The point of the league is to make the bots better faster, so the end-to-end tim
 - **What only a tool change can speed up** is not changed in this iteration. Write it down with its numbers, and after the iteration make it a separate change to `league_tools/` (or `scripts/`) before the next one starts, measured with a full tournament whose results must equal the cached ones. What only the game or its headless runner can speed up is an issue in INTODAN/island-battles-go, as AGENTS.md says.
 - **Record it.** The ledger entry and the report give the time of each step and the total, the slowest steps, what was done about them, and how the total compares with the last iteration's.
 
+## Split across runners
+
+A machine with few CPUs (a GitHub runner has 4) plays an iteration's tournaments slowly, and nearly all of an iteration's time is playing. The automated iteration therefore runs on several machines: its request says so, and which half is yours. The steps and their rules stay as they are; only where the matches are played changes.
+
+`league tournament --shard K/N` plays the K-th of N slices of a tournament's matches into the cache and prints no standings: every match falls in exactly one slice, whatever the cache holds. With every slice's cache merged into `runs/cache`, the same tournament without `--shard` plays nothing and gives the whole tables.
+
+1. **Runners play the population** in shards on every map (`--maps all`), so that steps 1 and 2 come from the cache.
+2. **The first half is steps 0 to 3**: start from the ledger, measure, study, write the candidates and rematch them. Subagents writing candidates rematch as step 3 says, but don't run their `--focus` tournament: the runners play it. Then write the **hand-over** and stop.
+3. **Runners play every match with a candidate** in shards: `--maps all --add CANDIDATES`, which holds the gate's, the selection's and the final tables' matches, on the training and the holdout maps. They print no ratings.
+4. **The second half is steps 4 to 7**, from the hand-over, with the same commands: they come from the cache. A match with a failed turn is never cached, so the gate plays it again on the second half's machine, which is the gate's "run the same command again".
+
+**The hand-over** is the start of the iteration's ledger entry in `ledger/iterations.md`, in the entry's shape (step 6), and the first line of each real game's study in `ledger/studies/<id>.md`. The second half has neither your session nor the real games, so the hand-over holds everything it needs from steps 0 to 3: the heading, the date and the maps; the champion and its rating before; each finding with its game, turns and evidence (the digest's and the logs' numbers); each candidate's parent and idea, and what its rematch showed (the first different turn, the results before and after); what you didn't do or couldn't verify; and the time of each step so far. It is written as the ledger is: in words, without a player's name, and without copying a real game's log lines. End it with a line `Second half: steps 4 to 7.`, which the second half replaces with its own part.
+
+**In the second half**, read the hand-over first, and take its findings as they are: the games they came from are not on your machine when they are real ones. Candidates are fixed before the runners play them: the holdout matches of every candidate are in the cache, but only step 5's holdout run, which names the candidates that passed, may show them. Never run a holdout tournament with a candidate that didn't pass the training rules, and open nothing in `runs/cache` but the demos of training games that a tournament listed. A candidate fixed after the gate is played again on your machine, which is slow but allowed; its old matches no longer count. The run's job times, which the request names, give the time of the steps that the runners played.
+
 ## 0. Start from the ledger
 
 In the ledger, read the **Lessons so far**, and the last two or three entries. They say who the champion is, where it loses, and which ideas were already tried and rejected. Don't try a rejected idea again unless you can say what is different this time. The new iteration's number is the last entry's plus one.

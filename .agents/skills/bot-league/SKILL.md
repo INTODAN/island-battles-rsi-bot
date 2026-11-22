@@ -22,6 +22,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `... tournament --maps holdout` | The holdout maps. Also `all`, or map names such as `strait,circle`. |
 | `... tournament --bots A,B --anchors 3` | Choose the bots and the default levels (`--anchors ''` for none). |
 | `... tournament --strict` | Exit with status 1 when a match wasn't played, a player failed a turn or there was no match. |
+| `... tournament --shard K/N` | Play only the K-th of N slices of the matches into the cache, and print no standings: for N machines that share a tournament. Merge their `runs/cache` directories, and the same tournament without `--shard` plays nothing. The automated iteration plays its tournaments this way (`bot-league-iteration`'s "Split across runners"). |
 | `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. |
 | `uv run league digest DEMO` | A game as text: a timeline, each team's logistics and the events. Any demo: a real game's **Save demo** file too. |
 | `... digest DEMO --key-events` | Only the captures, eliminations, upgrades and bursts. A game with over 250 events is listed this way anyway. |

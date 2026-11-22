@@ -37,6 +37,33 @@ class Tournament:
     turn_timeout_milliseconds: int = 2000
     parallel: int = 0
     use_cache: bool = True
+    # (K, N): play only the K-th of N slices of the matches, for runners that
+    # share a tournament; their caches together hold the whole of it.
+    shard: tuple[int, int] | None = None
+
+
+def parse_shard(text: str) -> tuple[int, int]:
+    """A shard written ``K/N``: the K-th of N slices, counted from 1.
+
+    Raises:
+        ValueError: It isn't two whole numbers with 1 <= K <= N.
+    """
+    index, _, count = text.partition("/")
+    if not (index.isdigit() and count.isdigit() and 1 <= int(index) <= int(count)):
+        raise ValueError(f"--shard {text!r}: write K/N, the K-th of N slices, such as 2/8")
+    return int(index), int(count)
+
+
+def in_shard(key: str, shard: tuple[int, int] | None) -> bool:
+    """Whether a match's key falls in the shard: every key falls in exactly one of N shards.
+
+    A key is a hash, so the shards are even and every runner agrees on them,
+    whatever its cache holds.
+    """
+    if shard is None:
+        return True
+    index, count = shard
+    return int(key, 16) % count == index - 1
 
 
 def map_files(selection: str) -> list[Path]:
@@ -134,6 +161,7 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
         turn_timeout_milliseconds=tournament.turn_timeout_milliseconds,
         parallel=tournament.parallel,
         use_cache=tournament.use_cache,
+        shard=tournament.shard,
     )
 
 
@@ -144,6 +172,7 @@ def play_matches(
     turn_timeout_milliseconds: int = 2000,
     parallel: int = 0,
     use_cache: bool = True,
+    shard: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     """Play these matches (a map and its seats, in order), reusing cached results, and return them all.
 
@@ -151,7 +180,8 @@ def play_matches(
     map, the two bots' code and the settings. A match with the same key as an
     earlier one is not played again. A result with a failed turn is not kept:
     a turn can run out of time because the machine was busy, and the next
-    tournament plays that match again.
+    tournament plays that match again. With a shard, only the matches whose
+    key falls in it are played and returned.
     """
     build = engine.build()
     sdk = fingerprint(SDK)
@@ -163,6 +193,8 @@ def play_matches(
             map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
         fingerprints = [player_fingerprint(name, sdk) for name in seats]
         key = match_key(build, map_hashes[map_file], seats, fingerprints, settings)
+        if not in_shard(key, shard):
+            continue
         planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
     results: dict[str, dict[str, Any]] = {}
     if use_cache:
@@ -171,7 +203,8 @@ def play_matches(
             if cached is not None:
                 results[key] = cached
     to_play = [match for key, match in planned.items() if key not in results]
-    print(f"{len(planned)} matches: {len(results)} cached, {len(to_play)} to play", file=sys.stderr)
+    part = f" in shard {shard[0]}/{shard[1]}" if shard else ""
+    print(f"{len(planned)} matches{part}: {len(results)} cached, {len(to_play)} to play", file=sys.stderr)
     if to_play:
         CACHE.mkdir(parents=True, exist_ok=True)
         names = sorted({name for match in to_play for name in match["seats"]})
@@ -343,13 +376,30 @@ def markdown(summary: dict[str, Any], results: list[dict[str, Any]], listed: lis
     return "\n".join(lines) + "\n"
 
 
+def shard_report(summary: dict[str, Any], results: list[dict[str, Any]], shard: tuple[int, int]) -> str:
+    """What a shard played, without standings: how many matches, and which went wrong."""
+    failed = sum(1 for result in results if "error" not in result and any(s["failed_turns"] for s in result["seats"]))
+    lines = [
+        f"Shard {shard[0]}/{shard[1]}: {summary['matches']} matches, {failed} with a failed turn, "
+        f"{len(summary['errors'])} not played. No standings: a shard's games rate nobody; "
+        "play the tournament without --shard once every shard's cache is in runs/cache."
+    ]
+    lines += [f"NOT PLAYED {e['map']} {' vs '.join(e['players'])}: {e['error']}" for e in summary["errors"]]
+    return "\n".join(lines) + "\n"
+
+
 def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
     """Play a tournament and write its results, summary and tables under ``runs/<run_id>/``."""
     run_directory = RUNS / run_id
     run_directory.mkdir(parents=True, exist_ok=True)
     results = play(tournament, run_directory)
     summary = summarize(results) | {"matches": len(results)}
-    table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps))
+    if tournament.shard:
+        # A slice of the matches rates nobody: the tables come from the whole
+        # tournament, played again from the shards' caches together.
+        table = shard_report(summary, results, tournament.shard)
+    else:
+        table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps))
     with (run_directory / "results.jsonl").open("w", encoding="utf-8") as file:
         for result in results:
             file.write(json.dumps(result) + "\n")

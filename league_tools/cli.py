@@ -38,13 +38,16 @@ def _tournament(arguments: argparse.Namespace) -> int:
         turn_timeout_milliseconds=arguments.turn_timeout_milliseconds,
         parallel=arguments.parallel,
         use_cache=not arguments.no_cache,
+        shard=tournament.parse_shard(arguments.shard) if arguments.shard else None,
     )
     run_id = arguments.run_id or f"{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
     summary, table = tournament.run(plan, run_id)
     print(table)
     print(f"Written to {RUNS / run_id}", file=sys.stderr)
     failed = [row["player"] for row in summary["standings"] if row["failed_turns"]]
-    if arguments.strict and (failed or summary["errors"] or not summary["matches"]):
+    # A shard may hold none of a small tournament's matches; the whole has some.
+    empty = not summary["matches"] and not arguments.shard
+    if arguments.strict and (failed or summary["errors"] or empty):
         print(
             f"league: --strict: {summary['matches']} matches, {len(summary['errors'])} of them not played, "
             f"and these players failed turns: {', '.join(failed) or 'none'}",
@@ -159,6 +162,12 @@ def main(argv: list[str] | None = None) -> int:
     play.add_argument("--parallel", type=int, default=0, help="matches at once; default: the CPUs")
     play.add_argument("--no-cache", action="store_true", help="play every match again")
     play.add_argument("--run-id", help="the directory under runs/; default: the time")
+    play.add_argument(
+        "--shard",
+        metavar="K/N",
+        help="play only the K-th of N slices of the matches, into the cache, and print no standings: for N runners "
+        "that share a tournament",
+    )
     play.add_argument(
         "--strict",
         action="store_true",

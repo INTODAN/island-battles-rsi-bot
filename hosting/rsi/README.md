@@ -9,11 +9,14 @@ hosted bot (hosting/lambda) ── packs games/<id>/game-<id>.zip in S3
 notifier (notifier.py, a Lambda) ── skips a game whose demo is still pending
         │ repository_dispatch "real-game"
         ▼
-real-game-iteration.yml (GitHub Actions)
-   1. downloads the final games that ledger/real-games.txt doesn't list (real_games.py), into runs/real/
-   2. Claude Code runs the bot-league-iteration skill on them
-   3. commits, checks the scope and the names (scope.py) and scripts/check.sh
-   4. pushes claude/league-iteration-N, opens the pull request, and merges it once the checks pass
+real-game-iteration.yml (GitHub Actions), on several runners
+   1. claim    chooses the final games that ledger/real-games.txt doesn't list (real_games.py), claims N
+   2. warm ×N  each runner plays a shard of the population's round robin (league tournament --shard K/N)
+   3. study    Claude Code, the skill's first half on the games: steps 0 to 3 and the hand-over
+   4. gate ×N  each runner plays a shard of every match with a candidate, training and holdout maps
+   5. select   Claude Code, the second half from the cache: steps 4 to 7; then the commit, the scope
+               and names check (scope.py), scripts/check.sh, the push of claude/league-iteration-N,
+               and the pull request, merged once the checks pass
         ▼
 deploy-bot.yml deploys the champion that hosting/lambda/bot names
 ```
@@ -24,12 +27,14 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 | [`real_games.py`](real_games.py) | Lists the games bucket and unpacks the final games no iteration has studied, newest `--limit` first. |
 | [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger (with `ledger/studies/<id>.md`, the study of a real game that the bot's page shows), `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
 | [`../../.github/workflows/real-game-iteration.yml`](../../.github/workflows/real-game-iteration.yml) | The workflow. |
+| [`../../.github/actions/`](../../.github/actions/) | `league-cache` sets up a runner and merges into its `runs/cache` what the run's other runners played; `league-cache-upload` uploads what this runner played. |
 
 ## How it behaves
 
 - **One iteration at a time.** The workflow's concurrency group keeps one run going and one waiting; dispatches that arrive meanwhile replace the waiting one. The waiting run studies every final game that no iteration has studied, up to `RSI_GAMES_PER_RUN` (10), so a burst of games makes one more iteration, not one each. A game left out by the limit is studied by a later run.
 - **The run holds the queue until its pull request has merged**, so the next iteration starts from this one's ledger entry. While an automated iteration's pull request is open (its checks failed, or it didn't merge within an hour), every later run fails at its first step and the games wait: fix or close that pull request, then start the workflow again from the Actions tab.
-- **It claims its iteration's number, as a person's session does** (`scripts/claim-iteration.sh`): the branch `claude/league-iteration-N`, pushed with an App token that is revoked at once, before Claude starts. While a session holds the next number, the run waits for that iteration to merge, up to `RSI_CLAIM_WAIT_MINUTES` (90), and then starts from the new `main`; after that it fails and the games wait for the next run. A run that fails before its pull request gives the number back.
+- **It claims its iteration's number, as a person's session does** (`scripts/claim-iteration.sh`): the branch `claude/league-iteration-N`, pushed with an App token that is revoked at once, before Claude starts. While a session holds the next number, the run waits for that iteration to merge, up to `RSI_CLAIM_WAIT_MINUTES` (90), and then starts from the new `main`; after that it fails and the games wait for the next run. A run that fails or is cancelled before its pull request gives the number back.
+- **Its tournaments are played on `RSI_SHARDS` runners at once** (8), since one runner has 4 CPUs and an iteration's time is nearly all playing. Each runner plays the slice of a tournament that `league tournament --shard K/N` gives it, and uploads the matches it played; the next job merges them into its cache. Claude runs twice, before and after the candidates' matches: the first half studies and writes the candidates and hands over the start of the ledger entry; the second gates, selects and records, every tournament from the cache. Both are the iteration skill's section "Split across runners". The merged cache is saved after each round of runners, so a run that fails later keeps what they played.
 - **No cap.** Each merge deploys a bot, whose games start more iterations. Each iteration runs on your Claude subscription (`CLAUDE_CODE_OAUTH_TOKEN`), so the iterations share your plan's limits with your own use.
 - **The model** is `RSI_MODEL`, Opus by default; the skill lets it hand candidates to Sonnet subagents. Set it to `sonnet` to spend less.
 - **Nobody plays the other player's bot.** The iteration studies the games that happened; it never starts one (the skill's *No games against another player's bot*).
@@ -38,12 +43,12 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 
 A real game's demo holds the other players' names and their bots' log lines: text written by someone else, which Claude reads. The protections hold even if the model is talked into something:
 
-- **Claude's step can write nothing outside the runner.** Its GitHub token is the workflow's read-only one, the checkout keeps no git credentials, the AWS credentials are cleared before it starts, and its tools are the league's commands, the file tools and `scripts/check.sh`: no web, no `git push`, no `gh`.
+- **Claude's steps can write nothing outside their runners.** Their GitHub token is the workflow's read-only one, the checkout keeps no git credentials, the AWS credentials are cleared before it starts, and its tools are the league's commands, the file tools and `scripts/check.sh`: no web, no `git push`, no `gh`.
 - **The App token that pushes and merges is made after Claude has finished**, and only after the scope check and `scripts/check.sh` pass.
 - **The scope check is required by branch protection.** A change to a workflow, a tool, a test, a skill or an existing map can't merge from an iteration's branch, however it got there.
 - **No names.** The scope check also fails when a player's name from the studied demos is on an added line or in the pull request's body, and prints the place, never the name: the checks' logs of a public repository are public.
 - **A bot can't reach the network.** `tests/test_bots.py` allows only pure standard modules, so a bot that the model was misled into writing plays badly and loses the tournament; it can't send anything anywhere.
-- **The real games stay out of git and out of the caches**: `runs/` is ignored, the cache holds `runs/cache` and `.runner` alone, and nothing is uploaded as an artifact (a public repository's artifacts are public).
+- **The real games stay out of git, the caches and the artifacts**: `runs/` is ignored, and the cache holds `runs/cache`, `.runner` and Go's build cache alone. A public repository's artifacts are public, so the runners share only league games (`runs/cache`'s results and demos, of league bots) and the first half's diff, which leaves its runner only after the scope and name check passes on it, as the pull request's does. The second half never has the real games while Claude runs: they are downloaded after it, for the name check.
 
 What it doesn't protect against: a model that writes a worse bot that still passes the league's selection rules. Those rules are the gate, as they are for a person's iteration; a pull request merged here can be reverted like any other.
 
@@ -72,7 +77,7 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 3. **Settings → General → Allow auto-merge** on.
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.
-6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`, `RSI_CLAIM_WAIT_MINUTES`.
+6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`, `RSI_CLAIM_WAIT_MINUTES`, `RSI_SHARDS` (the runners that play at once, 8 by default; a public repository's free plan runs 20 jobs at a time).
 
 ### AWS (`eu-central-1`, next to the hosted bot)
 

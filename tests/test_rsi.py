@@ -1,11 +1,14 @@
 """The automated iteration: the notifier, the choice of real games to study and the scope check."""
 
+import argparse
 import io
 import json
 import sys
 import zipfile
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "hosting" / "rsi"))
@@ -78,6 +81,13 @@ def test_only_new_final_games_are_studied_newest_first_kept() -> None:
     ]
     assert real_games.to_study(summaries, {7}, limit=2) == [5, 9]
     assert real_games.to_study(summaries, {7}, limit=0) == [1, 3, 5, 9]
+
+
+def test_a_later_job_names_the_games_it_downloads() -> None:
+    assert real_games.parse_ids("471, 472,") == [471, 472]
+    assert real_games.parse_ids("") == []
+    with pytest.raises(argparse.ArgumentTypeError):
+        real_games.parse_ids("471,../x")
 
 
 def test_a_zip_is_unpacked_by_its_known_names_only(tmp_path: Path) -> None:

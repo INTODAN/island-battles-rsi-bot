@@ -137,6 +137,56 @@ def castle(castle_id: int, team_color: int, soldiers: int, x: float, levels: dic
     }
 
 
+def test_shards_split_a_tournament_into_parts_that_make_the_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N runners that each play one shard play every match once, and together leave the whole in the cache."""
+    bots, cache = tmp_path / "bots", tmp_path / "cache"
+    for name in ("first", "second", "third"):
+        (bots / name).mkdir(parents=True)
+        (bots / name / "bot.py").write_text(f"def play(turn): ...  # {name}\n")
+    maps = []
+    for name in ("duel", "ring"):
+        maps.append(tmp_path / f"{name}.json")
+        maps[-1].write_text(json.dumps({"name": name}))
+    monkeypatch.setattr(tournament, "BOTS", bots)
+    monkeypatch.setattr(tournament, "CACHE", cache)
+    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament.engine, "build", lambda: "build")
+    played: list[str] = []
+
+    def play(schedule: dict, worker_log: Path) -> list[dict]:
+        lines = []
+        for match in schedule["matches"]:
+            played.append(match["id"])
+            (cache / f"{match['id']}.json.gz").write_bytes(b"demo")
+            seats = [{"name": name, "failed_turns": 0, "failures": []} for name in match["seats"]]
+            lines.append(
+                {"id": match["id"], "map": match["map"], "players": match["seats"], "winner": None, "seats": seats}
+            )
+        return lines
+
+    monkeypatch.setattr(tournament.engine, "play", play)
+    players = ["first", "second", "third", "level3"]
+    shards = []
+    for index in (1, 2, 3):
+        plan = tournament.Tournament(players=players, maps=maps, shard=(index, 3))
+        shards.append({result["id"] for result in tournament.play(plan, tmp_path / "run")})
+    # Six pairs, two sides, two maps: each match in exactly one shard, and each shard has some.
+    assert len(played) == len(set(played)) == 24 == sum(len(shard) for shard in shards)
+    assert all(shards) and set(played) == set().union(*shards)
+    played.clear()
+    whole = tournament.play(tournament.Tournament(players=players, maps=maps), tmp_path / "run")
+    assert played == [] and {result["id"] for result in whole} == set().union(*shards)
+    # The shard of a match doesn't depend on what the cache holds.
+    again = tournament.play(tournament.Tournament(players=players, maps=maps, shard=(2, 3)), tmp_path / "run")
+    assert played == [] and {result["id"] for result in again} == shards[1]
+    assert tournament.parse_shard("2/8") == (2, 8)
+    for text in ("0/3", "4/3", "2", "a/b", "1/0"):
+        with pytest.raises(ValueError):
+            tournament.parse_shard(text)
+
+
 def test_digest_reads_the_events_between_boards() -> None:
     group = {
         "id": 0,

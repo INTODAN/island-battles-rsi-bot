@@ -1,12 +1,15 @@
 """Download the hosted bot's real games that no iteration has studied yet.
 
     uv run python hosting/rsi/real_games.py --bucket BUCKET --out runs/real [--limit 10]
+    uv run python hosting/rsi/real_games.py --bucket BUCKET --out runs/real --ids 471,472
 
 Reads every ``games/<id>/game.json`` in the games bucket, keeps the games that
 are finished with a final demo and whose id ``ledger/real-games.txt`` doesn't
 list, and unpacks the newest ``--limit`` of them into ``OUT/<id>/`` (the
 files of the hosted bot's zip: ``demo.json``, ``digest.txt``, ``turns.jsonl``,
-``game.json``...). Prints their ids, one per line, oldest first.
+``game.json``...). Prints their ids, one per line, oldest first. With
+``--ids``, it unpacks those games instead, and lists nothing: a later job of
+the same iteration gets the games its first job chose.
 
 The zips carry players' names and their bots' logs: ``runs/`` is not in git,
 and nothing from here is committed.
@@ -18,7 +21,7 @@ import argparse
 import io
 import json
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -62,11 +65,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--bucket", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=10, help="the most games to study in one iteration (0: all)")
+    parser.add_argument("--ids", type=parse_ids, help="these games, comma-separated, instead of the unstudied ones")
     args = parser.parse_args(argv)
 
     import boto3
 
     s3 = boto3.client("s3")
+
+    def fetch(game_id: int) -> bytes:
+        return s3.get_object(Bucket=args.bucket, Key=f"games/{game_id}/game-{game_id}.zip")["Body"].read()
+
+    if args.ids is not None:
+        download(fetch, args.ids, args.out)
+        return
     pages = s3.get_paginator("list_objects_v2").paginate(Bucket=args.bucket, Prefix="games/", Delimiter="/")
     prefixes = [entry["Prefix"] for page in pages for entry in page.get("CommonPrefixes", [])]
 
@@ -78,10 +89,25 @@ def main(argv: list[str] | None = None) -> None:
 
     with ThreadPoolExecutor(16) as pool:
         summaries = [s for s in pool.map(summary, prefixes) if s and isinstance(s.get("game_id"), int)]
-    chosen = to_study(summaries, studied(), args.limit)
-    for game_id in chosen:
-        data = s3.get_object(Bucket=args.bucket, Key=f"games/{game_id}/game-{game_id}.zip")["Body"].read()
-        unpack(data, args.out / str(game_id))
+    download(fetch, to_study(summaries, studied(), args.limit), args.out)
+
+
+def parse_ids(text: str) -> list[int]:
+    """Game ids written ``471,472``.
+
+    Raises:
+        argparse.ArgumentTypeError: One of them isn't a whole number.
+    """
+    parts = [part.strip() for part in text.split(",") if part.strip()]
+    if not all(part.isdigit() for part in parts):
+        raise argparse.ArgumentTypeError(f"{text!r}: game ids are whole numbers, separated by commas")
+    return [int(part) for part in parts]
+
+
+def download(fetch: Callable[[int], bytes], game_ids: list[int], out: Path) -> None:
+    """Unpack each game's zip, which ``fetch`` reads, into ``out/<id>/``, and print its id."""
+    for game_id in game_ids:
+        unpack(fetch(game_id), out / str(game_id))
         print(game_id)
 
 
