@@ -314,6 +314,8 @@ def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pyte
     closed = get("/")
     assert closed["statusCode"] == 401 and "accounts.google.com/gsi/client" in closed["body"]
     assert "Game 7" not in closed["body"]
+    for hidden in (handler._bot.name, "github.com", "champion", "league"):
+        assert hidden not in closed["body"]
     assert get("/api/games")["statusCode"] == 401
     assert get("/games/7.zip")["statusCode"] == 403
     assert get("/health")["statusCode"] == 200
