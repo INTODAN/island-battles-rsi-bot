@@ -66,8 +66,11 @@ jobs:
           aws lambda update-function-code --function-name "$FUNCTION" \
             --s3-bucket "$BUCKET" --s3-key bot.zip --query LastUpdateStatus --output text
           aws lambda wait function-updated-v2 --function-name "$FUNCTION"
+          # Set BOT and keep the other variables, such as GAMES_BUCKET and GAMES_KEY.
+          aws lambda get-function-configuration --function-name "$FUNCTION" --query Environment.Variables --output json \
+            | jq --arg bot "$BOT" '{Variables: ((. // {}) + {BOT: $bot})}' > "$RUNNER_TEMP/environment.json"
           aws lambda update-function-configuration --function-name "$FUNCTION" \
-            --environment "Variables={BOT=$BOT}" --query LastUpdateStatus --output text
+            --environment "file://$RUNNER_TEMP/environment.json" --query LastUpdateStatus --output text
           aws lambda wait function-updated-v2 --function-name "$FUNCTION"
 
       - name: The hosted bot answers as the new bot
