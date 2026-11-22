@@ -20,6 +20,10 @@ cp "bots/$bot/"*.py "$out/package/bots/$bot/"
 cp hosting/lambda/handler.py hosting/lambda/games.py hosting/lambda/owner.py hosting/lambda/page.py hosting/lambda/bot "$out/package/"
 # The league's digest, which games.py puts in each game's zip.
 cp league_tools/digest.py "$out/package/digest.py"
+# The iterations' studies of real games, which the home page shows under each game.
+mkdir -p "$out/package/studies"
+studies=(); [[ -d ledger/studies ]] && studies=(ledger/studies/[0-9]*.md)
+[[ -e "${studies[0]:-}" ]] && cp "${studies[@]}" "$out/package/studies/"
 # The league's maps, which name the map of a real game.
 mkdir -p "$out/package/maps"
 cp maps/*/*.json "$out/package/maps/"

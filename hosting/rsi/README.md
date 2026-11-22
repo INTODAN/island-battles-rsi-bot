@@ -22,7 +22,7 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 | --- | --- |
 | [`notifier.py`](notifier.py) | The Lambda that turns a packed zip into a `repository_dispatch`. |
 | [`real_games.py`](real_games.py) | Lists the games bucket and unpacks the final games no iteration has studied, newest `--limit` first. |
-| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger, `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
+| [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger (with `ledger/studies/<id>.md`, the study of a real game that the bot's page shows), `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
 | [`../../.github/workflows/real-game-iteration.yml`](../../.github/workflows/real-game-iteration.yml) | The workflow. |
 
 ## How it behaves
@@ -67,7 +67,7 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 ### GitHub
 
 1. **A GitHub App** for the league, installed on this repository alone, with the permissions Contents: read and write, Pull requests: read and write, Issues: read and write (for the label), Metadata: read. Save its id as the repository variable `RSI_APP_ID` and a private key as the secret `RSI_APP_PRIVATE_KEY`.
-2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN`.
+2. **The Claude token:** run `claude setup-token` on your computer and save the token as the secret `CLAUDE_CODE_OAUTH_TOKEN` (`gh secret set CLAUDE_CODE_OAUTH_TOKEN`). In a narrow terminal it prints the token across two lines; the workflow removes the line break that a paste keeps.
 3. **Settings → General → Allow auto-merge** on.
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.

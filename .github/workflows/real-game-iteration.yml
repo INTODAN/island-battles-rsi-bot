@@ -102,11 +102,26 @@ jobs:
           # The AWS credentials end here: nothing after this step reads S3.
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
 
+      # `claude setup-token` wraps the token across two lines in a narrow
+      # terminal, and a pasted secret keeps the line break, which fails Claude's
+      # step at once with no message. The stripped token no longer matches the
+      # secret, so GitHub wouldn't mask it: mask it first.
+      - name: The Claude token without whitespace
+        if: steps.games.outputs.ids != ''
+        id: claude_token
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          token=$(printf %s "$TOKEN" | tr -d '[:space:]')
+          [ -n "$token" ] || { echo "::error::the secret CLAUDE_CODE_OAUTH_TOKEN is empty"; exit 1; }
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
       - name: Claude runs the iteration
         if: steps.games.outputs.ids != ''
         uses: anthropics/claude-code-action@v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
           github_token: ${{ github.token }}
           claude_args: |
             --model ${{ vars.RSI_MODEL || 'opus' }}
@@ -131,6 +146,7 @@ jobs:
             - runs/rsi/commit-message.txt: a first line "League iteration N: <what was promoted, or nothing>",
               a blank line, then which candidates were promoted and rejected, and why.
             - runs/rsi/pr-body.md: the skill's report (step 7).
+            Write each studied game's study in ledger/studies/<id>.md, as the skill's "Started by real games" says.
             Candidates may be written by subagents on the sonnet model, as the skill allows.
 
       - name: The iteration finished
