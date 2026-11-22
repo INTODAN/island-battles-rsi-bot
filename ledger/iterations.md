@@ -62,6 +62,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
+- **A frozen game is lost by whoever breaks it, unless it was lost anyway.** Inside the `harrier` line both sides' castles keep a reserve against the strongest enemy castle and grow alike, and a game freezes with nothing spared for 200 turns (`reef` against `growtrickle_feedkeep`: 3 castles each, "saving" from turn 51 to 286, drawn with 2,088 soldiers each); 56 of the champion's 123 training draws end with identical castles and soldiers. A strike from everything at a frozen enemy is answered by its reinforcements (`reef`, turn 63: 339 soldiers met by a defender that sent 184 to help): on the four maps it changed most, from a castle lead it turned 20 wins at the limit into eliminations (`sound`, `islands`), from a level freeze 18 draws into losses against 6 into wins, and only from behind did it pay (18 losses into wins, `crossing`, `shelf`); over all 19 maps it scored 31.5 points less than its parent against the rest of the field. Behind only, it beat its parent 20 of 38 and rose 3 points on training, and fell 11 on holdout (iteration 36's `feedkeep_stall`).
+- **Ties broken anew every turn cost a line that keeps one front.** Breaking every equal choice with a per-turn seeded shuffle, not the castle id, beat `ori_hold` 18.5 of 34 (before iteration 36, against the iteration-25 population), but took exactly half against `harrier_feedkeep` and rated 52 below it (iteration 36's `feedkeep_dice`): its games weren't read, so why is still open. A likely cause, to check first: its front, its harassed castle and its senders are chosen by distance with the id as the tie-break, and a tie that flips from turn to turn would split the stack between two fronts; if so, a seed should pick once a game where the choice must stay the same.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
 
@@ -2277,3 +2279,83 @@ Holdout maps (`setup-36-holdout`, 4,500 matches, exit 0):
 | level2 | 644 | 0.000 | 0 | 0 | 450 |
 
 **Champion:** `harrier_feedkeep`, 2064 on training and 2102 on holdout on the new scale. On training it is 264 above `ori_mimic`. In iteration 29's table, the last one where `level3` still won training games, the champion `endreserve_stallfeed` was 165 above it (1981 against 1816), on fewer maps. That is the progress of iterations 30 to 35 in the one measure that spans them. `level2` and `level3` (594 on training) still win nothing there. Their ratings are the prior's and mean nothing.
+
+## Iteration 36: seeded randomness, and the frozen game
+
+**Date:** 2026-11-23. **Maps:** 19 training, 15 holdout (unchanged). **Matches:** 5,700 in the baseline (`iteration-36-before`, equal to the training table of the setup after iteration 35 match for match), 7,866 in the training selection (7,106 when re-rated with the tournament tool of #16), 5,040 in the holdout selection for the one that passed. Two candidates from the champion, written one after the other. As in iterations 26 to 35: no outside opponent, no check against the hosted bot. The number was claimed with `scripts/claim-iteration.sh` at about 00:47, after the real-game iteration that was to be 36 was cancelled; the baseline (from 00:33) and the two candidates were made before the claim, while that run was still going, and nothing measured in between was kept without the claim.
+
+**The idea it tests: seeded randomness.** The hosted bot of the real games is said to randomize some of its actions from a seed (by a person, not yet read off its games), so that it can't be predicted; every league bot is deterministic, and its code is public. A league bot may not use `random` or a clock, and a league match must replay exactly for its cached result to stay true, so the candidates' seed comes from the turn itself, is drawn on the first turn and is kept in memory (48 bits as hex, under what a JSON number keeps exactly), and the dice are splitmix64 written into the bot:
+
+- in a game with a turn deadline (every real game), the seed mixes the game's id, the team and the first deadline: each real game draws a new one;
+- without deadlines (the headless runner), it mixes the first board and the team: a league match replays exactly. The runner's game id is the match's place in the run's schedule, so a seed from it would make a league result depend on which matches the run played.
+- The game's id and deadline are no secret from the opponent: a seed nobody can compute would need the hosted bot's handler (`hosting/lambda/`) to put a secret one in the memory of a game's first turn. Not done.
+
+**Findings** (`harrier_feedkeep`'s games on the training maps):
+
+1. **The mirror freeze.** 56 of its 123 draws end with identical castles and soldiers on both sides. `reef` against `growtrickle_feedkeep` (both sides): 3 castles each from turn 21, both logs "saving" from turn 51 to turn 286 with every castle at production 4 and speed 2 (turn 150: 436, 528 and 432 soldiers in each side's castles), then the end-of-game strikes cross in the field and the game is drawn at 2,088 each. **Cause:** each castle's reserve is sized against the strongest enemy castle, which grows exactly as fast as it does; no deterministic rule on either side ever breaks the symmetry. **Idea (a):** a strike at a seeded moment once the game has frozen.
+2. **Every tie is broken by the castle id**, so an opponent with the code knows each equal choice in advance. **Idea (b):** break ties with a seeded shuffle.
+
+Before this iteration (against the iteration-25 population, in a worktree that hadn't seen iterations 26 to 35, so not an iteration of the ledger) the same two ideas were tried on `ori_hold`: the seeded freeze strike, from every frozen game, beat it 22 of 34 and took its draws from 106 to 64; the tie shuffle beat it 18.5 of 34; a third, the target drawn among those within 10% of the cheapest, took exactly 17 of 34.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Decision |
+|---|---|---|---|---|---|---|
+| `feedkeep_stall` | harrier_feedkeep | (a) Once no castle changed hands for 20 turns, no neutral is left and the bot holds fewer castles than the enemy, each turn has a seeded 1-in-5 chance of a strike at the cheapest enemy castle from all the senders' soldiers, reserve included. | 2056 (2053) | 20/38 | 2083 (2094), 15/30 | **rejected**: below its parent on the holdout maps. |
+| `feedkeep_dice` | harrier_feedkeep | (b) Every tie the castle id broke is broken by a per-turn shuffle drawn from the seed. | 2001 (2053) | 19/38 | not played | **rejected**: half against its parent and below it. |
+
+`feedkeep_stall` was tuned once on the training maps, before any holdout game: from every frozen game (not only from behind) it beat its parent 22 of 38 and rated 2021 against 2047; against the parent's games it turned 18 losses at the limit into wins (`crossing`, `shelf`) and 20 wins at the limit and 18 draws into eliminations (`sound`, `islands`). Behind only, its changed games were `crossing` (5 losses into wins), `haven` (one loss into a win, two wins into losses), `claw` (four wins and two draws into losses) and `archipelago` (one each way). The freeze draws on `reef`, `rill` and `circle` didn't change in either form: the strike from a level freeze (`reef`, turn 63, 339 soldiers from three castles) was met by the defender's help and changed no castle.
+
+The gate: no failed turn, slowest turns 47 to 86 ms.
+
+**Status changes:** none. Both candidates are deleted; the champion is unchanged.
+
+Training maps (`iteration-36-train`, 5,700 matches, exit 0; equal to the setup's after iteration 35):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2064 | 0.781 | 443 | 123 | 80 |
+| harrier_front | 2031 | 0.748 | 398 | 171 | 77 |
+| harrier_attackers | 2030 | 0.747 | 400 | 165 | 81 |
+| growtrickle_feedkeep | 1969 | 0.682 | 358 | 165 | 123 |
+| stallfeed_growtrickle | 1954 | 0.666 | 349 | 162 | 135 |
+| sameturn_endreserve | 1945 | 0.655 | 338 | 170 | 138 |
+| endreserve_stallfeed | 1942 | 0.652 | 333 | 176 | 137 |
+| sameturn_stallfeed (retired) | 1869 | 0.567 | 251 | 231 | 164 |
+| exact_sameturn (retired) | 1861 | 0.557 | 249 | 222 | 175 |
+| exact_stallfeed (retired) | 1820 | 0.510 | 217 | 225 | 204 |
+| ori_hold (retired) | 1819 | 0.509 | 209 | 240 | 197 |
+| ori_hold_exact (retired) | 1808 | 0.497 | 213 | 216 | 217 |
+| ori_mimic (sparring) | 1800 | 0.488 | 198 | 234 | 214 |
+| safe_hold (retired) | 1709 | 0.390 | 238 | 28 | 380 |
+| ori_like (sparring) | 1543 | 0.251 | 148 | 28 | 470 |
+| level1 | 1528 | 0.140 | 0 | 160 | 410 |
+| level2 | 594 | 0.000 | 0 | 0 | 570 |
+| level3 | 594 | 0.000 | 0 | 0 | 570 |
+
+Holdout maps (`iteration-36-holdout`, 4,500 matches, exit 0; equal to the setup's after iteration 35):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| harrier_feedkeep | 2102 | 0.786 | 336 | 130 | 44 |
+| growtrickle_feedkeep | 2090 | 0.775 | 328 | 135 | 47 |
+| harrier_attackers | 2049 | 0.735 | 306 | 138 | 66 |
+| harrier_front | 2042 | 0.727 | 302 | 138 | 70 |
+| stallfeed_growtrickle | 2001 | 0.685 | 277 | 145 | 88 |
+| endreserve_stallfeed | 1985 | 0.668 | 260 | 161 | 89 |
+| sameturn_endreserve | 1964 | 0.644 | 248 | 161 | 101 |
+| sameturn_stallfeed (retired) | 1917 | 0.592 | 208 | 188 | 114 |
+| exact_sameturn (retired) | 1912 | 0.586 | 205 | 188 | 117 |
+| exact_stallfeed (retired) | 1838 | 0.504 | 167 | 180 | 163 |
+| ori_hold_exact (retired) | 1820 | 0.484 | 157 | 180 | 173 |
+| ori_hold (retired) | 1813 | 0.476 | 158 | 170 | 182 |
+| ori_mimic (sparring) | 1800 | 0.463 | 153 | 166 | 191 |
+| safe_hold (retired) | 1643 | 0.314 | 160 | 0 | 350 |
+| ori_like (sparring) | 1562 | 0.253 | 129 | 0 | 381 |
+| level1 | 1544 | 0.142 | 0 | 128 | 322 |
+| level3 | 925 | 0.004 | 2 | 0 | 448 |
+| level2 | 644 | 0.000 | 0 | 0 | 450 |
+
+**Champion:** `harrier_feedkeep`, 2064 on training and 2102 on holdout, as in the setup after iteration 35 (`ori_mimic` at 1800).
+
+**Where it still loses:** the level frozen games inside the line, which a strike from everything breaks against itself (it pays only from behind, and then too little to hold on the holdout maps); `circle`; `claw`'s middle castle. The randomness the league can't measure: its opponents don't learn, so an unpredictable bot gains nothing here that a deterministic one lacks. What a seed buys is measured against an opponent that adapts, the hosted bot, which no iteration plays.
+
+**Time:** 39 minutes to the final tables, from 00:33 to 01:12, and 8 more to rebase onto the new rating anchor and re-rate every table from the cache (iteration 35: 16). The baseline (17 minutes, 5,088 of 5,700 matches played) and the holdout selection (13 minutes, 4,572 of 5,040 played) are the slowest steps, because this worktree's cache had none of the results of iterations 26 to 35, played in another container; the gate took 4 minutes and the training selection seconds. **Speed-up:** an iteration should start from the cache of the one before it: with it, this iteration's two long runs would have played about 1,100 matches instead of 9,700. The real-game iteration now restores one (`.github/actions/league-cache`); a session in a new worktree should link or copy the main checkout's `runs/cache/` first, as this one did. Its ratings were played before `ori_mimic` became the anchor and re-rated from the cache with the new tools afterwards: every decision is the same on both scales.
