@@ -54,6 +54,7 @@ Short, general statements about the game that the games have shown. Add to them,
 - **The trickle is answered by asking whether the castle outgrows it.** An enemy group that holds no more soldiers than the castle produces before it lands is no attack; counting only the others, so that a real strike still freezes the castle's stock, won every game against `level1` and passed every rule (iteration 30's `stallfeed_growtrickle`, 17.5 of 34 against its parent, 15 points up on holdout). The two earlier forms changed what an attacked castle may spend, and lost.
 - **Pricing help like an attack, or holding strike captures, doesn't pay in the league.** Adding to help half of what the enemy could still bring, and topping up enemy castles our strike will take, each lost to the parent 16 of 34 (iteration 30): the extra soldiers are taken from the strikes and staging that decide the race.
 - **Defence refinements in the `ori_` line now split its mirror match.** Partial help, pricing help like an attack, cumulative trickles and holding strike captures each took 16 to 17 of 34 against their parent (iterations 30 and 31): the line's games against itself are decided move for move, and a change that acts only under attack changes a few of them either way.
+- **An enemy that buys speed strikes from farther than its speed says.** At the end of a game the `ori_` line freed reserves against castles 8 turns away and fed the soldiers to the front; the enemy bought speed 3 in the same turn as its strike and took the emptied castles (iteration 32, 30 games lost on castles at the limit). Counting the speed it could buy fixed those games and still lost the mirror match (14.5 of 34): what loses a bot's games against its own line is not always what loses them against the others.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1973,3 +1974,24 @@ All three passed the gate in one `--focus` run (1,836 matches, 7 minutes): no fa
 **Status changes:** none; the final tables (`iteration-31-train`, `iteration-31-holdout`, both exit 0) equal iteration 30's. **Champion:** `stallfeed_growtrickle`, unchanged.
 
 **Time:** 9 minutes. The gate (7 minutes) is the slowest step; there was no holdout run.
+
+## Iteration 32: nothing promoted, the late emptying
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 6,358 in the training selection round robin; no holdout selection. Three candidates from the champion, written one after the other. Same container as iteration 26: no outside opponent, no check against the hosted bot.
+
+**Findings** (`stallfeed_growtrickle`'s games on the training maps; its worst map is now `bight`, 16 of 32):
+
+1. **The end-of-game reserve empties the rear for a late strike.** `bight` against `ori_hold` (lost on castles at the limit, 1 to 5): on turn 292 enemy castle 2 was 8 turns away at speed 2 with 8 turns left, so castles 0 and 4 counted it out of time, freed their reserves (`late reserve freed 0:889 4:889`) and fed 940 and 936 soldiers to front castle 3, which already held 1,016 and struck nothing. On turn 293 `ori_hold` bought speed 3 and struck both with 35 and 41 (`speed+strike>4 2:35 strike>0 need 41 2:41`) and took them on turns 297 and 298. The same ending lost 30 games at the limit on `bight`, `far-shores`, `archipelago` and `haven` against six bots of the line. **Ideas (a)** count an enemy castle in time at any speed it could buy this turn; **(b)** feed nothing in the last 30 turns; **(c)** read every reserve and upgrade check at the speeds an enemy castle could buy, all game.
+2. `delta` against `finish_speed` (lost in 108 turns): the middle castle 2 changed hands six times, each capture leaving 2 to 7 soldiers. Not made a candidate (iteration 30's `stallfeed_holdstrike` and iteration 31's ideas were near it).
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Decision |
+|---|---|---|---|---|---|
+| `growtrickle_endnofeed` | stallfeed_growtrickle | (b) | 2376 (2385) | 16.5/34 | **rejected**: below its parent in both rules. |
+| `growtrickle_buyspeed` | stallfeed_growtrickle | (c) | 2361 (2385) | 16/34 | **rejected**: below its parent in both rules. |
+| `growtrickle_endspeed` | stallfeed_growtrickle | (a) | 2359 (2385) | 14.5/34 | **rejected**: below its parent in both rules; 4 points fewer against `endreserve_stallfeed`. |
+
+All three passed the gate in one `--focus` run (1,836 matches, 8 minutes): no failed turn, slowest turns 56 to 120 ms. Fixing the loss that the games showed lost more of the line's mirror games than it won: the line's bots free their reserves at the same moment, and a bot that keeps its stock home then loses the race for castles at the end instead.
+
+**Status changes:** none; the final tables (`iteration-32-train`, `iteration-32-holdout`, exit 0) equal iteration 30's. **Champion:** `stallfeed_growtrickle`, unchanged. **Nothing was promoted twice in a row:** iteration 33 starts by adding a training map and a holdout map, and one of its candidates is a founder.
+
+**Time:** 10 minutes; the gate (8 minutes) is the slowest step.
