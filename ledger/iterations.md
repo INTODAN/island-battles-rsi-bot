@@ -40,6 +40,9 @@ Short, general statements about the game that the games have shown. Add to them,
 - **An upgrade beside a stocked enemy castle hands it over.** On `circle` (2026-11-22) the champion bought production 4 at 34 soldiers, down to 8, with the hosted bot's castle 4 units away holding 34; that turn the hosted bot bought speed 2 and sent 25, its growth on the way counted exactly, and took the castle on turn 17. The league's bots never strike a castle for its upgrade, so nothing in the league punishes this.
 - **Strike exactly when the walk is short.** Counting a target's soldiers, growth, reinforcements and burst exactly (plus 2) for strikes that land within five turns, instead of 1.5 times them, beat its parent 26 of 34, its best mirror score since iteration 7, and rose 83 points on training and 29 on holdout (iteration 24's `hold_exactstrike`). Over a short walk little can change before the landing, and a margin there only lets the target grow back.
 - **Guarding upgrades costs the league and buys the real games.** Skipping an upgrade that would leave the castle to a single enemy castle (at speed 2) took the only draws and the only win any bot got from the hosted bot on 2026-11-22 (`circle` drawn by three such candidates, `claw` won by one), and lost to its parent 10 to 14 of 34 in the league (iteration 24). `ori_mimic` doesn't punish an upgrade the way the hosted bot does: the candidates that guarded most scored worst against it.
+- **The real opponent's own rules, with the league's lessons added, beat the league's best line.** Founders written on `ori_mimic`'s code (the hosted bot's rules read off its games) took the top of both tables in iteration 25: `ori_hold` (helpers under attack may help if they still hold, and a capture the enemy would retake is topped up) and `ori_finish` (strikes over a short walk or near the turn limit count the target exactly) beat their parent 17.5 and 18.5 of 34, rated 1876 and 1855 against its 1836 on training and 1969 and 2020 against 1938 on holdout, and won 58 of 60 games against the player's bot with no loss (2 draws on `circle`). Against the hosted bot itself they won 2 and 1 of 17 games on the board, where every bot of the line before them won none.
+- **Burst levels cost a mirror match its race.** Buying burst levels 2 and 3 on a castle near the enemy (30 soldiers) to burst when an attack would take it lost to the parent 2 of 34 (iteration 25's `exact_burst`): the purchase came at the turn the front's soldiers decided the race, and no league bot's strike ever met a burst it hadn't counted.
+- **A lobby win by the opponent's timeout is not a win.** In long games the hosted bot sometimes failed to answer within 30 seconds and forfeited (7 of 85 games in iteration 25); a tab that the browser slows can make our bot forfeit too (2). Count only games decided on the board.
 - **Ideas that lose the league can win the player's bot.** In iteration 23 the order of six candidates against the player's bot (54, 51, 48, 46, 46 and 40 wins of 60) was nearly the reverse of their order in the league; the bot that waited longest to strike (`hold_opening`, 7 of 34 against its parent) won the most.
 - **The race for castles decides the league; production decides the real games.** Saving rear castles' soldiers for production once no neutral castle is on the bot's side lost to its parent 8 of 18 (iteration 9's `hold_phase`), as iteration 8's `frontline_economy` did; both real opponents still out-produce every `frontline` bot (the hosted bot reached production 4 at home by turn 44 on `crossing`, while the `frontline` bots stayed at 2 until turn 90).
 - **Production before the front is right against one opponent and wrong in the league.** Holding a rear castle's soldiers for its next production level before staging won `delta` against the player's bot, on both sides, but lost to its parent 7 of 18 (iteration 8's `frontline_economy`): the league's bots punish a late front more than they punish a thin economy.
@@ -1487,3 +1490,77 @@ Holdout maps (`iteration-24-holdout`, 3,900 matches, exit 0):
 | level3 | 1000 | 0.041 | 16 | 0 | 374 |
 | level1 | 828 | 0.015 | 0 | 12 | 378 |
 | level2 | 568 | 0.003 | 1 | 0 | 389 |
+
+## Iteration 25: the hosted bot's rules, with the league's lessons
+
+**Date:** 2026-11-22. **Maps:** 17 training, 13 holdout (unchanged). **Matches:** 9,282 in the training selection round robin, 4,862 in the holdout selection for the two that passed. Six candidates written in parallel by subagents (a smaller model), every diff read before it played. Four of them are **founders** on the sparring bot `ori_mimic`'s code, which the iteration skill now allows: the sparring bot is then the parent in every rule, and stays as it is. `ori_mimic`'s reserve, counted up one soldier at a time, was replaced by the same number computed directly (identical commands on 300 random boards, eight times faster; its slowest turn had reached 1.4 s with six tournaments running).
+
+**Findings:**
+
+1. **`ori_mimic`, the hosted bot's rules, is the strongest player in the league** (iteration 24's tables) and loses to its original on the board only a little less than the league's bots. **Ideas:** found new bots on it, with what the league knows that the hosted bot doesn't.
+2. **The hosted bot never bursts and sizes every capture need(P) = P + P // 10 + 3**; a burst of 8 as its group lands beats that for any castle under about 50. No league bot bursts. **Idea (a):** burst defence.
+3. **`ori_mimic` draws more than any bot (60 of 578 training games)**: its price adds half of what the target's neighbours could bring, so a level game is never finished. **Idea (b):** exact strikes over a short walk and near the turn limit (iteration 8's and iteration 24's lessons).
+4. **Its defence takes help only from castles no enemy group is bound for, and it never helps a capture the enemy will retake** (the league's oldest lesson: a castle taken with 1 soldier falls unless another castle reinforces it). **Idea (c):** both.
+
+| Candidate | Parent | Idea | Training rating (parent's) | Against parent | Holdout (parent's) | Player's bot, of 60 | Hosted bot, of 17 (champion: 0) | Decision |
+|---|---|---|---|---|---|---|---|---|
+| `ori_hold` | ori_mimic | A new strategy (c): a castle under attack may help another if it still holds, help counts its turn's earlier sends, and a capture an enemy group would retake is topped up to hold. | 1876 (1836) | 17.5/34 | 1969 (1938) | 58, 2 draws, 0 lost | 2 wins (`islands`, `reef`), 1 draw (`rill`) | **promoted** (the champion) |
+| `ori_finish` | ori_mimic | A new strategy (b): strikes over a walk of 5 turns or less, or near the turn limit, cost what the target will hold plus 2 and its burst instead of need(P). | 1855 (1836) | 18.5/34 | 2020 (1938) | 58, 2 draws, 0 lost | 1 win (`loch`), and one by the hosted bot's timeout (`haven`) | **promoted** |
+| `ori_burst` | ori_mimic | A new strategy (a): burst levels up to 3 near the enemy, and a burst when the landing that takes a castle is this turn. | 1728 (1836) | 8/34 | not played | 56, 2 draws | 0 on the board (1 draw) | **rejected**: below its parent in both rules. |
+| `ori_burst_finish` | ori_mimic | (a) and (b). | 1738 (1836) | 7.5/34 | not played | 56, 2 draws | 0 on the board | **rejected**: below its parent in both rules. |
+| `exact_burst_upsafe` | hold_exactstrike | (a) and iteration 24's upgrade guard. | 1583 (1818) | 7/34 | not played | 40, 2 draws | not played | **rejected**: below its parent in both rules. |
+| `exact_burst` | hold_exactstrike | (a) on the champion. | 1576 (1818) | 2/34 | not played | 42, 2 draws | not played | **rejected**: below its parent in both rules. |
+
+All six passed the gate: no failed turn, slowest turns 11 to 61 ms.
+
+**The check against the real opponent:** the champion `hold_exactstrike` had lost all 17 that session; `ori_mimic` itself, played as a measure, won 2 on the board (`firth`, `islands`) and drew `reef`. Seven of the 85 games ended by the hosted bot's timeout and two by ours (a tab the browser slowed); the founders' unfinished and forfeited maps were played again in two tabs, all lost.
+
+**Status changes:** `ori_hold` and `ori_finish` active; `ori_hold` is the champion (first on training, 1811; `ori_finish` first on holdout, 2062). With eight active bots, `finish_safe` is retired (`hold_exactstrike` matches or beats it against everyone); no other active bot is matched everywhere, so seven stay active. With seven retired, `reinforce_timeline`, the lowest rated, is deleted.
+
+Training maps (`iteration-25-train`, 5,712 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_hold | 1811 | 0.791 | 430 | 108 | 74 |
+| ori_finish | 1795 | 0.776 | 425 | 100 | 87 |
+| hold_exactstrike | 1781 | 0.763 | 449 | 36 | 127 |
+| ori_mimic (sparring) | 1764 | 0.747 | 401 | 112 | 99 |
+| safe_hold (retired) | 1713 | 0.694 | 405 | 40 | 167 |
+| finish_speed | 1653 | 0.631 | 361 | 50 | 201 |
+| finish_safe (retired) | 1652 | 0.629 | 366 | 38 | 208 |
+| hold_finish | 1614 | 0.588 | 330 | 60 | 222 |
+| frontline | 1606 | 0.579 | 323 | 63 | 226 |
+| ori_like (sparring) | 1601 | 0.574 | 336 | 30 | 246 |
+| frontline_hold (retired) | 1601 | 0.574 | 321 | 60 | 231 |
+| frontline_finish | 1600 | 0.573 | 319 | 63 | 230 |
+| speed_margin (retired) | 1413 | 0.379 | 206 | 52 | 354 |
+| outside_player | 1380 | 0.350 | 208 | 12 | 392 |
+| contested_speed (retired) | 1351 | 0.325 | 172 | 54 | 386 |
+| contested_stage (retired) | 1285 | 0.273 | 153 | 28 | 431 |
+| level1 | 1022 | 0.050 | 0 | 54 | 490 |
+| level3 | 1000 | 0.044 | 24 | 0 | 520 |
+| level2 | 648 | 0.006 | 3 | 0 | 541 |
+
+Holdout maps (`iteration-25-holdout`, 4,368 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+|---|---|---|---|---|---|
+| ori_finish | 2062 | 0.870 | 378 | 58 | 32 |
+| ori_hold | 2006 | 0.831 | 358 | 62 | 48 |
+| ori_mimic (sparring) | 1978 | 0.810 | 348 | 62 | 58 |
+| hold_exactstrike | 1907 | 0.750 | 346 | 10 | 112 |
+| safe_hold (retired) | 1875 | 0.720 | 332 | 10 | 126 |
+| finish_safe (retired) | 1789 | 0.637 | 296 | 4 | 168 |
+| finish_speed | 1747 | 0.594 | 274 | 8 | 186 |
+| frontline_finish | 1730 | 0.577 | 260 | 20 | 188 |
+| hold_finish | 1723 | 0.571 | 256 | 22 | 190 |
+| frontline_hold (retired) | 1711 | 0.558 | 250 | 22 | 196 |
+| frontline | 1696 | 0.543 | 244 | 20 | 204 |
+| ori_like (sparring) | 1647 | 0.494 | 231 | 0 | 237 |
+| speed_margin (retired) | 1521 | 0.376 | 173 | 6 | 289 |
+| outside_player | 1506 | 0.363 | 170 | 0 | 298 |
+| contested_speed (retired) | 1443 | 0.312 | 138 | 16 | 314 |
+| contested_stage (retired) | 1383 | 0.269 | 126 | 0 | 342 |
+| level1 | 1106 | 0.043 | 0 | 36 | 380 |
+| level3 | 1000 | 0.024 | 10 | 0 | 406 |
+| level2 | 462 | 0.000 | 0 | 0 | 416 |

@@ -147,8 +147,12 @@ class Board:
         """The fewest soldiers the castle keeps so that it holds."""
         rate = self.rate(castle)
         keep = 0
-        while not self.holds(castle, keep, rate):
-            keep += 1
+        for enemy in self.enemies:
+            # The fewest soldiers x that need(x) covers the enemy castle's, less what grows while it walks.
+            fewest = max(0, (enemy.soldiers - NEED_FIXED) * NEED_TENTH // (NEED_TENTH + 1) - 1)
+            while need(fewest) < enemy.soldiers:
+                fewest += 1
+            keep = max(keep, fewest - rate * self.travel(enemy, castle))
         return keep
 
     def avail(self, castle: Castle) -> int:

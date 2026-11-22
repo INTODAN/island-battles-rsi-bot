@@ -70,7 +70,7 @@ Three kinds of candidates:
 
 - **Fix:** the smallest change that answers one finding.
 - **Graft:** a mechanism another bot has and this one lacks, copied into the candidate (`sentinel`'s bursts into `economist`). The pair table says which: graft from the bot that beats the champion.
-- **Founder:** a new strategy, not a descendant, written from the rules and the Lessons. Add one when the last two iterations promoted nothing, or when the champion loses to nobody. A founder's parent is the bot whose scaffolding it starts from; say in its idea that it is a new strategy.
+- **Founder:** a new strategy, not a descendant, written from the rules and the Lessons. Add one when the last two iterations promoted nothing, or when the champion loses to nobody. A founder's parent is the bot whose scaffolding it starts from; say in its idea that it is a new strategy. A founder may start from a sparring bot's code (the real opponent's strategy, with something of the league's added): the sparring bot is then its parent in every selection rule, so it must beat the stand-in it was copied from, and the sparring bot itself stays as it is.
 
 Rules:
 
