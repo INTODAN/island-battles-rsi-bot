@@ -1,0 +1,10 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never a parent, never counted with the retired bots, never deleted.
+status = "active"
+# The bot this one was copied from, or empty for a founder.
+parent = "stallfeed_growtrickle"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 34
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Feeding keeps a castle's reserve against every enemy castle, also when the game's end frees it for strikes: freed soldiers strike, they don't move to the front."
