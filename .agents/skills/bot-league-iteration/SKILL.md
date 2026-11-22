@@ -26,6 +26,15 @@ An iteration takes the league from one measured state to the next: it ends with 
 
 **When something doesn't work, stop.** A tool that crashes, a command from a skill that fails, a check that failed before you changed anything, or a result that can't be right (a bot that wins every game after a small change, a tournament with no matches): stop, and report what you ran and what it printed. Don't work around it, and don't fix the tool inside the iteration. A wrong measurement is worse than no iteration.
 
+## Time
+
+The point of the league is to make the bots better faster, so the end-to-end time of an iteration matters, from the first command to the report. Every iteration measures where that time goes and makes the next one shorter. **Never by doing less of the work:** the same games studied, the same findings with their evidence, the same gate and selection. A faster iteration that reads fewer games or skips a check is a worse iteration.
+
+- **Time every step.** Note the wall-clock time at the start and end of each step (0 to 7), and of each command that takes more than a few seconds: each tournament, the `digest` and `--turns` runs, `scripts/check.sh`, writing each candidate, the lobby games. Split a tournament's time into playing and what comes after it (rating, tables, writing results), as far as its output lets you; if it doesn't, that is itself a finding.
+- **Speed up what you can inside the iteration**, without changing anything an iteration may not change: run independent commands at the same time (several `digest` runs, the holdout run beside the ledger's writing), study games in parallel with subagents that each return their findings with the digest and log lines, write candidates in parallel as step 3 allows, and don't run a command twice for output you already have.
+- **What only a tool change can speed up** is not changed in this iteration. Write it down with its numbers, and after the iteration make it a separate change to `league_tools/` (or `scripts/`) before the next one starts, measured with a full tournament whose results must equal the cached ones. What only the game or its headless runner can speed up is an issue in INTODAN/island-battles-go, as AGENTS.md says.
+- **Record it.** The ledger entry and the report give the time of each step and the total, the slowest steps, what was done about them, and how the total compares with the last iteration's.
+
 ## 0. Start from the ledger
 
 In the ledger, read the **Lessons so far**, and the last two or three entries. They say who the champion is, where it loses, and which ideas were already tried and rejected. Don't try a rejected idea again unless you can say what is different this time. The new iteration's number is the last entry's plus one.
@@ -147,6 +156,7 @@ Append an entry to `ledger/iterations.md`, in the shape of the entries before it
 - the standings on the training maps and on the holdout maps;
 - the champion, and its rating next to last iteration's;
 - where the champion still loses, as the next iteration's starting point.
+- the time: each step's, the total and last iteration's total, the slowest steps and what was or will be done about them.
 
 When the champion changed, write its name in `hosting/lambda/bot`: the hosted bot deploys it once the iteration is on main.
 
@@ -162,6 +172,7 @@ End with a report to whoever asked, short enough to read in a minute:
 - each candidate: its idea, its training rating and its points against its parent, its holdout rating if it got there, and **promoted** or **rejected**, with the rule it missed;
 - the standings on the training maps and on the holdout maps, as tables;
 - the champion and its rating, before and after;
+- the iteration's total time, its slowest steps, and the speed-up proposed for the next one;
 - what you didn't do or couldn't verify, and anything that looked wrong on the way.
 
 Say what the numbers say. "No candidate was promoted; the champion is unchanged at 1093" is a complete report.
