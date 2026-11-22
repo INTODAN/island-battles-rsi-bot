@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .paths import BOTS
 
-STATUSES = ("candidate", "active", "retired")
+STATUSES = ("candidate", "active", "retired", "sparring")
 NAME = re.compile(r"[a-z][a-z0-9_]*")
 ANCHOR = re.compile(r"level([0-9]+)")
 
@@ -77,7 +77,8 @@ def write_bot(bot: Bot) -> None:
     """Write a bot's ``bot.toml``."""
     lines = [
         "# candidate: new and unproven. active: in the population. retired: no longer",
-        "# developed, kept as an opponent.",
+        "# developed, kept as an opponent. sparring: a fixed opponent built to play like a",
+        "# real one; never a parent, never counted with the retired bots, never deleted.",
         f"status = {_toml_string(bot.status)}",
         "# The bot this one was copied from, or empty for a founder.",
         f"parent = {_toml_string(bot.parent)}",

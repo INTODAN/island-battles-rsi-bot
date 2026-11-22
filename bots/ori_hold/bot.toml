@@ -1,0 +1,10 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never a parent, never counted with the retired bots, never deleted.
+status = "active"
+# The bot this one was copied from, or empty for a founder.
+parent = "ori_mimic"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 25
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "A new strategy: the hosted bot's rules (ori_mimic's code) with holding what it takes: castles under attack may help another when they would still hold, and a neutral that an enemy group will retake is sent what it takes to keep it."

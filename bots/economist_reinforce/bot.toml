@@ -1,9 +1,0 @@
-# candidate: new and unproven. active: in the population. retired: no longer
-# developed, kept as an opponent.
-status = "retired"
-# The bot this one was copied from, or empty for a founder.
-parent = "economist"
-# The league iteration that created it (ledger/iterations.md).
-iteration = 1
-# What this bot tries that its parent doesn't, in a sentence.
-idea = "Graft from sentinel: a castle that would fall to the groups heading to it is reinforced first by own castles whose groups land in time."
