@@ -19,7 +19,7 @@ from island_battles_client import (
     upgrade_castle,
 )
 
-from league_tools import digest, engine, maps, ratings, rematch, replay, roster, tournament
+from league_tools import cli, digest, engine, maps, ratings, rematch, replay, roster, tournament
 
 
 def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
@@ -258,6 +258,95 @@ def castle(castle_id: int, team_color: int, soldiers: int, x: float, levels: dic
         "upgrades": upgrades | (levels or {}),
         "burst_debt": 0,
     }
+
+
+def test_shards_split_a_tournament_into_parts_that_make_the_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N runners that each play one shard play every match once, and together leave the whole in the cache."""
+    bots, cache = tmp_path / "bots", tmp_path / "cache"
+    for name in ("first", "second", "third"):
+        (bots / name).mkdir(parents=True)
+        (bots / name / "bot.py").write_text(f"def play(turn): ...  # {name}\n")
+    maps = []
+    for name in ("duel", "ring"):
+        maps.append(tmp_path / f"{name}.json")
+        maps[-1].write_text(json.dumps({"name": name}))
+    monkeypatch.setattr(tournament, "BOTS", bots)
+    monkeypatch.setattr(tournament, "CACHE", cache)
+    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
+    played: list[str] = []
+
+    def play(binary: Path, schedule: dict, worker_log: Path) -> list[dict]:
+        lines = []
+        for match in schedule["matches"]:
+            played.append(match["id"])
+            (cache / f"{match['id']}.json.gz").write_bytes(b"demo")
+            seats = [{"name": name, "failed_turns": 0, "failures": []} for name in match["seats"]]
+            lines.append(
+                {"id": match["id"], "map": match["map"], "players": match["seats"], "winner": None, "seats": seats}
+            )
+        return lines
+
+    monkeypatch.setattr(tournament.engine, "play", play)
+    players = ["first", "second", "third", "level3"]
+    shards = []
+    for index in (1, 2, 3):
+        plan = tournament.Tournament(players=players, maps=maps, shard=(index, 3))
+        shards.append({result["id"] for result in tournament.play(plan, tmp_path / "run")})
+    # Six pairs, two sides, two maps: each match in exactly one shard, and each shard has some.
+    assert len(played) == len(set(played)) == 24 == sum(len(shard) for shard in shards)
+    assert all(shards) and set(played) == set().union(*shards)
+    played.clear()
+    whole = tournament.play(tournament.Tournament(players=players, maps=maps), tmp_path / "run")
+    assert played == [] and {result["id"] for result in whole} == set().union(*shards)
+    # The shard of a match doesn't depend on what the cache holds.
+    again = tournament.play(tournament.Tournament(players=players, maps=maps, shard=(2, 3)), tmp_path / "run")
+    assert played == [] and {result["id"] for result in again} == shards[1]
+    assert tournament.parse_shard("2/8") == (2, 8)
+    for text in ("0/3", "4/3", "2", "a/b", "1/0"):
+        with pytest.raises(ValueError):
+            tournament.parse_shard(text)
+
+
+def test_a_shard_reports_no_ratings_and_strict_counts_its_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A shard's summary rates nobody, and --strict fails on its failed turns but not on an empty shard."""
+
+    def seat(name: str, failed: int) -> dict:
+        return {"name": name, "failed_turns": failed, "failures": [], "slowest_turn_milliseconds": 9.0}
+
+    results = [
+        {"id": "a", "map": "duel", "players": ["x", "y"], "winner": "x", "seats": [seat("x", 0), seat("y", 2)]},
+        {"id": "b", "map": "duel", "players": ["y", "x"], "winner": None, "seats": [seat("y", 0), seat("x", 0)]},
+        {"id": "c", "map": "ring", "players": ["x", "y"], "error": "the worker died"},
+    ]
+    monkeypatch.setattr(tournament, "RUNS", tmp_path)
+    monkeypatch.setattr(tournament, "play", lambda plan, directory: results)
+    plan = tournament.Tournament(players=["x", "y"], maps=[], shard=(2, 4))
+    summary, table = tournament.run(plan, "shard")
+    assert summary == {
+        "shard": "2/4",
+        "matches": 3,
+        "failed_games": 1,
+        "failed_players": ["y"],
+        "errors": [{"map": "ring", "players": ["x", "y"], "error": "the worker died"}],
+    }
+    assert "rating" not in json.loads((tmp_path / "shard" / "summary.json").read_text())
+    assert table.startswith("Shard 2/4: 3 matches, 1 with a failed turn, 1 not played.") and "NOT PLAYED ring" in table
+    whole, _ = tournament.run(tournament.Tournament(players=["x", "y"], maps=[]), "whole")
+    assert whole["failed_players"] == ["y"] and whole["standings"]
+
+    outcomes: list[dict] = []
+    monkeypatch.setattr(cli.tournament, "run", lambda plan, run_id: (outcomes.pop(0), ""))
+    arguments = ["tournament", "--bots", "x,y", "--anchors", "", "--no-opponents", "--maps", "train", "--strict"]
+    empty = {"matches": 0, "errors": [], "failed_players": []}
+    outcomes += [dict(empty), dict(empty), dict(empty, matches=5, failed_players=["y"])]
+    assert cli.main([*arguments, "--shard", "1/8"]) == 0
+    assert cli.main(arguments) == 1
+    assert cli.main([*arguments, "--shard", "1/8"]) == 1
 
 
 def test_digest_reads_the_events_between_boards() -> None:

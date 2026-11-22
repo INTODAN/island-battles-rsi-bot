@@ -1,0 +1,79 @@
+# The league's tools and its result cache on a runner of the real-game
+# iteration: uv, Go, the cache that the last iteration saved (the game's
+# source, the runner and runs/cache), and the matches that this run's other
+# runners played (their artifacts) merged into runs/cache. With save-as, the
+# merged cache is saved under that suffix, so that what the runners played
+# outlives a run that fails later.
+#
+# The cache holds league games only, never a real game. It ends with the mark
+# runs/.played-since: the files newer than it were played on this runner, and
+# league-cache-upload uploads them.
+name: League cache
+description: Set up the league's tools, restore its cache and merge this run's shards into it.
+
+inputs:
+  key-prefix:
+    description: The cache key's prefix, from the game's pin (runner.toml).
+    required: true
+  shards:
+    description: A pattern of this run's artifacts to merge into runs/cache, such as cache-*; empty for none.
+    default: ""
+  save-as:
+    description: Save the merged cache under this suffix of the run's key; empty to save nothing.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+        cache-dependency-glob: uv.lock
+
+    - uses: actions/setup-go@v6
+      with:
+        go-version: "1.25"
+        cache: false
+
+    - uses: actions/cache/restore@v4
+      with:
+        path: |
+          .runner
+          runs/cache
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ inputs.key-prefix }}-${{ github.run_id }}
+        restore-keys: ${{ inputs.key-prefix }}-
+
+    - uses: actions/download-artifact@v4
+      if: inputs.shards != ''
+      with:
+        pattern: ${{ inputs.shards }}
+        path: runs/shards
+        merge-multiple: true
+
+    - name: Merge the shards into the cache
+      if: inputs.shards != ''
+      shell: bash
+      run: |
+        mkdir -p runs/cache
+        [ -d runs/shards/cache ] && cp -r runs/shards/cache/. runs/cache/
+        cat runs/shards/played-*.txt 2>/dev/null || true
+        echo "$(find runs/cache -maxdepth 1 -name '*.json' | wc -l) results in the cache"
+
+    - uses: actions/cache/save@v4
+      if: inputs.save-as != ''
+      with:
+        path: |
+          .runner
+          runs/cache
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ inputs.key-prefix }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.save-as }}
+
+    - name: Mark what this runner plays from here on
+      shell: bash
+      run: |
+        mkdir -p runs
+        sleep 1
+        touch runs/.played-since

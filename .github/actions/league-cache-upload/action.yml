@@ -1,0 +1,36 @@
+# Upload the matches this runner played since league-cache marked the cache:
+# each kept result (runs/cache/<key>.json, written only for a match without a
+# failed turn) with its demo (<key>.json.gz). The next jobs of the run merge
+# them into their caches with league-cache's shards. League games only.
+name: League cache upload
+description: Upload the matches this runner played, for the run's next jobs.
+
+inputs:
+  name:
+    description: The artifact's name, such as cache-gate-3; league-cache merges artifacts by a pattern of these.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Collect the matches played here
+      shell: bash
+      env:
+        NAME: ${{ inputs.name }}
+      run: |
+        out=runs/upload/cache
+        mkdir -p "$out"
+        count=0
+        while IFS= read -r -d '' result; do
+          [ -f "$result.gz" ] || continue
+          cp "$result" "$result.gz" "$out/"
+          count=$((count + 1))
+        done < <(find runs/cache -maxdepth 1 -name '*.json' -newer runs/.played-since -print0 2>/dev/null)
+        echo "$NAME: $count matches played" | tee "runs/upload/played-$NAME.txt"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: runs/upload
+        retention-days: 3
+        overwrite: true
