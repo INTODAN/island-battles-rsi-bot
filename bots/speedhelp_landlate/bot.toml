@@ -1,10 +1,10 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent. sparring: a fixed opponent built to play like a
 # real one; never a parent, never counted with the retired bots, never deleted.
-status = "retired"
+status = "active"
 # The bot this one was copied from, or empty for a founder.
-parent = "finish_safe"
+parent = "feedkeep_speedhelp"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 13
+iteration = 38
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "A neutral paid exactly must also outlast what enemy castles could land on it within HOLD_TURNS after the capture."
+idea = "A strike's senders must land before the game's last generation: a sender that can't is dropped, unless buying its next speed levels makes it land in time, which it then buys."
