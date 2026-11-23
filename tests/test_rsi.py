@@ -152,6 +152,7 @@ def test_the_scope_finds_players_names_without_printing_them(tmp_path: Path) -> 
 
 
 def test_a_name_the_repository_already_holds_as_a_word_is_not_checked() -> None:
-    # "castle" is all over the base's bots and skills; the second is in no file.
-    names = {"castle", "zq-nobody-7731"}
+    # "castle" is all over the base's bots and skills. The second is in no file, this one included:
+    # it is put together here, so that HEAD holding this test doesn't hold the name.
+    names = {"castle", "zq-" + "nobody-7731"}
     assert scope.already_public(names, "HEAD") == {"castle"}
