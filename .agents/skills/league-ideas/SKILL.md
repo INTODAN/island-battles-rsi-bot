@@ -18,22 +18,17 @@ What 36 iterations and 119 candidates showed:
 
 ## The slate
 
-Decide the slate after the first measurement and before any game is studied: the games to read follow from it. It has as many places as the iteration has candidates: three, or six when subagents write them. Fill it in this order until it is full:
+Since runs work in parallel, the slate is the league's, not one iteration's: the places open on `main` as it is now, which `league ideas` lists in the order runs should take them, and a run leases the places it fills (`league lease take KEY --run ID`). Each place is held by one run at a time.
 
-1. **One candidate for each side line**, from its head.
-2. **An exploiter**, when no player outside the main line takes a third of the points from the champion (the pair table of the first measurement).
-3. **A founder**, for each free place among the two side lines.
-4. **The main line**: fixes, grafts, a simplification.
+1. **One place for each side line**, from its head. One at a time, since a side line's rule counts iterations of work in a row.
+2. **An exploiter**, when no player outside the main line takes a third of the points from the champion (the pair table of the population on the training maps).
+3. **A founder**, for each free place among the four side lines.
+4. **A superseded candidate's graft**: a change that beat its parent and was overtaken by another promotion from the same head (the integrator's **superseded**). It has evidence already.
+5. **The main line**: fixes of the champion's mistakes, scored by the detectors (`league mistakes`) by the maps they cost it points on, a map counted once, so a mistake on many maps comes before one seen many times on one map; then the **Ideas not tried** of the recent entries and runs; grafts and simplifications as the findings call for them.
 
-**One place is always the main line's**, even when 1 to 3 would fill the slate: then the last of them waits. An exploiter that waited last iteration doesn't wait again: this time the main line's place is the one that gives way.
+A run that writes several candidates takes several places, as many as it has candidates: three, or up to six when subagents write them. The main line always has places open: that is where many runs at once work.
 
-**A stalled main line** is one in which nothing was promoted in the last two iterations. Its place may hold a graft, a simplification, or a fix of a game the champion lost to a player outside its line (the pair table says whether there is one), and never a fix of a game inside the line. Any further place it would have had goes to an exploiter aimed at another habit of the champion's.
-
-| Side lines | A slate of three | A slate of six |
-|---|---|---|
-| none | exploiter if due, else a second founder; a founder; main line | exploiter if due; two founders; main line in the rest |
-| one | its candidate; exploiter if due, else a founder; main line | its candidate; exploiter if due; a founder; main line in the rest |
-| two | their two candidates; main line | their two candidates; exploiter if due; main line in the rest |
+**A stalled main line** is one in which nothing was promoted in the last two iterations. Its places may hold a graft, a simplification, or a fix of a game the champion lost to a player outside its line (the pair table says whether there is one), and never a fix of a game inside the line.
 
 ## Which bot a candidate starts from
 

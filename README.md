@@ -14,7 +14,9 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | `maps/holdout/` | The maps that only give numbers: nobody reads their games, so a bot can't be fitted to them. |
 | `go.mod`, `go.sum` | The one Go module of every bot, which pins the game's Go SDK. |
 | `league_tools/` | The `league` command (Python): tournaments, ratings, the game digest, the roster and the map maker. |
-| `ledger/iterations.md` | What every iteration tried, measured, kept and learned, with the lines (the strategies alive in the league) and the lessons at its top. The league's memory between sessions. |
+| `ledger/iterations.md` | What every iteration tried, measured, kept and learned, with the lines (the strategies alive in the league) and the lessons at its top. The league's memory between sessions. Its entries are written by the integrator. |
+| `ledger/runs/`, `ledger/lessons/`, `ledger/lines.toml` | Each run's own account and the lessons it proposed (the curator folds them into the ledger's top), and the lines as data for the integrator. |
+| `docs/parallel-iterations.md` | How many runs work at once and no game is played twice: the store, runs and the integrator, the leases, the detectors. |
 | `ledger/real-games.txt` | The ids of the hosted bot's real games that an iteration has studied. |
 | `opponents.local.toml` (not in git) | Outside opponents: real players' bots that play every tournament from their own projects ([`league_tools/opponents.py`](league_tools/opponents.py)). |
 | `scripts/serve_maps.py`, `scripts/lobby-run.js` | Play a bot against a hosted bot in lobby games on the league's maps, several tabs at once, when a person asks for it. An iteration never plays another player's bot. |
@@ -60,13 +62,13 @@ Deterministic bots give one game per pair, map and side, so the number of maps i
 
 One **iteration** is one pass, and ends as one commit. The [bot-league-iteration skill](.agents/skills/bot-league-iteration/SKILL.md) is the procedure; in short:
 
-0. **Claim.** Iterations run one at a time, each from the last one's ledger entry. `scripts/claim-iteration.sh claim` pushes the branch `claude/league-iteration-N` before anything else, and fails when another session or the automated iteration holds N; `scripts/claim-iteration.sh status` says who does. The iteration's commit replaces the claim on that branch, and the number is free again once it has merged.
+0. **Lease.** Runs work in parallel, each from main as it was when it started ([docs/parallel-iterations.md](docs/parallel-iterations.md)). `league lease run` gives the run its id, `league ideas --free` lists the league's open places (side lines, an exploiter, founders, the champion's mistakes ranked by the points they cost), and `league lease take` holds the ones the run fills. A run ends as a proposal on `claude/league-run-<id>`; the integrator (`league integrate`) decides each proposal on main as it is then and writes its iteration N.
 
 1. **Measure.** Play the population and the default bots on the training maps, after adding two holdout maps and a training map that no earlier choice has touched. Most of it comes from the cache. Of two bots that play alike, one leaves before anything else is measured. Then decide what the iteration's candidates will be.
 2. **Study.** Read the games those candidates need: the champion's lost and drawn games against bots outside its own line first, its slow wins, each side line's losses. Read the digest, then the turns that decided the game with both bots' logs. Write each finding as: what happened (map, turn), why, and the change that would fix it.
 3. **Vary.** One candidate per idea: `league new` copies a bot, and the agent changes only that directory. Five kinds: a **fix** of something three games showed, a **graft** of a mechanism another bot has, a **simplification** that removes one, a **founder** with a new strategy, and an **exploiter** written only to beat the champion. Some places of every iteration explore.
 4. **Gate.** `scripts/check.sh` passes, no failed turn, no turn slower than 200 ms.
-5. **Select.** In a round robin of the whole population with the candidates added, a fix or a graft is promoted when its games against everyone else, set next to its parent's, are clearly better on the training and holdout maps together and better by a margin on the holdout maps alone. A simplification is promoted when it is not clearly worse. A founder is admitted as a new line when it takes a third of the points from the champion, and an exploiter as a fixed opponent when it takes three fifths. A rejected candidate is deleted; the ledger keeps what it tried and its numbers.
+5. **Select**, by the integrator. In a round robin of the whole population with the candidates added, a fix or a graft is promoted when its games against everyone else, set next to its parent's, are clearly better on the training and holdout maps together and better by a margin on the holdout maps alone. A simplification is promoted when it is not clearly worse. A founder is admitted as a new line when it takes a third of the points from the champion, and an exploiter as a fixed opponent when it takes three fifths. A rejected candidate is deleted; the ledger keeps what it tried and its numbers.
 6. **Record.** The standings, the lines, the ideas, the decisions and what was learned about the game go in `ledger/iterations.md`, with a review of the league itself: whether its field, maps and rules can still tell a strong bot, and what would fix them when they can't.
 
 What keeps the loop honest:
@@ -106,6 +108,12 @@ uv run league tournament --focus NAME --parents   # only NAME against its parent
 uv run league ledger                        # the lessons, every candidate tried, the last three entries
 uv run league tournament --maps holdout     # or: all, or map names
 uv run league tournament --shard 2/8        # a slice of the matches into the cache, no standings: for 8 machines
+uv run league mistakes --focus NAME         # the detectors' mistakes of NAME's games, by kind, with the turns to read
+uv run league ideas --free                  # the league's open places, the most points first
+uv run league lease run                     # a new run's id; then: league lease take KEY --run ID
+uv run league decide                        # the selection and population rules as code (a dry run)
+uv run league integrate --waiting --commit  # the integrator: every waiting run's proposal, one iteration each
+uv run league player --drain                # play the matches other runs requested in the shared store
 uv run league digest DEMO                   # the timeline, the logistics and the events of a game (a hosted game's zip too)
 uv run league digest DEMO --turns 40-55     # those turns whole, with both bots' logs
 uv run league new NAME --parent PARENT --iteration N --idea "..."
