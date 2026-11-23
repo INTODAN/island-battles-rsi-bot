@@ -13,6 +13,7 @@ from pathlib import Path
 from . import clock as clock_module
 from . import decide as decide_module
 from . import digest as digest_module
+from . import integrate as integrate_module
 from . import ledger, maps, opponents, roster, tournament
 from . import mistakes as mistakes_module
 from . import rematch as rematch_module
@@ -214,6 +215,19 @@ def _decide(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _integrate(arguments: argparse.Namespace) -> int:
+    branches = list(arguments.branches)
+    if arguments.waiting:
+        branches += integrate_module.waiting_branches()
+    if not branches:
+        print("No run is waiting.")
+        return 0
+    outcomes = integrate_module.integrate(branches, commit=arguments.commit, date=arguments.date)
+    for outcome in outcomes:
+        print(outcome.summary)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the ``league`` command."""
     parser = argparse.ArgumentParser(prog="league", description=__doc__)
@@ -385,6 +399,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     decide.add_argument("--json", action="store_true", help="print the decisions and actions as JSON")
     decide.set_defaults(handler=_decide)
+
+    merge = commands.add_parser(
+        "integrate",
+        help="decide runs' proposals on main as it is now, each as one iteration: the integrator",
+    )
+    merge.add_argument("branches", nargs="*", help="runs' branches, such as origin/claude/league-run-<id>")
+    merge.add_argument("--waiting", action="store_true", help="every run's branch on origin as well")
+    merge.add_argument("--commit", action="store_true", help="commit each iteration")
+    merge.add_argument("--date", help="the iterations' date; default: today (UTC)")
+    merge.set_defaults(handler=_integrate)
 
     arguments = parser.parse_args(argv)
     try:

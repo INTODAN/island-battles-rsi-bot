@@ -22,7 +22,7 @@ kinds of branch, ``--kind``:
   an existing bot, the ledger's entries and the lines are the integrator's.
 - ``iteration`` (``claude/league-iteration-N``, the default): what an iteration
   or the integrator writes, as above, and the lines file ``ledger/lines.toml``,
-  the runs' and lessons' files it carries.
+  the runs' and lessons' files it carries, and the new detectors the runs added.
 - ``curator``: folds the proposed lessons into the ledger: ``ledger/iterations.md``
   only, and deletes files of ``ledger/lessons/``.
 
@@ -55,14 +55,16 @@ ALLOWED = (
     re.compile(r"^hosting/lambda/bot$"),
 )
 NEW_MAP = re.compile(r"^maps/(train|holdout)/[a-z0-9_]+\.json$")
+NEW_DETECTOR = re.compile(r"^league_tools/detectors/[a-z][a-z0-9_]*\.py$")
+NEW_DETECTOR_TEST = re.compile(r"^tests/detectors/test_[a-z][a-z0-9_]*\.py$")
 # What a run's branch may add; it may change or delete nothing.
 RUN_ADDS = (
     re.compile(r"^bots/[a-z][a-z0-9_]*/[^/].*$"),
     re.compile(rf"^ledger/(runs|lessons)/{RUN_FILE}$"),
     re.compile(r"^ledger/studies/[0-9]+\.md$"),
     NEW_MAP,
-    re.compile(r"^league_tools/detectors/[a-z][a-z0-9_]*\.py$"),
-    re.compile(r"^tests/detectors/test_[a-z][a-z0-9_]*\.py$"),
+    NEW_DETECTOR,
+    NEW_DETECTOR_TEST,
 )
 KINDS = ("iteration", "run", "curator")
 # Shorter names match too much ordinary text to check.
@@ -98,7 +100,7 @@ def out_of_scope(
     for status, path in changes:
         if any(rule.match(path) for rule in ALLOWED):
             continue
-        if status == "A" and NEW_MAP.match(path):
+        if status == "A" and (NEW_MAP.match(path) or NEW_DETECTOR.match(path) or NEW_DETECTOR_TEST.match(path)):
             continue
         bad.append(f"{status} {path}")
     return bad

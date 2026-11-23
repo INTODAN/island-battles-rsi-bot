@@ -976,7 +976,7 @@ def _run(
     return summary
 
 
-def play_selection(names: list[str] | None, prefix: str) -> Selection:
+def play_selection(names: list[str] | None, prefix: str, base_heads: Mapping[str, str] | None = None) -> Selection:
     """Play the runs the candidates' rules need, as the ``bot-league-iteration`` skill plays them, and decide.
 
     The head-to-heads first (``--focus C --parents``), each founder's and
@@ -988,6 +988,9 @@ def play_selection(names: list[str] | None, prefix: str) -> Selection:
     Args:
         names: The candidates; every candidate of the roster when None.
         prefix: The run ids' prefix, such as ``iteration-40-decide``.
+        base_heads: Each line's head when the candidates' run started (the integrator's): a
+            candidate whose parent was its line's head then, and no longer is, is judged against the
+            head too. Without it, the heads now: every candidate is judged against its parent alone.
 
     Raises:
         ValueError: A name is not a candidate of the roster.
@@ -999,6 +1002,8 @@ def play_selection(names: list[str] | None, prefix: str) -> Selection:
         if name not in roster or roster[name].status != "candidate":
             raise ValueError(f"{name!r} is not a candidate of the league")
     candidates = [candidate_of(roster[name], lines, roster) for name in chosen]
+    if base_heads is not None:
+        candidates = [replace(c, base_head=base_heads.get(c.line or "") or None) for c in candidates]
     outside = list(load_opponents())
     references = [name for name, bot in roster.items() if bot.status == "sparring"] + outside
     population = [name for name, bot in roster.items() if bot.status != "candidate"]

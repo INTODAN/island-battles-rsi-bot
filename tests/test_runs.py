@@ -100,3 +100,103 @@ def test_the_curator_folds_lessons_and_nothing_else() -> None:
     assert scope.out_of_scope([("M", "ledger/iterations.md"), ("D", "ledger/lessons/x-1.md")], "curator") == []
     refused = [("A", "ledger/lessons/x-1.md"), ("M", "bots/a/main.go"), ("D", "ledger/iterations.md")]
     assert scope.out_of_scope(refused, "curator") == [f"{s} {p}" for s, p in refused]
+
+
+# --- The integrator's own parts: collecting a run's branch, and what it writes --------------
+
+import subprocess  # noqa: E402
+
+from league_tools import integrate  # noqa: E402
+
+
+def _git(cwd: Path, *arguments: str) -> str:
+    return subprocess.run(["git", *arguments], cwd=cwd, check=True, capture_output=True, text=True).stdout
+
+
+def _repository(tmp_path: Path) -> Path:
+    """A main with one bot and the lines, and a run's branch from it."""
+    root = tmp_path / "league"
+    (root / "bots" / "champion").mkdir(parents=True)
+    (root / "bots" / "champion" / "main.go").write_text("package main\n")
+    (root / "ledger").mkdir()
+    (root / "ledger" / "lines.toml").write_text('champion = "champion"\n\n[[line]]\nname = "main"\nhead = "champion"\n')
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "base")
+    return root
+
+
+def _commit_run(root: Path, run: str, files: dict[str, str]) -> str:
+    branch = f"claude/league-run-{run}"
+    _git(root, "checkout", "-q", "-b", branch, "main")
+    for path, text in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(text)
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", run)
+    _git(root, "checkout", "-q", "main")
+    return branch
+
+
+def test_a_runs_branch_is_collected_with_its_candidates_maps_studies_and_the_heads_at_its_base(
+    tmp_path: Path,
+) -> None:
+    root = _repository(tmp_path)
+    branch = _commit_run(
+        root,
+        "20261124-aaaaaa",
+        {
+            "bots/champion_fix/main.go": "package main\n",
+            "bots/champion_fix/bot.toml": 'status = "candidate"\n',
+            "ledger/runs/20261124-aaaaaa.md": "Minutes: 21\n",
+            "ledger/studies/481.md": "A study.\n",
+            "maps/holdout/fjordtwo.json": "{}\n",
+        },
+    )
+    proposal = integrate.collect(branch, cwd=root)
+
+    assert isinstance(proposal, integrate.Proposal)
+    assert proposal.run == "20261124-aaaaaa"
+    assert proposal.candidates == ["champion_fix"]
+    assert proposal.maps == ["holdout/fjordtwo"]
+    assert proposal.real_games == ["481"]
+    assert proposal.base_heads == {"main": "champion"}
+
+
+def test_a_run_that_changes_a_bot_or_lacks_its_account_or_takes_a_name_is_skipped(tmp_path: Path) -> None:
+    root = _repository(tmp_path)
+    changes = _commit_run(root, "r-1", {"bots/champion/main.go": "package main // changed\n", "ledger/runs/r-1.md": ""})
+    no_account = _commit_run(root, "r-2", {"bots/other/main.go": "package main\n"})
+    late = _commit_run(root, "r-3", {"bots/late/main.go": "package main\n", "ledger/runs/r-3.md": ""})
+    (root / "bots" / "late").mkdir()
+    (root / "bots" / "late" / "main.go").write_text("package main\n")
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
+    _git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "another run took late")
+
+    assert "out of a run's scope: M bots/champion/main.go" in str(integrate.collect(changes, cwd=root))
+    assert "no ledger/runs/r-2.md" in str(integrate.collect(no_account, cwd=root))
+    assert "another run took the name first" in str(integrate.collect(late, cwd=root))
+    assert "is not a run's branch" in str(integrate.collect("main", cwd=root))
+
+
+def test_the_lines_table_is_replaced_and_the_words_around_it_kept() -> None:
+    text = (
+        "# Ledger\n\n## The lines\n\nWords.\n\n| Line | Head |\n|---|---|\n| `a` | x |\n\nAfter.\n\n## Lessons so far\n"
+    )
+    out = integrate.replace_lines_table(text, ["| Line | Head |", "|---|---|", "| `b` | y |"])
+    assert "| `b` | y |" in out and "| `a` | x |" not in out
+    assert "Words." in out and "After." in out and out.endswith("## Lessons so far\n")
+
+
+def test_the_iterations_number_progress_row_minutes_and_real_games(tmp_path: Path) -> None:
+    assert integrate.next_iteration(LEDGER) == 3
+    summary = {"standings": [{"player": "champ", "rating": 2101}]}
+    assert integrate.progress_row(40, "2026-11-24", "21", "champ", summary) == "40,2026-11-24,21,champ,2101,ori_mimic\n"
+    run = tmp_path / "run.md"
+    run.write_text("# Run\n\nMinutes: 18.5\n")
+    assert integrate.run_minutes(run) == "18.5"
+    assert integrate.run_minutes(tmp_path / "none.md") == ""
+    games = tmp_path / "real-games.txt"
+    games.write_text("# header\n471 2026-11-23\n")
+    integrate.add_real_games(games, ["471", "481"], "2026-11-24")
+    assert games.read_text() == "# header\n471 2026-11-23\n481 2026-11-24\n"
