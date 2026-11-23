@@ -238,7 +238,7 @@ A candidate the rules leave undecided (a tie, a case the code can't decide) is d
 
 A candidate that met its rule is **promoted** or **admitted**: the league's numbers decide. A run never plays another player's hosted bot (the real opponent that `ori_mimic` and `ori_like` stand in for), in a lobby or anywhere else, to promote a bot, measure one or study it: every game played against that bot is a game its owner can learn from too. The sparring bots are how the league meets it. Real games against it still happen when a person starts one, and arrive as real games to study (**Started by real games**, above).
 
-(INTODAN/island-battles-go#407 asks for bot-only matches against hosted bots without a browser. Even once it is merged, a run plays another player's bot only when a person asks for it in so many words.)
+(Since INTODAN/island-battles-go#407, the Python SDK's `island-battles-bot match` plays bot-only games on the server against hosted bots, without a browser. A run still plays another player's bot only when a person asks for it in so many words.)
 
 ### The league itself
 

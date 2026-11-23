@@ -35,6 +35,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league status NAME active` | Change a bot's status: `candidate`, `active` or `retired`. |
 | `uv run league delete NAME` | Delete a bot's directory: a rejected candidate, or a bot the population's rules remove. Git keeps what was committed. It refuses a sparring bot and the champion that `hosting/lambda/bot` names. |
 | `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. An iteration adds two to `holdout` and one to `train` before it measures. A name of lower-case letters and digits only. |
+| `uv run league official-maps` | Save the official game's default two-team maps as it serves them. A change of the league's setup, never part of a run: see README's *Official maps*. |
 | `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to bot NAME, through its worker, and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
 | `gofmt -w bots/NAME` | Format a bot's Go code; the checks refuse code that isn't. |

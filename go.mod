@@ -2,7 +2,7 @@ module github.com/INTODAN/island-battles-rsi-bot
 
 go 1.25.0
 
-require github.com/INTODAN/island-battles-go/clients/island-battles-go v1.5.0
+require github.com/INTODAN/island-battles-go/clients/island-battles-go v1.7.0
 
 require (
 	github.com/centrifugal/centrifuge-go v0.10.11 // indirect

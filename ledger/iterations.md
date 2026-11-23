@@ -3108,3 +3108,58 @@ Holdout maps (`iteration-41-holdout`, 5,456 matches, exit 0):
 - **Iteration 40 is not merged.** Iteration 41 was claimed on its branch; until a person merges iteration 40 (it changes the champion, see its review), every later iteration stacks on it.
 
 **Time** (`league clock report`): 0 ledger 0.3 min, 1 measure 0.4, 2 study 4.2, 3 vary 2.9, 4 gate 3.8, 5 select 1.9, 6 record 0.8; 14.3 minutes in all, 17:41:30 to 17:55:46 UTC (iteration 40: 19.8). **Where it went:** playing about 5.5 minutes (the gate's 4,783 matches in 205 s, the holdout selection's 1,220 in 58 s); thinking the rest: eight studies at once on Sonnet (17:43:24 to 17:45:15, the longest 1.9 minutes), five writers at once (17:46:07 to 17:48:55, the longest `pounce_strikes` at 2.8 minutes with its diagnosis). **What was different:** no founder, whose inner loop was iteration 40's longest piece; the fixes started the moment their findings were in, before the last study finished. **To change:** *the next iteration:* the gate run is now the largest share (3.8 minutes, 4,783 matches); every candidate's head-to-head was already played, so nothing more can be cached. *A tool:* the gate's whole-field run could be started per candidate as each writer finishes (they are independent), so that it overlaps the writing of the others; today it waits for the last writer.
+
+## Setup after iteration 41: the game at v1.7.0, and the official maps as the game serves them
+
+**Date:** 2026-11-23. A change of the league's setup, made between iterations; no bot changed, and no iteration ran.
+
+**What changed.**
+- **`runner.toml`** moves from `d6e86b3` to `3f1503e` (the game's `v1.7.0`). For the runner this brings INTODAN/island-battles-go#425 (a turn that runs out of time is measured from when its timeout starts, never a little under it) and #419 (the game's own checks now play real Python and Go workers through the runner, and its README says how to build it from outside, as `league_tools/engine.py` already does). The rules of a headless game don't change: every holdout match, replayed at the new pin with no cache, ended as in iteration 41's table, win for win.
+- **The bots' Go SDK** moves from `v1.5.0` to `v1.7.0`, and the tools' Python SDK from 1.5.0 to 1.7.0. Their new pieces (a game-end callback with a demo link, late batches that join the open turn in real-time games, `island-battles-bot match`) don't touch a headless game; the runner sends workers no game-end line. The copied rules skills are copied again at the new commit (a late order is played in the turn open when it arrives).
+- **Official maps come from the game** (INTODAN/island-battles-go#390, #423; this repository's #3): `uv run league official-maps` saves each default map for two teams that `GET /map/templates/{id}` serves. `claw` is the served file now; it is the same map as the one rebuilt from a demo (only its name, `Claw`, and the upgrades it states at level 1 differ). **`star-of-david-duo`** (13 castles, 24 by 24, six neutral castles of 20 with burst 2 and a centre castle of 40 that produces 2) is new, in training. The game's two maps for three and four teams wait for #1. The hosted bot's page now names a known map by its file, so the served `Claw` still shows as `claw`.
+
+**Standings.** The training set grew by one map, so its ratings moved with no bot changed.
+
+Training maps (`setup-after-41-train`, 5,808 matches, exit 0):
+
+| Player | Rating | Score | W | D | L | Failed turns | Slowest turn (ms) |
+|---|---|---|---|---|---|---|---|
+| pounce | 2137 | 0.791 | 658 | 41 | 159 | 0 | 45.9 |
+| punisher | 2128 | 0.782 | 655 | 32 | 171 | 0 | 72.1 |
+| fullfeed_unfreeze | 2056 | 0.710 | 559 | 100 | 199 | 0 | 52.7 |
+| speedhelp_landlate | 2041 | 0.694 | 552 | 87 | 219 | 0 | 43.8 |
+| harrier_feedkeep | 1982 | 0.629 | 484 | 112 | 262 | 0 | 40.8 |
+| batchfront_keep | 1980 | 0.627 | 512 | 52 | 294 | 0 | 37.9 |
+| growtrickle_feedkeep | 1952 | 0.597 | 461 | 102 | 295 | 0 | 43.2 |
+| sameturn_endreserve | 1933 | 0.576 | 427 | 134 | 297 | 0 | 44.1 |
+| batchfront | 1901 | 0.541 | 442 | 44 | 372 | 0 | 62.6 |
+| ori_mimic | 1800 | 0.437 | 316 | 118 | 424 | 0 | 60.7 |
+| ori_like | 1672 | 0.328 | 269 | 24 | 565 | 0 | 34.6 |
+| level1 | 1440 | 0.061 | 0 | 88 | 638 | 0 | 29.7 |
+| level3 | 1059 | 0.007 | 5 | 0 | 721 | 0 | 50.7 |
+| level2 | 831 | 0.001 | 1 | 0 | 725 | 0 | 18.7 |
+
+Holdout maps (`setup-after-41-holdout`, 5,456 matches, exit 0):
+
+| Player | Rating | Score | W | D | L | Failed turns | Slowest turn (ms) |
+|---|---|---|---|---|---|---|---|
+| pounce | 2076 | 0.751 | 591 | 29 | 186 | 0 | 36.1 |
+| punisher | 2062 | 0.737 | 577 | 34 | 195 | 0 | 23.0 |
+| batchfront_keep | 2043 | 0.717 | 560 | 35 | 211 | 0 | 18.2 |
+| speedhelp_landlate | 2007 | 0.678 | 511 | 71 | 224 | 0 | 41.6 |
+| fullfeed_unfreeze | 2006 | 0.676 | 515 | 60 | 231 | 0 | 18.9 |
+| harrier_feedkeep | 1964 | 0.630 | 460 | 96 | 250 | 0 | 37.2 |
+| growtrickle_feedkeep | 1958 | 0.623 | 453 | 99 | 254 | 0 | 19.6 |
+| batchfront | 1927 | 0.588 | 459 | 30 | 317 | 0 | 22.9 |
+| sameturn_endreserve | 1888 | 0.545 | 382 | 115 | 309 | 0 | 26.3 |
+| ori_mimic | 1800 | 0.453 | 308 | 115 | 383 | 0 | 24.4 |
+| ori_like | 1652 | 0.328 | 264 | 0 | 542 | 0 | 32.7 |
+| level1 | 1379 | 0.047 | 0 | 64 | 618 | 0 | 19.6 |
+| level3 | 918 | 0.003 | 2 | 0 | 680 | 0 | 11.7 |
+| level2 | 637 | 0.000 | 0 | 0 | 682 | 0 | 13.7 |
+
+**Champion:** `pounce`, unchanged: **2137** on training (iteration 41: 2134 on 32 maps) and **2076** on holdout (unchanged). On `star-of-david-duo` it takes 23 of 26, as `punisher` does; `ori_mimic` takes 12.
+
+**Not verified.** The slowest turns on training (up to 72 ms) are higher than in iteration 41 because the league's checks ran on the same machine during the tournament; no turn came near the 200 ms gate. Runs that started from main before this change measured at the old pin; since no headless result changed, their numbers still hold, but a match cached under the old runner's hash is played again at the new one.
+
+**Time:** the two tournaments took 4.5 and 4.3 minutes; the whole change about 40 minutes, most of it reading the game's pull requests.

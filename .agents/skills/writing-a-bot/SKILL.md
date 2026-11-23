@@ -37,6 +37,10 @@ SDK releases with bursts also have `burst_castle(castle_id, amount)`, `burst_pot
 
 `NEUTRAL_TEAM_COLOR` is `0`. The helpers validate their arguments and raise `pydantic.ValidationError` for bad ones (zero soldiers, unknown upgrade type) before anything is sent.
 
+## When the game ends (optional)
+
+SDK releases with #413 call an optional `game_ended(delivery)` function in `bot.py`, next to `play`, once the game has its outcome, under `serve`, an uploaded package and `scripts/run.sh` alike. `delivery` is a `GameEndedDelivery`: `outcome` (`reason`, `winner_team_color`, `summary`), the final `generation`, `team_color`, `turn_number`, `memory`, and `demo`, a private link that downloads the game's demo until `demo.expires_at`. It can't change the game, which is over; use it to log the result or save the demo for study with `download_demo(delivery, "demo.json")`. Keep it quick: an uploaded bot has 5 seconds. A bot without it plays the same.
+
 ## Why the server rejects a result
 
 The server checks the commands in order against the board and rejects the **whole result** (the turn stays open and `scripts/run.sh` stops; through `serve` the lobby page shows the error) if any one is invalid:
@@ -64,4 +68,4 @@ return turn_result(commands, memory={"target": target})
 
 The same `BotTurn` must give the same result: no `random` without a seed stored in memory, no clocks, no network or file access. Sort before choosing (`sorted(castles, key=lambda c: c.id)`) so ties don't depend on order. That is what makes a bot testable with `fixture_turn()` and the turns `tests/test_bot.py` builds. Its builder gives turns server-like generation IDs (from 5538) with `turn_number` from 1, so that reading the ID as the turn number shows up in tests: keep that in turns you build, and add a test of a late turn (for example `game_turn(299, ...)`) when your bot plans for the end of the game.
 
-A slow bot loses the game: the turn timeout is 5 to 600 seconds (30 by default), and `serve` answers 504 after 8 seconds. In a real-time game, one with a player who plays by hand, a bot slower than the turn pace (1 second by default) passes the turn instead. Aim for well under one second. No loops that grow with the number of turns.
+A slow bot loses the game: the turn timeout is 5 to 600 seconds (30 by default), and `serve` answers 504 after 8 seconds. In a real-time game, one with a player who plays by hand, the turn plays without the answer of a bot slower than the turn pace (1 second by default): its answer is played in the turn open when it arrives instead, and counts as the bot's answer to that turn, so the bot falls a turn behind. Aim for well under one second. No loops that grow with the number of turns.

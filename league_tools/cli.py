@@ -142,6 +142,19 @@ def _unpack(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _official_maps(arguments: argparse.Namespace) -> int:
+    for name, document in sorted(maps.official(arguments.game_url).items()):
+        existing = list(MAPS.glob(f"*/{name}.json"))
+        target = existing[0] if existing else MAPS / arguments.set / f"{name}.json"
+        text = json.dumps(document, indent=2) + "\n"
+        if existing and json.loads(target.read_text(encoding="utf-8")) == document:
+            print(f"{target}: unchanged")
+            continue
+        target.write_text(text, encoding="utf-8")
+        print(f"{target}: {'changed' if existing else 'new'}")
+    return 0
+
+
 def _ledger(arguments: argparse.Namespace) -> int:
     print(ledger.load(LEDGER / "iterations.md", arguments.recent), end="")
     return 0
@@ -465,6 +478,14 @@ def main(argv: list[str] | None = None) -> int:
     new_map.add_argument("--seed", type=int, required=True)
     new_map.add_argument("--set", choices=("train", "holdout"), required=True)
     new_map.set_defaults(handler=_new_map)
+
+    official_maps = commands.add_parser(
+        "official-maps",
+        help="save the official game's default maps for two teams as map files: new ones, and served ones that changed",
+    )
+    official_maps.add_argument("--game-url", default=maps.OFFICIAL_GAME)
+    official_maps.add_argument("--set", choices=("train", "holdout"), default="train", help="where a new map goes")
+    official_maps.set_defaults(handler=_official_maps)
 
     clock = commands.add_parser(
         "clock",
