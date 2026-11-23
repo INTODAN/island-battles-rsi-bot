@@ -1,10 +1,88 @@
-// sameturn_stallfeed: exact_sameturn with exact_stallfeed's feeding of stalled castles.
+// punisher: keep every castle of speedhelp_landlate frozen.
 //
-// Iteration 28, from exact_sameturn, a graft from exact_stallfeed (both promoted
-// from ori_hold_exact in iteration 27). A castle behind the front whose next
-// upgrade it could pay but which would then be left to a single enemy castle,
-// not attacked, sends what it can spare above its reserve to the front once that
-// is feedAt or more. The log shows these sends as "stalled>".
+// Iteration 39, an exploiter of speedhelp_landlate on its own code. The champion
+// buys nothing and sends nothing (no upgrade, neutral, strike, harassment or
+// feeding) from a castle that an enemy group is bound for while that group holds
+// more soldiers than the castle produces before it lands; such a castle only
+// sends help to its own castles. Here harass() keeps every enemy castle with
+// freezeFloor soldiers or more frozen: when no group of ours bound for it will
+// still count as an attack on its next turn (a group landing this turn doesn't),
+// the nearest castle that can pay sends its production times the walk plus one.
+// Any castle of ours sends while our production is at least the enemy's, else
+// only fully upgraded ones. A frozen castle can't strike, so our reserve and
+// holds() ignore it (trustFreeze). The log shows "freeze> target:sender:size".
+//
+// speedhelp_landlate's comment follows.
+//
+// speedhelp_landlate: a strike's senders must land before the game's last generation.
+//
+// Iteration 38, from feedkeep_speedhelp. At the end of a level game the freed
+// reserves sent strikes that could not arrive (groups still walking at the limit).
+// Here attack() drops a sender whose walk is not below the turns left, unless
+// speed levels it can pay, and still send a soldier, make it land in time: it
+// buys them and goes. The log shows "intime:speed@C".
+//
+// feedkeep_speedhelp's comment follows.
+//
+// harrier_feedkeep: harrier_front with feeding that keeps the full reserve.
+//
+// Iteration 35, from harrier_front, a graft from growtrickle_feedkeep (both
+// promoted from stallfeed_growtrickle in iteration 34). Feeding, and the stalled
+// castles' feeding, keep a castle's reserve against every enemy castle at any
+// turn; the end of the game frees reserves for strikes only. On rill and inlet
+// harrier_front drew 22 games each at the limit, the ending iteration 34's
+// feedkeep improved.
+//
+// harrier_front's comment follows.
+//
+// harrier_front: keep the enemy castle nearest ours under attack.
+//
+// Iteration 34, a founder on stallfeed_growtrickle's scaffolding, iteration 33's
+// harrier in another form. The hosted bot's rules, and this line's, send nothing
+// from a castle that an enemy group is bound for, and the hold_ line stages its
+// soldiers at the castle nearest the enemy and strikes from it. harrier kept a
+// group walking at every enemy castle (89 points up on training, 12 down on
+// holdout). Here one group walks only at the enemy castle nearest our castles, the
+// smallest that counts as an attack (its production times the walk plus one, at
+// most harassMax), sent from the nearest fully upgraded castle before it feeds.
+// The log shows "harass>".
+//
+// stallfeed_growtrickle's comment follows.
+//
+// stallfeed_growtrickle: a group the castle outgrows before it lands is no attack.
+//
+// Iteration 30, from endreserve_stallfeed. An attacked castle (any enemy group
+// bound for it) buys nothing, pays for nothing and feeds nothing; level1's
+// groups of 1 kept the line on one castle for 300 turns on nine maps (18 draws).
+// Iteration 26 capped every attacked castle's spending at what its landings leave
+// (half against its parent) and iteration 28 lifted every rule from a castle its
+// landings wouldn't take (13 of 34). Here an enemy group counts only when it holds
+// more soldiers than the castle produces before it lands; a real strike still
+// freezes the castle's whole stock, as before. The log names the castles whose
+// enemy groups were all outgrown.
+//
+// endreserve_stallfeed's comment follows.
+//
+// endreserve_stallfeed: sameturn_endreserve with the feeding of stalled castles.
+//
+// Iteration 29, from sameturn_endreserve, a graft from sameturn_stallfeed (both
+// promoted from exact_sameturn in iteration 28). A castle behind the front whose
+// next upgrade it could pay but which would then be left to a single enemy
+// castle, not attacked, sends what it can spare above its reserve to the front
+// once that is feedAt or more. The log shows these sends as "stalled>".
+//
+// sameturn_endreserve's comment follows.
+//
+// sameturn_endreserve: no reserve against an enemy castle that can't land before the end.
+//
+// Iteration 28, from exact_sameturn. Games inside the line end in hoards: on
+// archipelago against ori_hold both sides held over 4,500 soldiers in six castles
+// on turn 300 and drew, because every castle kept a reserve against the strongest
+// enemy castle and so had nothing to strike with. A strike from a castle no enemy
+// can reach before the game ends risks nothing: here a castle's reserve and its
+// holds() check count only enemy castles whose group, sent now, would land before
+// the last generation is created. The log names the castles whose reserve this
+// lowered, with the soldiers it freed.
 //
 // exact_sameturn's comment follows.
 //
@@ -124,6 +202,14 @@ const (
 	finishTurns = 30
 	// Soldiers added to an exact count of the target.
 	exactExtra = 2
+	// Only fully upgraded castles send freezing groups, unless our production leads (freezeLead).
+	freezeFullOnly = true
+	// Castles still upgrading send freezing groups too while our production is at least the enemy's plus this.
+	freezeLead = 0
+	// Keep no reserve against, and fear no strike from, an enemy castle one of our groups keeps frozen.
+	trustFreeze = true
+	// An enemy castle with fewer soldiers than this can't buy or strike much: it isn't frozen.
+	freezeFloor = 6
 	// Landing order of this turn's sends, after every group on the board.
 	laterID = 1 << 40
 	// A walk's turns are rounded up, less this much, so that an exact walk isn't a turn longer.
@@ -242,6 +328,8 @@ type purchase struct {
 type sender struct {
 	walk   int
 	castle *castle
+	levels int // speed levels it buys first to land in time
+	cost   int // what those levels cost, paid from its own soldiers
 }
 
 // board is the turn's board, and what this turn's commands have spent so far.
@@ -411,21 +499,33 @@ func (b *board) turnsLeft() int {
 	return b.turn.MaxGenerations - b.turn.TurnNumber
 }
 
-// holds is whether no single enemy castle could take the castle at need(what it would find).
+// inTime is whether a group the enemy castle sends now at the castle lands before the game's last generation.
+func (b *board) inTime(enemy, c *castle) bool {
+	return b.travel(enemy, c) < b.turnsLeft()
+}
+
+// holds is whether no single enemy castle that could land in time could take the castle at need(what it would find).
 func (b *board) holds(c *castle, soldiers, rate int) bool {
 	for _, enemy := range b.enemies {
-		if enemy.soldiers > need(soldiers+rate*b.travel(enemy, c)) {
+		if trustFreeze && b.frozen(enemy) {
+			continue
+		}
+		if b.inTime(enemy, c) && enemy.soldiers > need(soldiers+rate*b.travel(enemy, c)) {
 			return false
 		}
 	}
 	return true
 }
 
-// reserve is the fewest soldiers the castle keeps so that it holds.
-func (b *board) reserve(c *castle) int {
+// reserve is the fewest soldiers the castle keeps so that it holds (against enemy castles that land in time,
+// or every enemy castle).
+func (b *board) reserve(c *castle, everyone bool) int {
 	rate := b.rate(c)
 	keep := 0
 	for _, enemy := range b.enemies {
+		if (!everyone && !b.inTime(enemy, c)) || (trustFreeze && b.frozen(enemy)) {
+			continue
+		}
 		// The fewest soldiers x that need(x) covers the enemy castle's, less what grows while it walks.
 		fewest := max(0, floorDiv((enemy.soldiers-needFixed)*needTenth, needTenth+1)-1)
 		for need(fewest) < enemy.soldiers {
@@ -436,15 +536,40 @@ func (b *board) reserve(c *castle) int {
 	return keep
 }
 
-// avail is the soldiers the castle can send this turn.
-func (b *board) avail(c *castle) int {
-	return max(0, b.left(c)-b.reserve(c))
+// frozen is whether one of our groups bound for the enemy castle will still count as an attack on its next turn:
+// the champion's castle then buys nothing and sends nothing but help to its own castles.
+func (b *board) frozen(enemy *castle) bool {
+	rate := b.production(enemy)
+	for _, g := range b.groups {
+		if g.destination == enemy.id && g.team == b.team {
+			if turns := b.arrival(g); turns >= 2 && g.soldiers > rate*turns {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-// attacked is whether an enemy group is bound for the castle.
-func (b *board) attacked(c *castle) bool {
+// avail is the soldiers the castle can send this turn.
+func (b *board) avail(c *castle) int {
+	return max(0, b.left(c)-b.reserve(c, false))
+}
+
+// targeted is whether an enemy group is bound for the castle.
+func (b *board) targeted(c *castle) bool {
 	for _, g := range b.groups {
 		if g.destination == c.id && g.team != b.team {
+			return true
+		}
+	}
+	return false
+}
+
+// attacked is whether an enemy group bound for the castle holds more than the castle produces before it lands.
+func (b *board) attacked(c *castle) bool {
+	rate := b.production(c)
+	for _, g := range b.groups {
+		if g.destination == c.id && g.team != b.team && g.soldiers > rate*b.arrival(g) {
 			return true
 		}
 	}
@@ -470,7 +595,7 @@ func (b *board) senders(target *castle) []sender {
 	var found []sender
 	for _, c := range b.own {
 		if c.id != target.id && b.avail(c) >= 1 && !b.attacked(c) {
-			found = append(found, sender{b.travel(c, target), c})
+			found = append(found, sender{walk: b.travel(c, target), castle: c})
 		}
 	}
 	sortSenders(found)
@@ -717,7 +842,7 @@ func defend(b *board) string {
 		var helpers []sender
 		for _, other := range b.own {
 			if other.id != c.id && b.giveOf(other) >= 1 {
-				helpers = append(helpers, sender{b.travel(other, c), other})
+				helpers = append(helpers, sender{walk: b.travel(other, c), castle: other})
 			}
 		}
 		sortSenders(helpers)
@@ -738,8 +863,61 @@ func defend(b *board) string {
 				break
 			}
 		}
+		var bought []int
 		if total < missing {
-			continue
+			// Castles too far at their speed that can pay the next speed level, arrive in time and still give.
+			type fastHelper struct {
+				walk  int
+				other *castle
+				cost  int
+				keep  int
+			}
+			var fast []fastHelper
+			for _, other := range b.own {
+				if other.id == c.id || slices.Contains(chosen, other) {
+					continue
+				}
+				unitsPerTurn, cost, found := b.table(speed, b.level(other, speed)+1)
+				if !found {
+					continue
+				}
+				walk := walkTurns(other.distance(c), unitsPerTurn)
+				if walk > fall {
+					continue
+				}
+				if keep := b.giveOf(other) - cost; keep >= 1 {
+					fast = append(fast, fastHelper{walk, other, cost, keep})
+				}
+			}
+			slices.SortFunc(fast, func(first, second fastHelper) int {
+				if first.walk != second.walk {
+					return first.walk - second.walk
+				}
+				return first.other.id - second.other.id
+			})
+			var plan []fastHelper
+			for _, helper := range fast {
+				if len(chosen)+len(plan) >= mostSenders || total >= missing {
+					break
+				}
+				plan = append(plan, helper)
+				total += helper.keep
+			}
+			if total < missing {
+				notes = append(notes, fmt.Sprintf("cannot hold>%d", c.id))
+				continue
+			}
+			for _, helper := range plan {
+				b.buy(helper.other, speed, helper.cost)
+				bought = append(bought, helper.other.id)
+				chosen = append(chosen, helper.other)
+			}
+			slices.SortStableFunc(chosen, func(first, second *castle) int {
+				if walkFirst, walkSecond := b.travel(first, c), b.travel(second, c); walkFirst != walkSecond {
+					return walkFirst - walkSecond
+				}
+				return first.id - second.id
+			})
 		}
 		late := ""
 		latest := 0
@@ -749,7 +927,11 @@ func defend(b *board) string {
 		if latest == fall {
 			late = " (same turn)"
 		}
-		notes = append(notes, fmt.Sprintf("help>%d%s ", c.id, late)+strings.Join(b.sendSplit(chosen, c, missing, true), " "))
+		speeds := ""
+		for _, id := range bought {
+			speeds += fmt.Sprintf(" speed@%d", id)
+		}
+		notes = append(notes, fmt.Sprintf("help>%d%s%s ", c.id, speeds, late)+strings.Join(b.sendSplit(chosen, c, missing, true), " "))
 	}
 	return strings.Join(notes, " ")
 }
@@ -1022,11 +1204,41 @@ func lastWalk(senders []sender) int {
 	return longest
 }
 
-// availOf is what the senders can send together.
+// inTimeSenders are the senders whose group lands before the game's last generation, and those that would
+// with speed levels they can pay and still send a soldier; the rest are dropped.
+func inTimeSenders(b *board, target *castle, senders []sender) []sender {
+	var kept []sender
+	for _, s := range senders {
+		if s.walk < b.turnsLeft() {
+			kept = append(kept, s)
+			continue
+		}
+		level := b.level(s.castle, speed)
+		cost := 0
+		for extra := 1; ; extra++ {
+			unitsPerTurn, price, found := b.table(speed, level+extra)
+			if !found {
+				break
+			}
+			cost += price
+			if cost >= b.avail(s.castle) {
+				break
+			}
+			if walk := walkTurns(s.castle.distance(target), unitsPerTurn); walk < b.turnsLeft() {
+				kept = append(kept, sender{walk, s.castle, extra, cost})
+				break
+			}
+		}
+	}
+	sortSenders(kept)
+	return kept
+}
+
+// availOf is what the senders can send together, after the speed they buy.
 func availOf(b *board, senders []sender) int {
 	total := 0
 	for _, s := range senders {
-		total += b.avail(s.castle)
+		total += b.avail(s.castle) - s.cost
 	}
 	return total
 }
@@ -1038,7 +1250,7 @@ func attack(b *board) string {
 	var bestTarget *castle
 	var bestChosen []sender
 	for _, target := range b.enemies {
-		senders := b.senders(target)
+		senders := inTimeSenders(b, target, b.senders(target))
 		if len(senders) == 0 {
 			continue
 		}
@@ -1077,8 +1289,18 @@ func attack(b *board) string {
 	if isExact(b, turns) {
 		kind = "exact"
 	}
+	var bought []string
+	for _, s := range bestChosen {
+		for extra := 1; extra <= s.levels; extra++ {
+			_, cost, _ := b.table(speed, b.level(s.castle, speed)+1)
+			b.buy(s.castle, speed, cost)
+		}
+		if s.levels > 0 {
+			bought = append(bought, fmt.Sprintf("speed@%d", s.castle.id))
+		}
+	}
 	parts := b.sendSplit(castlesOf(bestChosen), bestTarget, bestPrice, false)
-	return fmt.Sprintf("strike>%d %s %d ", bestTarget.id, kind, bestPrice) + strings.Join(parts, " ")
+	return fmt.Sprintf("strike>%d %s %d ", bestTarget.id, kind, bestPrice) + strings.Join(parts, " ") + strings.Join(append([]string{""}, bought...), " intime:")
 }
 
 // saving is whether the castle is a few turns from affording its next upgrade.
@@ -1156,49 +1378,6 @@ func expand(b *board) string {
 	return strings.Join(notes, " ")
 }
 
-// front is the castle of ours nearest an enemy castle.
-func front(b *board) *castle {
-	var nearest *castle
-	nearestDistance := 0.0
-	for _, c := range b.own {
-		distance := math.Inf(1)
-		for _, enemy := range b.enemies {
-			distance = min(distance, c.distance(enemy))
-		}
-		if nearest == nil || distance < nearestDistance {
-			nearest, nearestDistance = c, distance
-		}
-	}
-	return nearest
-}
-
-// feed sends everything of the fully upgraded castles behind the front there, if they hold with none.
-// Returns the log note.
-func feed(b *board) string {
-	if len(b.enemies) == 0 || len(b.own) < 2 {
-		return ""
-	}
-	to := front(b)
-	var parts []string
-	for _, c := range b.own {
-		if c.id == to.id ||
-			b.level(c, production) < topProduction ||
-			b.level(c, speed) < topSpeed ||
-			b.attacked(c) ||
-			b.left(c) < feedAt ||
-			b.reserve(c) > 0 {
-			continue
-		}
-		amount := b.left(c)
-		b.send(c, to, amount)
-		parts = append(parts, fmt.Sprintf("%d:%d", c.id, amount))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	return fmt.Sprintf("feed>%d ", to.id) + strings.Join(parts, " ")
-}
-
 // stalled is whether the castle could pay its next upgrade but would then be left to a single enemy castle.
 func stalled(b *board, c *castle) bool {
 	upgradeType, level, more := nextUpgrade(b, c)
@@ -1217,6 +1396,22 @@ func stalled(b *board, c *castle) bool {
 	return after >= 0 && !b.holds(c, after, rate)
 }
 
+// front is the castle of ours nearest an enemy castle.
+func front(b *board) *castle {
+	var nearest *castle
+	nearestDistance := 0.0
+	for _, c := range b.own {
+		distance := math.Inf(1)
+		for _, enemy := range b.enemies {
+			distance = min(distance, c.distance(enemy))
+		}
+		if nearest == nil || distance < nearestDistance {
+			nearest, nearestDistance = c, distance
+		}
+	}
+	return nearest
+}
+
 // stallFeed sends the spare soldiers of castles behind the front whose next upgrade is unsafe to the front.
 func stallFeed(b *board) string {
 	if len(b.enemies) == 0 || len(b.own) < 2 {
@@ -1228,7 +1423,7 @@ func stallFeed(b *board) string {
 		if c.id == to.id || b.attacked(c) || !stalled(b, c) {
 			continue
 		}
-		amount := b.avail(c)
+		amount := max(0, b.left(c)-b.reserve(c, true))
 		if amount < feedAt {
 			continue
 		}
@@ -1239,6 +1434,81 @@ func stallFeed(b *board) string {
 		return ""
 	}
 	return fmt.Sprintf("stalled>%d ", to.id) + strings.Join(parts, " ")
+}
+
+// harassTargets are the enemy castles to keep frozen: all of them, in id order.
+func harassTargets(b *board) []*castle {
+	return b.enemies
+}
+
+// harass keeps every enemy castle with freezeFloor soldiers or more frozen: when no group of ours that still
+// counts as an attack on its next turn is bound for it, the nearest castle that can pay sends the fewest soldiers
+// that count as one (the castle's production times the walk, plus one). Castles still upgrading send only while
+// our production is at least the enemy's plus freezeLead.
+func harass(b *board) string {
+	var parts []string
+	ours, theirs := 0, 0
+	for _, c := range b.own {
+		ours += b.production(c)
+	}
+	for _, c := range b.enemies {
+		theirs += b.production(c)
+	}
+	anySender := !freezeFullOnly || ours >= theirs+freezeLead
+	for _, target := range harassTargets(b) {
+		if _, tried := b.sent[target.id]; tried || target.soldiers < freezeFloor || b.frozen(target) {
+			continue
+		}
+		var best *castle
+		bestWalk, bestSize := 0, 0
+		for _, c := range b.own {
+			if (!anySender && (b.level(c, production) < topProduction || b.level(c, speed) < topSpeed)) || b.attacked(c) {
+				continue
+			}
+			walk := b.travel(c, target)
+			size := b.production(target)*walk + 1
+			if size <= b.avail(c) {
+				if best == nil || walk < bestWalk || (walk == bestWalk && (size < bestSize || (size == bestSize && c.id < best.id))) {
+					best, bestWalk, bestSize = c, walk, size
+				}
+			}
+		}
+		if best != nil {
+			b.send(best, target, bestSize)
+			parts = append(parts, fmt.Sprintf("%d:%d:%d", target.id, best.id, bestSize))
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "freeze> " + strings.Join(parts, " ")
+}
+
+// feed sends everything of the fully upgraded castles behind the front there, if they hold with none.
+// Returns the log note.
+func feed(b *board) string {
+	if len(b.enemies) == 0 || len(b.own) < 2 {
+		return ""
+	}
+	to := front(b)
+	var parts []string
+	for _, c := range b.own {
+		if c.id == to.id ||
+			b.level(c, production) < topProduction ||
+			b.level(c, speed) < topSpeed ||
+			b.attacked(c) ||
+			b.left(c) < feedAt ||
+			b.reserve(c, true) > 0 {
+			continue
+		}
+		amount := b.left(c)
+		b.send(c, to, amount)
+		parts = append(parts, fmt.Sprintf("%d:%d", c.id, amount))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("feed>%d ", to.id) + strings.Join(parts, " ")
 }
 
 // play plays one turn: a pure function of the turn.
@@ -1252,7 +1522,27 @@ func play(_ context.Context, turn islandbattles.Turn) (islandbattles.Result, err
 		for _, c := range b.own {
 			notes = append(notes, upgrade(b, c))
 		}
-		notes = append(notes, attack(b), expand(b), feed(b), stallFeed(b))
+		notes = append(notes, attack(b), expand(b), harass(b), feed(b), stallFeed(b))
+	}
+	var freed []string
+	for _, c := range b.own {
+		if all, inTime := b.reserve(c, true), b.reserve(c, false); all > inTime {
+			freed = append(freed, fmt.Sprintf("%d:%d", c.id, all-inTime))
+		}
+	}
+	if len(freed) > 0 {
+		notes = append(notes, "late reserve freed "+strings.Join(freed, " "))
+	}
+	if turn.TurnNumber > 1 {
+		var outgrown []string
+		for _, c := range b.own {
+			if b.targeted(c) && !b.attacked(c) {
+				outgrown = append(outgrown, fmt.Sprint(c.id))
+			}
+		}
+		if len(outgrown) > 0 {
+			notes = append(notes, "outgrows groups bound for "+strings.Join(outgrown, ","))
+		}
 	}
 	producing := 0
 	for _, c := range b.own {
