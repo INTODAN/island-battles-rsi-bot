@@ -1,3 +1,6 @@
 # The hosted bot's real games that an iteration has studied: the game's id and
 # the date, one per line. The automated iteration (real-game-iteration.yml)
 # adds the games it studied; it never studies one listed here again.
+471 2026-11-23
+472 2026-11-23
+473 2026-11-23
