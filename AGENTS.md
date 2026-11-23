@@ -8,6 +8,7 @@ The game is a separate project, [INTODAN/island-battles-go](https://github.com/I
 
 - **"Run a league iteration"**, "improve the bots", "do RSI": follow the [`bot-league-iteration`](.agents/skills/bot-league-iteration/SKILL.md) skill from start to end. The request needs to say nothing more.
 - **Anything else here** (a tool, a map, a test, reading results): read the [`bot-league`](.agents/skills/bot-league/SKILL.md) skill first.
+- **Any work that takes a while** (an iteration, a tournament, a tool change, an Actions run): the [`measuring-time`](.agents/skills/measuring-time/SKILL.md) skill. Time it, and end it with a review of how to make the next one faster.
 - **Writing or changing a bot's code**: also [`island-battles-rules`](.agents/skills/island-battles-rules/SKILL.md), [`writing-a-bot`](.agents/skills/writing-a-bot/SKILL.md) and [`bot-logging`](.agents/skills/bot-logging/SKILL.md).
 
 ## Rules

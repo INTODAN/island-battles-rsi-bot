@@ -316,6 +316,9 @@ jobs:
             Don't commit, push or open a pull request: this workflow passes the working tree on.
             Candidates may be written by subagents on the sonnet model, as the skill allows.
 
+            Time every step with `uv run league clock`, as the measuring-time skill says, and put
+            `uv run league clock report`'s table in the hand-over: the second half runs on another machine.
+
             This session ends the moment you end your turn, and nothing left running survives it. Run every
             subagent and command in the foreground and wait for it. Don't end your turn until the hand-over is
             in ledger/iterations.md (ending with the line "Second half: the rest of step 4, then steps 5 to 7.")
@@ -600,8 +603,9 @@ jobs:
           git apply --binary runs/handover/first-half.patch
           git status --short
           mkdir -p runs/rsi
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
-            --jq '.jobs[] | "\(.name)\t\(.started_at)\t\(.completed_at // "running")"' > runs/rsi/times.txt
+          # Best effort: an iteration never fails for its timing report.
+          python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID" > runs/rsi/times.txt \
+            || echo "The run's times were unavailable: see the run's own page." > runs/rsi/times.txt
           cat runs/rsi/times.txt
 
       - name: The Claude token without whitespace
@@ -645,8 +649,10 @@ jobs:
             The iteration was started by the hosted bot's real games ${{ needs.claim.outputs.ids }}. They are not
             on this runner; the hand-over says what they showed. Never write a player's name in any file.
 
-            The times of this run's jobs are in runs/rsi/times.txt; the ledger's account of the time uses them
-            and the first half's times in the hand-over.
+            The times of this run's jobs so far (each job, each round of runners, the slow steps) are in
+            runs/rsi/times.txt; the first half's clock is in the hand-over. Time your own steps with `uv run league
+            clock`, and write the entry's Time as the measuring-time skill's review: the whole run's time, where it
+            went, and what would make the next run faster, sorted by who can do it.
 
             Nobody is watching and nobody will answer a question: decide by the skills. Where a skill says to
             stop, stop, and write what you ran and what it printed to runs/rsi/stopped.txt.
@@ -887,6 +893,30 @@ jobs:
           done
           echo "::error::the pull request didn't merge within an hour; see its checks"
           exit 1
+
+  # Where this run's time went, on its summary page, whatever its result: the
+  # measuring-time skill's numbers for the next run's review.
+  times:
+    name: Times
+    needs: [claim, warm, study, gate, select]
+    if: always() && needs.claim.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Where the run's time went
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "## Where the time went"
+            echo
+            python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID" || echo "The run's times were unavailable."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   # A run that failed or was cancelled before its pull request gives the number
   # back, so the next iteration, this workflow's or a person's, can take it.

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import combinations
@@ -236,7 +237,11 @@ def play_matches(
     # runs from: several at once only slow every turn down (and a turn that
     # runs out of time fails), and the one that waits finds in the cache
     # what the other played.
+    waiting = time.monotonic()
     with engine.exclusive(CACHE / ".play.lock", "league: waiting for another tournament to finish playing"):
+        waited = time.monotonic() - waiting
+        if waited >= 1:
+            print(f"Time: waited {waited:.0f} s for another tournament", file=sys.stderr)
         before = len(to_play)
         to_play = from_cache()
         if len(to_play) < before:
@@ -253,6 +258,7 @@ def play_matches(
                 "demo_directory": str(CACHE),
                 "compress_demos": True,
             }
+            started = time.monotonic()
             for line in engine.play(build.binary, schedule, run_directory / "workers.log"):
                 results[line["id"]] = line
                 cached = CACHE / f"{line['id']}.json"
@@ -262,6 +268,12 @@ def play_matches(
                     # The runner has replaced the demo, so an earlier result of
                     # this match no longer belongs to it.
                     cached.unlink(missing_ok=True)
+            seconds = time.monotonic() - started
+            print(
+                f"Time: played {len(to_play)} matches in {seconds:.0f} s, {len(to_play) / max(seconds, 0.001):.1f} "
+                f"a second on {schedule['parallel']} at once",
+                file=sys.stderr,
+            )
     return [results[key] for key in planned if key in results]
 
 
@@ -515,7 +527,9 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
     """
     run_directory = RUNS / run_id
     run_directory.mkdir(parents=True, exist_ok=True)
+    started = time.monotonic()
     results = play(tournament, run_directory)
+    playing = time.monotonic() - started
     if tournament.shard:
         summary = shard_summary(results, tournament.shard)
         table = shard_report(summary)
@@ -534,4 +548,13 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
             file.write(json.dumps(result) + "\n")
     (run_directory / "summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     (run_directory / "summary.md").write_text(table, encoding="utf-8")
+    after = time.monotonic() - started - playing
+    # Where a tournament's time goes: finding and playing its matches (the
+    # cache's reading, the wait for another tournament, the games), then
+    # everything after (ratings, tables, files).
+    print(
+        f"Time: {playing + after:.0f} s in all: {playing:.0f} s to read or play {len(results)} matches, "
+        f"{after:.0f} s after (ratings, tables, files)",
+        file=sys.stderr,
+    )
     return summary, table
