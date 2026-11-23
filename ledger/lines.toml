@@ -10,7 +10,7 @@ state = "main"
 head = "pounce"
 strategy = "A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers."
 bots = ["pounce"]
-without_promotion = 1
+without_promotion = 2
 note = "main since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once)"
 
 [[line]]

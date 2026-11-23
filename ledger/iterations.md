@@ -8,10 +8,10 @@ A line is a founder and the bots descended from it: one strategy. The main line 
 
 | Line | Its strategy | Head | Other active bots | State |
 |---|---|---|---|---|
-| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce` | none | **main** since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once) |
-| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | `speedhelp_landlate` (the champion of iterations 38 and 39), `harrier_feedkeep` (retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`) | the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); 1 iteration of work without a promotion (41) |
-| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots | none | closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. |
-| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | `batchfront` | side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 1 iteration of work without a promotion (41) |
+| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce` | none | main; 2 iterations of work without a promotion; main since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once) |
+| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | `speedhelp_landlate`, `harrier_feedkeep` | side; 1 iteration of work without a promotion; the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); `speedhelp_landlate` the champion of iterations 38 and 39; retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`; 1 iteration of work without a promotion (41) |
+| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none | none | closed; closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. Head: none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots |
+| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | `batchfront` | side; 1 iteration of work without a promotion; side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 1 iteration of work without a promotion (41) |
 
 ## Lessons so far
 
@@ -3163,3 +3163,59 @@ Holdout maps (`setup-after-41-holdout`, 5,456 matches, exit 0):
 **Not verified.** The slowest turns on training (up to 72 ms) are higher than in iteration 41 because the league's checks ran on the same machine during the tournament; no turn came near the 200 ms gate. Runs that started from main before this change measured at the old pin; since no headless result changed, their numbers still hold, but a match cached under the old runner's hash is played again at the new one.
 
 **Time:** the two tournaments took 4.5 and 4.3 minutes; the whole change about 40 minutes, most of it reading the game's pull requests.
+
+## Iteration 42: run 20261123-13f1e2, nothing promoted
+
+Run: ledger/runs/20261123-13f1e2.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/foreland, holdout/tombolo, train/backshore. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `pounce_front` | pounce | Graft from batchfront_keep: rear castles feed what they can spare above pounce's reserve to the front, the own castle nearest the enemy, in batches of 12 or more, never while an enemy group is bound for them. | 35/68 | 2186 (2142) | 107, 69 (+38; 16 maps better, 9 worse; 5.7%): confirmed | 107 (111) | not played | not played | **rejected**: over 3 points fewer than pounce against the references (107 to 111) |
+
+### The population's upkeep
+
+- delete `pounce_front`: rejected: over 3 points fewer than pounce against the references (107 to 111)
+
+The champion stays `pounce`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce` | 2149 | 0.797 | 684 | 41 | 159 |
+| `punisher` | 2134 | 0.783 | 676 | 32 | 176 |
+| `fullfeed_unfreeze` | 2065 | 0.714 | 581 | 100 | 203 |
+| `speedhelp_landlate` | 2048 | 0.696 | 572 | 87 | 225 |
+| `harrier_feedkeep` | 1986 | 0.629 | 500 | 112 | 272 |
+| `batchfront_keep` | 1984 | 0.627 | 528 | 52 | 304 |
+| `growtrickle_feedkeep` | 1954 | 0.594 | 474 | 102 | 308 |
+| `sameturn_endreserve` | 1940 | 0.578 | 443 | 136 | 305 |
+| `batchfront` | 1900 | 0.535 | 451 | 44 | 389 |
+| `ori_mimic` | 1800 | 0.433 | 323 | 120 | 441 |
+| `ori_like` | 1671 | 0.325 | 275 | 24 | 585 |
+| `level1` | 1446 | 0.061 | 0 | 92 | 656 |
+| `level3` | 1056 | 0.007 | 5 | 0 | 743 |
+| `level2` | 828 | 0.001 | 1 | 0 | 747 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce` | 2072 | 0.748 | 627 | 29 | 202 |
+| `punisher` | 2057 | 0.732 | 611 | 34 | 213 |
+| `batchfront_keep` | 2047 | 0.721 | 601 | 35 | 222 |
+| `fullfeed_unfreeze` | 2015 | 0.686 | 559 | 60 | 239 |
+| `speedhelp_landlate` | 2007 | 0.678 | 546 | 71 | 241 |
+| `harrier_feedkeep` | 1963 | 0.629 | 492 | 96 | 270 |
+| `growtrickle_feedkeep` | 1953 | 0.617 | 480 | 99 | 279 |
+| `batchfront` | 1928 | 0.590 | 491 | 30 | 337 |
+| `sameturn_endreserve` | 1890 | 0.547 | 412 | 115 | 331 |
+| `ori_mimic` | 1800 | 0.454 | 332 | 115 | 411 |
+| `ori_like` | 1650 | 0.328 | 281 | 0 | 577 |
+| `level1` | 1367 | 0.044 | 0 | 64 | 662 |
+| `level3` | 907 | 0.003 | 2 | 0 | 724 |
+| `level2` | 626 | 0.000 | 0 | 0 | 726 |
