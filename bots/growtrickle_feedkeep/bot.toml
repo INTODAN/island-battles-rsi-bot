@@ -1,8 +1,9 @@
 # candidate: new and unproven. active: in the population. retired: no longer
 # developed, kept as an opponent. sparring: a fixed opponent built to play like a
-# real one; never a parent, never counted with the retired bots, never deleted.
-status = "active"
-# The bot this one was copied from, or empty for a founder.
+# real one; never changed, never counted with the retired bots, never deleted.
+status = "retired"
+# The bot this one's code was copied from. A founder keeps it too: the ledger's
+# table of the lines says which line a bot belongs to.
 parent = "stallfeed_growtrickle"
 # The league iteration that created it (ledger/iterations.md).
 iteration = 34
