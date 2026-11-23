@@ -26,6 +26,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `... tournament --strict` | Exit with status 1 when a match wasn't played, a player failed a turn or there was no match. |
 | `... tournament --shard K/N` | Play only the K-th of N slices of the matches into the cache, and print no standings: for N machines that share a tournament. Merge their `runs/cache` directories, and the same tournament without `--shard` plays nothing. The automated iteration plays its tournaments this way (`bot-league-iteration`'s "Split across runners"). |
 | `... tournament --no-cache` | Play every match again. A result is cached under the runner's build, the map, both bots' code and names, the SDK and the settings; a result with a failed turn is never cached. Every worktree shares the main checkout's cache; one tournament plays at a time, and one that waits says so. |
+| `uv run league mistakes [--focus NAME] [--maps A,B] [--examples N] [--json]` | The detectors' flags over the games a tournament with those arguments plays (it plays what the cache lacks): for each bot and each kind of mistake, its games, maps, points lost in them and cost, and the shortest such games with seat and turns. Training maps only. [Detectors](#detectors-and-league-mistakes). |
 | `uv run league digest DEMO` | A game as text: a timeline, each team's logistics and the events. Any demo: a real game's **Save demo** file too. |
 | `... digest DEMO --key-events` | Only the captures, eliminations, upgrades and bursts. A game with over 250 events is listed this way anyway. |
 | `... digest DEMO --turns 40-55 [--logs NAME]` | Those turns whole: the board, the events and the bots' log lines. |
@@ -67,6 +68,19 @@ The numbers say where to look; the game says what to change.
 Read games on the **training maps only**. The holdout maps exist to give numbers nobody has fitted a bot to: never digest a holdout game, and never write a bot's code around a holdout map. A tournament that played a holdout map lists no games for that reason.
 
 **A real game is worth more than a league game.** When someone gives you a demo saved from a real game, `digest` it the same way and put what it shows in the ledger's **Lessons so far**. It shows what opponents outside the league do, which no league game can.
+
+## Detectors and `league mistakes`
+
+A **detector** is a small Python module in `league_tools/detectors/` that reads one demo and flags the turns where a known mistake happened, with its evidence in numbers and a cost. `league mistakes` runs every detector once per match (the flags are kept in the local cache as `runs/cache/<key>.flags-<hash>.json`, under a hash of the detectors' code, so a new or changed detector computes them again) and sums them up for a bot. Start a study from the champion's table: `uv run league mistakes --focus CHAMPION` shows which kinds cost it the most points, on how many maps, and the shortest games with the turns to read with `digest --turns`. A flag only points: it never decides anything, and a finding still needs the turns read and the logs quoted. Like `rematch`, it refuses holdout maps.
+
+The kinds now: `turning_point` (every decided game: the turn from which the winner led to the end, in production, then soldiers, then castles, and every castle the loser lost), `home_emptied`, `thin_border`, `trickled_attack`, `long_walk` and `idle_lead`. Each module's docstring has the exact definition and the lesson it comes from.
+
+**Writing one**, when a study finds a mistake no detector knows and it can be stated in numbers:
+
+- A new module `league_tools/detectors/<kind>.py` (a name without a leading `_`; `_board.py` holds the shared readers: groups and what became of them, captures, totals, walks). It has `KIND`, a docstring that states the mistake, its exact definition with its constants, the lesson or game it comes from, and what its `cost` counts (`Cost: ...`), and `detect(demo) -> list[Flag]`. It is found without being registered anywhere.
+- **It reads only the demo.** It runs on every machine that computes flags, and runs may add detectors, so `tests/test_detectors.py` parses every module of the package and fails unless it imports only from `__future__`, `dataclasses`, `math`, `typing`, `collections`, `itertools`, `functools`, `statistics`, `re`, `league_tools.digest` and `league_tools.detectors`, and uses none of `__import__`, `eval`, `exec`, `compile`, `open`, `getattr`, `setattr`, `delattr`, `globals`, `locals`, `vars`, `breakpoint`, `input`, `memoryview` nor any dunder attribute (`.__class__`, `.__dict__`, ...). Files and caching belong in `league_tools/flags.py`, outside the package.
+- **A test where it fires and one where it doesn't**, in `tests/test_detectors.py`: the repository holds no demo, so build a small one in the shape of the game where you found it (the helpers there make boards, castles and groups). Check the flag's team, turns and cost.
+- **It must not flag most of a game.** Run it over a tournament's demos (`uv run league mistakes`) and look at its rows; the scan test checks, over the local cache's demos, that each kind covers under a quarter of all turns and over half of a game's turns in under a tenth of the games. A detector that fires in every game of every bot tells nobody anything: tighten it to the lesson's numbers.
 
 ## Rules for a league bot
 
