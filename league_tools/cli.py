@@ -140,8 +140,9 @@ def _new(arguments: argparse.Namespace) -> int:
 
 
 def _new_map(arguments: argparse.Namespace) -> int:
-    if not re.fullmatch(r"[a-z][a-z0-9-]*", arguments.name) or list(MAPS.glob(f"*/{arguments.name}.json")):
-        raise ValueError(f"{arguments.name!r} is taken or not a map name: lower-case letters, digits and -")
+    # Letters and digits only: what the check of an iteration's changes (hosting/rsi/scope.py) lets a new map be named.
+    if not re.fullmatch(r"[a-z][a-z0-9]*", arguments.name) or list(MAPS.glob(f"*/{arguments.name}.json")):
+        raise ValueError(f"{arguments.name!r} is taken or not a map name: lower-case letters and digits")
     target = MAPS / arguments.set / f"{arguments.name}.json"
     target.write_text(json.dumps(maps.generate(arguments.name, arguments.seed), indent=2) + "\n", encoding="utf-8")
     print(target)

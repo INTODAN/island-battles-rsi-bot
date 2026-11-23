@@ -45,6 +45,22 @@ def _totals(frame: dict[str, Any], color: int) -> tuple[int, int, int, int]:
     )
 
 
+def production_lead(demo: dict[str, Any], color: int, other: int) -> int:
+    """Which of two teams out-produced the other over a game: 1 for ``color``, -1 for ``other``, 0 for neither.
+
+    A team's production in a turn is the sum of its castles' production
+    levels; the lead is the first team's minus the other's, summed over every
+    turn of the game. It is what tells two drawn games apart: in the drawn
+    games of iteration 37's population in which one team led, it was the
+    higher-rated bot 85% of the time (936 games), more often than the winner
+    of a game decided on castles at the turn limit (79%). The soldiers a team
+    holds at the end say the opposite, if anything (46%): the bot that never
+    strikes ends with the most.
+    """
+    total = sum(_totals(frame, color)[3] - _totals(frame, other)[3] for frame in demo["frames"])
+    return (total > 0) - (total < 0)
+
+
 def events(demo: dict[str, Any]) -> list[tuple[int, str]]:
     """What happened in each turn, read from the difference between its board and the next.
 

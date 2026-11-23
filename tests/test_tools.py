@@ -89,16 +89,77 @@ def test_a_bot_is_compared_with_its_parent_game_by_game_against_the_others() -> 
         # Not compared: the two against each other, and a game only one of them played.
         result("child", "parent", "parent"),
         result("child", "z", "z"),
+        # On another map the child wins twice where its parent lost.
+        result("child", "x", "child", "circle"),
+        result("parent", "x", "x", "circle"),
+        result("child", "y", "child", "circle"),
+        result("parent", "y", "y", "circle"),
     ]
-    assert tournament.paired(results, "child", "parent") == {"better": 1, "worse": 1, "same": 1, "net": 0.5}
-    summary = tournament.summarize(results) | {"paired": {"child": tournament.paired(results, "child", "parent")}}
+    compared = tournament.paired(results, "child", "parent")
+    assert (compared["better"], compared["worse"], compared["same"], compared["net"]) == (3, 1, 1, 2.5)
+    # A map's games count as one: `strait` came out level, `circle` two games up, which luck gives one time in two.
+    assert compared["maps"] == {"circle": 2, "strait": 0} and compared["luck"] == 0.5
+    summary = tournament.summarize(results) | {"paired": {"child": compared}}
     table = "\n".join(tournament.against_parents(summary, {"child": "parent"}, whole=True))
-    # The margin is better minus worse, the noise the root of their sum; the table judges nothing.
-    assert "| 1 better, 1 worse, 1 the same | +0, 1.4 | +0.5 |" in table
+    assert "| 3 better, 1 worse, 1 the same | 0 better, 0 worse | +2 | 1 better, 0 worse | 50.0% |" in table
+    # The table judges nothing.
     assert "yes" not in table and "no |" not in table
     # A focused run compares nothing: its bots didn't meet the same opponents.
     focused = "\n".join(tournament.against_parents(summary, {"child": "parent"}, whole=False))
     assert "better" not in focused
+
+
+def test_two_drawn_games_are_told_apart_by_who_led_in_production(tmp_path: Path) -> None:
+    def drawn(first: str, second: str, levels: tuple[int, int], map_name: str) -> dict:
+        """A drawn game whose demo has two turns, with these production levels in the two seats' castles."""
+        frame = {
+            "castles": [
+                {"team_color": 1, "soldiers": 9, "upgrades": {"generation_amount": levels[0]}},
+                {"team_color": 2, "soldiers": 9, "upgrades": {"generation_amount": levels[1]}},
+            ],
+            "soldier_groups": [],
+        }
+        demo = tmp_path / f"{first}-{second}-{map_name}.json.gz"
+        demo.write_bytes(gzip.compress(json.dumps({"frames": [frame, frame]}).encode()))
+        played = result(first, second, None, map_name)
+        played["seats"][0]["team_color"], played["seats"][1]["team_color"] = 1, 2
+        return played | {"demo": str(demo)}
+
+    assert digest.production_lead({"frames": []}, 1, 2) == 0
+    results = [
+        # On `strait` both draw with `x`, the child ahead in production and its parent level: better.
+        drawn("child", "x", (3, 2), "strait"),
+        drawn("parent", "x", (2, 2), "strait"),
+        # From the other seat the child is behind where its parent was ahead: worse.
+        drawn("x", "child", (4, 2), "strait"),
+        drawn("x", "parent", (1, 2), "strait"),
+        # On `circle` both are ahead: the same. And a draw is still more than a loss, whoever led.
+        drawn("child", "x", (3, 1), "circle"),
+        drawn("parent", "x", (2, 1), "circle"),
+        drawn("x", "child", (4, 1), "circle"),
+        result("x", "parent", "x", "circle"),
+    ]
+    compared = tournament.paired(results, "child", "parent")
+    assert (compared["better"], compared["worse"], compared["same"]) == (2, 1, 1)
+    assert (compared["drawn_better"], compared["drawn_worse"], compared["unread"]) == (1, 1, 0)
+    # Points count results alone: only the draw against a loss gained any.
+    assert compared["net"] == 0.5 and compared["maps"] == {"circle": 1, "strait": 0}
+    # A drawn game without its demo counts as level, and is counted.
+    lost = [played | {"demo": str(tmp_path / "gone.json.gz")} for played in results[:2]]
+    unread = tournament.paired(lost, "child", "parent")
+    assert (unread["better"], unread["worse"], unread["same"], unread["unread"]) == (0, 0, 1, 2)
+
+
+def test_the_chance_by_luck_counts_each_map_as_one() -> None:
+    # No margin, no evidence.
+    assert tournament.by_luck([]) == 1.0 and tournament.by_luck([3, -3]) == 1.0
+    # One map can say nothing, however many of its games changed: the other sign was as likely.
+    assert tournament.by_luck([9]) == 0.5 and tournament.by_luck([-9]) == 0.5
+    # Six maps all one way: one way in 64 of choosing the signs. A map that came out level is not counted.
+    assert tournament.by_luck([1, 2, 1, 3, 1, 1, 0]) == 1 / 64
+    # +3, +1, -2 totals 2: of the eight ways, those reaching 2 are +++ (6), ++- (2), +-+ (4), and -++ (0) is not.
+    assert tournament.by_luck([3, 1, -2]) == 3 / 8
+    assert tournament.chance(0.0004) == "under 0.1%" and tournament.chance(0.125) == "12.5%"
 
 
 def test_bots_whose_games_end_the_same_are_listed_as_alike() -> None:
@@ -259,7 +320,7 @@ def test_parents_plays_each_focused_bot_against_its_parent_alone(
     )
     summary, table = tournament.run(whole, "whole")
     assert len(played) == 10 and ["child", "parent"] not in played
-    assert "Rating (parent's)" in table and "Margin, noise" in table
+    assert "Rating (parent's)" in table and "By luck" in table
 
 
 def test_a_tournament_that_waited_takes_what_the_other_played(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -536,6 +597,18 @@ def test_generated_map_is_the_same_from_both_sides(seed: int) -> None:
         assert abs(x) <= generated["plane_size_x"] / 2 and abs(y) <= generated["plane_size_y"] / 2
         assert twin["starting_soldier_amount"] == castle["starting_soldier_amount"]
         assert {castle["team_color"], twin["team_color"]} in ({0}, {1, 2})
+
+
+def test_new_map_takes_only_a_name_an_iteration_may_add(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "MAPS", tmp_path)
+    for directory in ("train", "holdout"):
+        (tmp_path / directory).mkdir()
+    assert cli.main(["new-map", "flats", "--seed", "7", "--set", "train"]) == 0
+    assert json.loads((tmp_path / "train" / "flats.json").read_text()) == maps.generate("flats", 7)
+    # A name the scope check of an iteration's changes would refuse, and a name that is taken, in either set.
+    assert cli.main(["new-map", "far-shore", "--seed", "8", "--set", "train"]) != 0
+    assert cli.main(["new-map", "flats", "--seed", "8", "--set", "holdout"]) != 0
+    assert [path.name for path in tmp_path.rglob("*.json")] == ["flats.json"]
 
 
 def test_the_runner_is_pinned_to_one_commit_of_the_game() -> None:

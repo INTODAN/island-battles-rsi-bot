@@ -191,10 +191,10 @@ First, every candidate against its parent alone:
 uv run league tournament --focus CANDIDATES --parents --strict --run-id iteration-N-parents
 ```
 
-(The subagents' runs already played these games: this one reads them from the cache.) Its table **Each listed bot against its parent** gives each candidate's points against its parent, two games a training map. By [`league-evidence`](../league-evidence/SKILL.md), whose fractions are the rule (the numbers in brackets are for 19 training maps):
+(The subagents' runs already played these games: this one reads them from the cache.) Its table **Each listed bot against its parent** gives each candidate's points against its parent, two games a training map. By [`league-evidence`](../league-evidence/SKILL.md), whose fractions are the rule (the numbers in brackets are for 30 training maps):
 
-- **A fix, a graft or a simplification with a third of the points or fewer** (12.5 of 38 or fewer) is **rejected** here, so its other games aren't played. Above a third the head-to-head decides nothing: 13 to 25 of 38 is what two equal bots give.
-- **A founder with under a third of the points against the champion** (under 13 of 38), or **an exploiter with under three fifths** (under 23), is **rejected** here. Read them in the pair table of its own run against the champion (`iteration-N-NAME-champion`, the command in [`league-evidence`](../league-evidence/SKILL.md)), played after its last revision. Its points against the bot whose code it started from, which this run's table shows, decide nothing.
+- **A fix, a graft or a simplification with a third of the points or fewer** (20 of 60 or fewer) is **rejected** here, so its other games aren't played. Above a third the head-to-head decides nothing: 23 to 37 of 60 is what two equal bots give.
+- **A founder with under a third of the points against the champion** (under 20 of 60), or **an exploiter with under three fifths** (under 36), is **rejected** here. Read them in the pair table of its own run against the champion (`iteration-N-NAME-champion`, the command in [`league-evidence`](../league-evidence/SKILL.md)), played after its last revision. Its points against the bot whose code it started from, which this run's table shows, decide nothing.
 
 Record a rejected candidate's points, and in the ledger "not played" for its other numbers; delete it with `uv run league delete NAME`.
 
@@ -214,7 +214,7 @@ Select from a round robin of **the whole population with the candidates that pas
 uv run league tournament --add CANDIDATES --run-id iteration-N-select
 ```
 
-The cache already holds every pair without a candidate, so it plays little more than the gate did. Its table **Each listed bot against its parent** has each candidate's games against the others next to its parent's: how many it did **better** in, how many **worse**, how many **the same**. Read it as [`league-evidence`](../league-evidence/SKILL.md) says: the column **Margin, noise** has better minus worse and the root of their sum; **confirmed** is a margin of at least the noise and at least 3, **clear** of at least twice the noise and at least 6, **clearly worse** of less than minus the noise. The table judges nothing itself. Each kind has its rule there. In short:
+The cache already holds every pair without a candidate, so it plays little more than the gate did. Its table **Each listed bot against its parent** has each candidate's games against the others next to its parent's: how many it did **better** in, how many **worse**, how many **the same** (a drawn game is better than its parent's drawn game when the candidate led in production over the game and its parent didn't). Read it as [`league-evidence`](../league-evidence/SKILL.md) says: **Margin** is better minus worse, and **By luck** the chance that a change which does nothing gives such a margin, a map's games counted as one. **Confirmed** is a margin above 0 with by luck at 20% or less, **clear** with by luck at 5% or less, **clearly worse** a margin below 0 with by luck at 20% or less. The table judges nothing itself. Each kind has its rule there. In short:
 
 - **A fix or a graft** goes on to the holdout maps unless it is worse than its parent on the training maps (a margin below 0), or has over three points fewer than its parent against the references (the sparring bots and the outside opponents, from the pair table).
 - **A simplification** goes on unless it is clearly worse, or its `main.go` is not shorter than its parent's.
@@ -226,8 +226,8 @@ Then, for the fixes, grafts and simplifications that went on only, play the **ho
 uv run league tournament --maps holdout --add CANDIDATES --run-id iteration-N-select-holdout
 ```
 
-- **A fix or a graft is promoted** when it is confirmed on the holdout maps and clear on both sets together (add the two runs' better games, and their worse).
-- **A simplification is promoted** when it is not clearly worse on the holdout maps either.
+- **A fix or a graft is promoted** when it is confirmed on the holdout maps and clear on all maps together, which is one more run from the cache: `uv run league tournament --maps all --add CANDIDATES --run-id iteration-N-select-all`. Its table is over both sets, and it lists no games.
+- **A simplification is promoted** when it is not clearly worse on all maps together either.
 - **A fix or a graft that was better on both sets** (a margin above 0) **and short of the rule** is rejected as **unresolved**: the ledger says so with its numbers, and its idea may be written again when the map sets hold five more maps.
 
 Read only the standings and the tables of that run; it lists no games. **Never digest a holdout game, and never change a candidate after seeing its holdout numbers:** a candidate that fails the holdout is rejected, and its idea may come back next iteration in another form, measured again from the start.
@@ -319,7 +319,7 @@ Say what the numbers say. "No candidate was promoted; the champion is unchanged 
 
 - **Nothing promoted in the main line twice in a row:** the line is stalled, and [`league-ideas`](../league-ideas/SKILL.md) says what its place in the slate may hold.
 - **The champion wins everything, or loses only to its own line:** the opponents are too weak or too like it. The slate's exploiter is the answer: read the champion's logs for what it never does (never defends, never upgrades speed, never attacks before turn 40) and write the bot that punishes that.
-- **A margin of twice the noise on the training maps alone, and not confirmed on the holdout maps, more than once:** the bots are learning the maps. Prefer ideas stated without map geometry, and say so in the report: a person can add more training maps than an iteration's one.
+- **Clear on the training maps alone, and not confirmed on the holdout maps, more than once:** the bots are learning the maps. Prefer ideas stated without map geometry, and say so in the report: a person can add more training maps than an iteration's one.
 - **A real game arrives** (someone gives you a demo saved from a lobby's game): digest it before the next iteration and add what it shows to **Lessons so far**. A new default map in it goes into `maps/train/` as a map file built from its first board, before step 1.
 - **Two bots that trade the top place every iteration** are a cycle, not progress: the measure of progress is the champion's points against the references and the fixed opponents, which don't move.
 

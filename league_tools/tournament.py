@@ -5,17 +5,17 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
-import math
 import os
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-from . import engine, gobots, ratings
+from . import digest, engine, gobots, ratings
 from .opponents import load_opponents
 from .paths import BOTS, CACHE, LEAGUE, MAPS, RUNS
 from .roster import ANCHOR, load_bot
@@ -384,25 +384,95 @@ def _endings(results: list[dict[str, Any]]) -> dict[str, dict[tuple[str, str, in
     return endings
 
 
-def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, float]:
+def by_luck(margins: Iterable[int]) -> float:
+    """The chance that a change which does nothing gives a margin as far from 0 as the one played.
+
+    ``margins`` are a bot's better games minus its worse ones on each map. A
+    map's games move together (the same castles, the same race for them), so
+    the map is what was drawn, not the game. Had the change done nothing, each
+    map's margin would as likely have come out with the other sign: of all the
+    ways to choose the signs, this is the share whose total is at least as far
+    from 0, on the same side, as the total played. It is an exact test, with no
+    assumption that games are independent, and it can't be small on few maps:
+    with every changed map in the bot's favour it is one in two for one map and
+    one in 64 for six.
+
+    Returns:
+        The share, from above 0 to 1; 1 when the total is 0.
+    """
+    played = list(margins)
+    sizes = [abs(margin) for margin in played if margin]
+    total = sum(played)
+    if total == 0:
+        return 1.0
+    ways: dict[int, int] = {0: 1}
+    for size in sizes:
+        spread: dict[int, int] = defaultdict(int)
+        for reached, count in ways.items():
+            spread[reached + size] += count
+            spread[reached - size] += count
+        ways = spread
+    return sum(count for reached, count in ways.items() if reached >= abs(total)) / 2 ** len(sizes)
+
+
+@functools.cache
+def _draw_lead(demo: str, color: int, other: int) -> int | None:
+    """The production lead of ``color`` over ``other`` in a game's demo, or None when the demo can't be read."""
+    try:
+        return digest.production_lead(digest.load_demo(Path(demo)), color, other)
+    except OSError, ValueError, KeyError:
+        return None
+
+
+def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, Any]:
     """A bot's games next to its parent's against the same opponent, on the same map, from the same seat.
 
     Bots are deterministic, so a game the bot's change never touched ends as
     its parent's did and says nothing about the change. The games that ended
     otherwise are the evidence: how many the bot did better in, how many worse,
-    and the points it gained in all of them. The games of the two against each
-    other are left out: the head-to-head counts those.
+    the points it gained in all of them, and ``luck``, the chance that a change
+    which does nothing gives such a margin (``by_luck``, over ``maps``, each
+    map's better minus worse). The games of the two against each other are
+    left out: the head-to-head counts those.
+
+    A game is better when it ended with more points, and, when both drew,
+    when the bot had the production lead over the game and its parent didn't,
+    or the parent was behind and the bot wasn't (``digest.production_lead``):
+    a draw is not the end of what a game says. ``drawn_better`` and
+    ``drawn_worse`` count those among ``better`` and ``worse``; ``unread``
+    counts the drawn games whose demo couldn't be read, which count as level.
     """
-    endings = _endings(results)
-    mine, theirs = endings.get(name, {}), endings.get(parent, {})
-    count = {"better": 0, "worse": 0, "same": 0, "net": 0.0}
-    for case, ending in mine.items():
-        if case[0] in (name, parent) or case not in theirs:
+    games: dict[str, dict[tuple[str, str, int], tuple[dict[str, Any], int]]] = {name: {}, parent: {}}
+    for result in results:
+        if "error" in result:
             continue
-        gain = ending[0] - theirs[case][0]
-        count["better" if gain > 0 else "worse" if gain < 0 else "same"] += 1
+        for seat, player in enumerate(result["players"]):
+            if player in games:
+                games[player][(result["players"][1 - seat], result["map"], seat)] = (result, seat)
+    count: dict[str, Any] = {"better": 0, "worse": 0, "same": 0, "net": 0.0}
+    count |= {"drawn_better": 0, "drawn_worse": 0, "unread": 0}
+    maps: dict[str, int] = defaultdict(int)
+
+    def lead(result: dict[str, Any], seat: int) -> int:
+        colors = [end.get("team_color") for end in result["seats"]]
+        found = _draw_lead(str(result.get("demo")), colors[seat], colors[1 - seat])
+        count["unread"] += found is None
+        return found or 0
+
+    for case, (mine, seat) in games[name].items():
+        if case[0] in (name, parent) or case not in games[parent]:
+            continue
+        theirs, their_seat = games[parent][case]
+        gain = points(mine, name) - points(theirs, parent)
         count["net"] += gain
-    return count
+        drawn = gain == 0 and mine["winner"] is None
+        if drawn:
+            gain = lead(mine, seat) - lead(theirs, their_seat)
+        count["better" if gain > 0 else "worse" if gain < 0 else "same"] += 1
+        if drawn and gain:
+            count["drawn_better" if gain > 0 else "drawn_worse"] += 1
+        maps[case[1]] += (gain > 0) - (gain < 0)
+    return count | {"maps": dict(sorted(maps.items())), "luck": by_luck(list(maps.values()))}
 
 
 def alike(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -465,14 +535,20 @@ def game_line(result: dict[str, Any]) -> str:
     )
 
 
+def chance(share: float) -> str:
+    """A chance as the tables print it: a percentage, and never a 0 that isn't one."""
+    return "under 0.1%" if share < 0.001 else f"{share:.1%}"
+
+
 def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: bool) -> list[str]:
     """A table of each listed bot next to its parent: the numbers the selection reads.
 
     The head-to-head points, and from a whole round robin the two ratings and
-    the bot's games against the others next to its parent's, with their margin
-    (better minus worse) and noise (the root of better plus worse). The table
-    judges nothing: the ``league-evidence`` skill says what each number may
-    decide for each kind of candidate.
+    the bot's games against the others next to its parent's (``paired``):
+    their margin (better minus worse), the maps the bot did better and worse
+    on, and the chance of such a margin by luck, a map's games counted as one
+    (``by_luck``). The table judges nothing: the ``league-evidence`` skill
+    says what each number may decide for each kind of candidate.
 
     Args:
         summary: What ``summarize`` returned, with ``paired`` when the round robin was whole.
@@ -491,9 +567,14 @@ def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: boo
             cells.append(f"{rating[name]} ({rating[parent]})")
         if name in changed:
             better, worse, same = changed[name]["better"], changed[name]["worse"], changed[name]["same"]
+            margins = changed[name]["maps"].values()
             cells.append(f"{better} better, {worse} worse, {same} the same")
-            cells.append(f"{better - worse:+d}, {math.sqrt(better + worse):.1f}")
-            cells.append(f"{changed[name]['net']:+g}")
+            cells.append(f"{changed[name]['drawn_better']} better, {changed[name]['drawn_worse']} worse")
+            cells.append(f"{better - worse:+d}")
+            cells.append(
+                f"{sum(margin > 0 for margin in margins)} better, {sum(margin < 0 for margin in margins)} worse"
+            )
+            cells.append(chance(changed[name]["luck"]))
         rows.append("| " + " | ".join(cells) + " |")
     if not rows:
         return []
@@ -501,7 +582,13 @@ def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: boo
     if whole:
         header.append("Rating (parent's)")
     if changed:
-        header += ["Its games against the others, next to the parent's", "Margin, noise", "Points gained in them"]
+        header += [
+            "Its games against the others, next to the parent's",
+            "Of them, draws told apart by production",
+            "Margin",
+            "Maps",
+            "By luck",
+        ]
     lines = ["", "Each listed bot against its parent" + ("" if whole else " (ratings don't count here)") + ":", ""]
     lines += ["| " + " | ".join(header) + " |", "|---" * len(header) + "|", *rows]
     return lines
@@ -641,6 +728,12 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
         pairs = alike(results) if whole else []
         if whole:
             summary["paired"] = {name: paired(results, name, parent) for name, parent in parents.items()}
+            unread = sum(compared["unread"] for compared in summary["paired"].values())
+            if unread:
+                print(
+                    f"league: {unread} drawn games had no demo to read: next to the parent's they count as level",
+                    file=sys.stderr,
+                )
             summary["alike"] = pairs
         parent_table = against_parents(summary, parents, whole=whole)
         parent_table += alike_table(pairs)

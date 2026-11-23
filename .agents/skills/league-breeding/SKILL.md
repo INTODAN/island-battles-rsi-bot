@@ -16,9 +16,12 @@ The rules are in three skills, which an iteration follows: [`league-population`]
 | Copies | 12 pairs of bots ended over half of their games the same to the soldier | One of two bots that play alike stays |
 | A mirror for a measure | 71% of the champion's games, and 132.5 of the 141.5 points it lost, were against its own line and the sparring bot it began from; 88% of those games ran to the turn limit | Exploiters; the games to study; points against the references |
 | Founders judged at birth | 10 of 14 deleted in their first iteration, three of them rated above their parent | Admission, and protection while a line improves |
-| Selection inside the noise | 48 of 119 head-to-heads within a point of half; 4 of the 12 parent-to-child steps still in the league show no gain | The paired table and its margins |
+| Selection inside the noise | 48 of 119 head-to-heads within a point of half; 4 of the 12 parent-to-child steps still in the league show no gain | The paired table |
+| Games are not separate draws | `harrier_feedkeep` did better than its parent in 88 games and worse in 60, one chance in a hundred if games were independent. They came from 13 maps, of which five went the other way: one chance in four | The chance by luck, a map's games counted as one |
+| A draw says who led | Of 2,429 drawn games between league bots, one side out-produced the other over the game in 936, and it was the higher-rated bot in 85% of them; the winner of a game decided at the turn limit is in 79%. The side with more soldiers at the end was the higher-rated in 46% | Two drawn games are told apart by the production lead |
 | A worn holdout | Its maps were asked about 40 candidates | Two new holdout maps an iteration; three tries an idea |
-| What the field can resolve | A change that alters a fifth of its parent's games and wins six in ten of those needs about 500 games next to the parent's to be clear. Without its copies the field gives about 400 on 34 maps, and the champion's own step over its parent (19 better and 16 worse on training, 14 and 6 on holdout) is no longer clear | A training map an iteration as well; unresolved is not refuted; places that change more |
+| What the field can resolve | On 54 maps, with a map's games counted as one, four of the thirteen past promotions are beyond doubt and none of the other nine is below one chance in fourteen | Twenty maps added at once, and three every iteration; unresolved is not refuted; places that change more |
+| Chosen on the maps it is measured on | `harrier_feedkeep` did better than its parent by 69 games on the 34 maps it was chosen on, and worse by 40 on twenty maps added afterwards | New maps every iteration; confirmed on holdout, clear on all |
 | Small steps shrink | A promotion gained about 90 rating points in iterations 1 to 10, about 25 in 26 to 35 | Places that explore; the stalled line |
 | The league's order is not the world's | Six candidates ranked by wins against a player's bot came out nearly the reverse of their league order (iteration 23) | The references guard |
 
@@ -65,15 +68,17 @@ The rules are in three skills, which an iteration follows: [`league-population`]
 | Finding | Source | Here |
 |---|---|---|
 | A patch passes a test with stated error rates on tens of thousands of games, then a second, independent one. Code removal passes a looser test: not worse. An author gets four or five tries. The measured gain of a patch that passed is biased upward. | [Fishtest](https://official-stockfish.github.io/docs/fishtest-wiki/Creating-my-first-test.html), [its mathematics](https://official-stockfish.github.io/docs/fishtest-wiki/Fishtest-Mathematics.html) and [FAQ](https://official-stockfish.github.io/docs/fishtest-wiki/Fishtest-FAQ.html) | Clear and confirmed; simplifications; three tries |
-| The chance that one player is the better is read from wins minus losses over the root of their sum; draws don't count. | [Match statistics](https://www.chessprogramming.org/Match_Statistics) | The margin and the noise, on the games that changed, with a floor of 3 and 6 games so that a handful can't decide |
-| Two systems compared on the same cases need far fewer cases; cases that come in clusters widen the error up to threefold. | [Adding Error Bars to Evals, 2024](https://arxiv.org/abs/2411.00640) | The paired table; clear, not confirmed, to promote |
-| Openings that favour one side, each played from both, cut draws from 91.6% to 47.0%; engine testing prefers them to balanced ones. | [Unbalanced openings, 2024](https://www.sp-cc.de/uho_2024.htm) | Not yet: see below |
+| The chance that one player is the better is read from wins minus losses over the root of their sum; draws don't count. Games from one opening are paired, and the pair is the unit. | [Match statistics](https://www.chessprogramming.org/Match_Statistics); [Fishtest mathematics](https://official-stockfish.github.io/docs/fishtest-wiki/Fishtest-Mathematics.html) | The margin of the games that changed, and its chance by luck with the map as the unit |
+| Two systems compared on the same cases need far fewer cases; cases that come in clusters widen the error up to threefold. | [Adding Error Bars to Evals, 2024](https://arxiv.org/abs/2411.00640) | The paired table; an exact test over maps, which here widened the error about threefold too |
+| Openings that favour one side, each played from both, cut draws from 91.6% to 47.0%; engine testing prefers them to balanced ones. | [Unbalanced openings, 2024](https://www.sp-cc.de/uho_2024.htm) | Tried and not taken: see below |
 | A holdout asked adaptively stops telling the truth; it lasts when it answers only above a margin, and fresh data needs neither. | [The reusable holdout, 2015](https://arxiv.org/abs/1506.02629); [The Ladder, 2015](https://arxiv.org/abs/1502.04585) | Confirmed on holdout by a margin; two new holdout maps an iteration |
 | Choosing the best of several noisy candidates overstates it by about as much as candidates differ. | [Cawley and Talbot, 2010](https://www.jmlr.org/papers/v11/cawley10a.html) | The holdout as the second measurement |
 | Agents trained on generated levels needed about 10,000 of them before the gap to unseen levels closed. | [Procgen, 2020](https://arxiv.org/abs/1912.01588) | Three maps added every iteration |
 
 ## What was left out
 
+- **Maps that are not mirrors.** Measured after iteration 37, on eight seeds, each as a mirror and with one castle of a neutral pair, or of every pair, moved half a step and made one step cheaper or dearer. Draws fell from 14% of games to 9% or 10%, and games at the turn limit from 46% to about 40%. But the seat then decided a third of the pairs (each bot winning from the better seat) where it decided a tenth on mirrors, and the known steps showed less on them, not more. An early castle that costs a little less is too much of an edge in this game. Moving castles without changing their price left the seats even and the draws as they were. The option was not kept. With the copies gone, one bot comes out ahead in nine pairs of ten on mirrors.
+- **A longer game.** More turns would let some drawn games end, at the cost of every game at the limit taking longer, and the frozen ones would stay frozen. The production lead reads the same games without playing them again.
 - **A grid of behaviours** (MAP-Elites proper). It needs behaviour measured from games, which no tool does yet, and the league holds ten to twenty bots: lines are its niches.
 - **An equilibrium rating** beside the fitted one. It jumps with small changes and needs a tool. Removing copies gives the part that mattered.
 - **A sequential test** that plays until the result is sure. Bots are deterministic, so the sample is the maps: adding maps is the league's way of playing more.
@@ -84,8 +89,7 @@ The rules are in three skills, which an iteration follows: [`league-population`]
 
 Each is a change to `league_tools/`, made between iterations and measured with a full tournament, or an issue in the game's repository.
 
-- **An interval that counts a map's games as one.** The margins treat games as independent. A bootstrap over maps would say how far that is off.
-- **Maps that are not mirrors.** Every generated map is the same from both sides, and mirrored bots freeze on it. A map that favours a side, played from both, would decide more games.
+- **The production lead from the runner.** The league reads it from each drawn game's demo. The runner could report it with the result, and for decided games too.
 - **Behaviour from the demos** (first attack, share of soldiers walking, production by turn 50), to say that two bots differ in kind, not only in results.
 - **Opponents nobody studies**: a held-out player, as the holdout maps are held-out maps.
 - **Rotating the holdout maps**: the set grows by two an iteration, and a person moves the oldest to training when it is large.

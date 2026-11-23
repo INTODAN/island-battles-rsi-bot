@@ -74,7 +74,7 @@ What keeps the loop honest:
 - **Holdout maps** catch a bot that learned the training maps instead of the game. Their games are never read, and every iteration adds two, with one training map.
 - **The default bots, the retired and sparring bots and the outside opponents stay in every tournament**, so a new bot must still beat the old ones, and a strategy that only beats the current champion doesn't win.
 - **One idea per candidate**, so a result says something about the idea.
-- **A result has to be clear.** Bots are deterministic, so a candidate is compared with its parent game by game against the same opponents, and promoted on the games that changed, not on a rating a few points higher.
+- **A result has to be clear.** Bots are deterministic, so a candidate is compared with its parent game by game against the same opponents, and promoted on the games that changed, not on a rating a few points higher. A map's games move together, so they are counted as one draw of the map, not as so many games. And a drawn game still says who led: two draws are told apart by who out-produced the other over the game.
 - **The population stays varied.** A line is a strategy and the bots descended from its founder. Beside the champion's line the league keeps up to two side lines, each worked every iteration and kept for as long as it still improves, however far below the champion; and of two bots that play alike only one stays, so that no bot is counted twice.
 
 The method, its reasons and its sources are the [league-breeding skill](.agents/skills/league-breeding/SKILL.md).

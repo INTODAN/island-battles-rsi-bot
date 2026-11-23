@@ -8,8 +8,8 @@ A line is a founder and the bots descended from it: one strategy. The main line 
 
 | Line | Its strategy | Head | Other active bots | State |
 |---|---|---|---|---|
-| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `feedkeep_speedhelp` | `harrier_feedkeep`, `harrier_front`, `harrier_attackers`, `growtrickle_feedkeep`, `stallfeed_growtrickle`, `sameturn_endreserve`, `endreserve_stallfeed` | main |
-| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | `safe_hold` (retired) | none | closed in iteration 25, when the `ori` founders passed it. It takes 11 of 38 points from the champion, the most of any player outside the main line. |
+| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `speedhelp_landlate` | `speedhelp_fullfeed`, `harrier_feedkeep`, `harrier_front`, `harrier_attackers`, `growtrickle_feedkeep`, `stallfeed_growtrickle`, `sameturn_endreserve`, `endreserve_stallfeed` | main |
+| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots | none | closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. |
 
 ## Lessons so far
 
@@ -2668,7 +2668,7 @@ The second half: 5.0 minutes on its clock, 09:44:39 to 09:49:37. Total: about 28
 
 ## Setup after iteration 38: how the league breeds
 
-**Date:** 2026-11-23. A change of the rules of the loop, made between iterations after a review of the ledger and of the population's games, with a search of the research on loops like this one. No bot changed, and no iteration ran. The review was measured on the population of iteration 36, before iteration 37's champion and before the bots were Go; the Go ports play the same games, so its numbers stand for the bots it names. **What the next iteration finds** (not done here: only an iteration changes `bots/`). Measured on the population of iteration 37, sixteen bots, 6,384 matches on the training maps, all from the cache. Thirteen pairs play alike, and by the rule, taken until no pair is left, nine bots leave. In the first pass: `ori_hold_exact`, `exact_sameturn`, `endreserve_stallfeed`, `harrier_front`, `ori_hold`, `exact_stallfeed`, `stallfeed_growtrickle`, and `harrier_feedkeep`, which ends half of its games as the champion promoted from it does. With those gone, `sameturn_endreserve` and `sameturn_stallfeed` end 55% of their games the same, and `sameturn_stallfeed` leaves in the second. That leaves `feedkeep_speedhelp`, `harrier_attackers`, `growtrickle_feedkeep` and `sameturn_endreserve` active, `safe_hold` retired, and the two sparring bots: a round robin of 1,596 matches on the training maps where there were 6,384. The champion's rating in that field is 2023, not 2061, with no bot changed: a rating belongs to its table. Its weakest pairing is `sameturn_endreserve`, 21 of 38. It then loses 68.5 points, 47.5 of them to its own line, in a third of its games; before, 147.5 of 162.5 to its line and `ori_mimic`, in 72% of them. The iteration decides on its own measurement, not on this list. With no side line, and no player outside the main line taking a third of the points from the champion (`safe_hold` takes 11 of 38, `ori_mimic` 6), its slate of three is an exploiter, a founder and one place for the main line.
+**Date:** 2026-11-23. A change of the rules of the loop, made between iterations after a review of the ledger and of the population's games, with a search of the research on loops like this one. No bot changed, and no iteration ran. The review was measured on the population of iteration 36, before iteration 37's champion and before the bots were Go; the Go ports play the same games, so its numbers stand for the bots it names. **What the next iteration finds** (not done here: only an iteration changes `bots/`). Measured on the population of iteration 37, sixteen bots, 6,384 matches on the training maps, all from the cache. (Iteration 38 merged before this entry did, with two promotions and without `safe_hold`: the entry after this one has the list for its population.) Thirteen pairs play alike, and by the rule, taken until no pair is left, nine bots leave. In the first pass: `ori_hold_exact`, `exact_sameturn`, `endreserve_stallfeed`, `harrier_front`, `ori_hold`, `exact_stallfeed`, `stallfeed_growtrickle`, and `harrier_feedkeep`, which ends half of its games as the champion promoted from it does. With those gone, `sameturn_endreserve` and `sameturn_stallfeed` end 55% of their games the same, and `sameturn_stallfeed` leaves in the second. That leaves `feedkeep_speedhelp`, `harrier_attackers`, `growtrickle_feedkeep` and `sameturn_endreserve` active, `safe_hold` retired, and the two sparring bots: a round robin of 1,596 matches on the training maps where there were 6,384. The champion's rating in that field is 2023, not 2061, with no bot changed: a rating belongs to its table. Its weakest pairing is `sameturn_endreserve`, 21 of 38. It then loses 68.5 points, 47.5 of them to its own line, in a third of its games; before, 147.5 of 162.5 to its line and `ori_mimic`, in 72% of them. The iteration decides on its own measurement, not on this list. With no side line, and no player outside the main line taking a third of the points from the champion (`safe_hold` takes 11 of 38, `ori_mimic` 6), its slate of three is an exploiter, a founder and one place for the main line.
 
 **What the smaller field can tell.** Counted against the six bots and three default bots that would have stayed in iteration 36's population, the twelve past steps come out as six promoted (`harrier_front` 40 and 26 on training with 26 and 15 on holdout, `sameturn_endreserve`, `stallfeed_growtrickle`, `exact_sameturn`, `exact_stallfeed`, `ori_hold`) and six not: the four above, `growtrickle_feedkeep` (21 and 25 on training, 24 and 4 on holdout), and `harrier_feedkeep` itself (19 and 16, 14 and 6: confirmed on holdout, a margin of 11 together against the 14.8 that clear asks, so unresolved). The copies had made its step look surer than the games against distinct opponents show. A change of that size needs about 500 games next to the parent's to be clear, and the cleared field with 34 maps gives about 400: that is why every iteration now adds three maps, and why places of the slate go to candidates that change more.
 
@@ -2677,3 +2677,113 @@ The second half: 5.0 minutes on its clock, 09:44:39 to 09:49:37. Total: about 28
 **Not done, not verified.** No iteration has run under these rules; iteration 38 was running under the old ones while this was written. The margins were checked on the twelve past promotions above, not on new candidates; whether they promote more of what is real is for the next iterations to show, by the numbers above taken again. No outside opponent was in this checkout. The margins treat games as independent, which they are not: an interval that counts a map's games as one is in `league-breeding`'s list of what the tools don't measure yet, with maps that are not mirrors, behaviour read from the demos, and opponents nobody studies.
 
 **Ideas not tried:** iteration 36's, as it left them: the level frozen games inside the line; `circle`; `claw`'s middle castle. The first is a game inside the line, of which at most half of the games studied may be. Outside the line, `safe_hold` takes both games from the champion on `claw`, `delta` and `loch`.
+
+## Setup after iteration 38: a map counted as one, draws told apart, and twenty more maps
+
+**Date:** 2026-11-23. A second change of the league's setup after the breeding rules above, made between iterations and measured with tournaments on both sets of maps. No bot changed, and no iteration ran. It was measured on the population of iteration 37; iteration 38 merged meanwhile, and the standings and **What the next iteration finds** below are of its population. It replaces the margin and noise of the entry above with a chance that counts a map's games as one, reads who led in a drawn game, and adds twenty maps. A fourth thing was built, measured and not kept: maps that are not mirrors.
+
+**What changed:**
+
+- **By luck, a map's games counted as one.** The table of a bot against its parent no longer prints a noise. It prints the margin (better minus worse), the maps the bot did better and worse on, and **By luck**: the chance that a change which does nothing gives such a margin when each map's margin could as well have had the other sign. It is exact, and it can't be small on few maps. **Confirmed** is now a margin above 0 with by luck at 20% or less, **clear** at 5% or less, **clearly worse** a margin below 0 at 20% or less. A fix or a graft is promoted when it is not worse on the training maps, no more than three points below its parent against the references, confirmed on the holdout maps and clear on all maps together, which is one more run: `--maps all --add CANDIDATES`. Everything else in the rules above stands.
+- **Draws told apart.** When a bot and its parent both drew against the same opponent, on the same map, from the same seat, the bot did better if it out-produced its opponent over the game and its parent didn't, or its parent was out-produced and it wasn't. The table says how many of the better and worse games were such draws. The tool reads it from the demos; ratings and points still count a draw as half.
+- **Twenty maps.** Training, seeds 370001 to 370010: `bayou`, `breakwater`, `causeway`, `estuary`, `fjord`, `headland`, `isthmus`, `lowtide`, `moraine`, `shingle`. Holdout, seeds 370011 to 370020: `barrens`, `floe`, `glacis`, `hollows`, `kelpbed`, `ledge`, `mudflat`, `narrows`, `outcrop`, `saltpan`. The sets are 29 and 25. Nobody has looked at a holdout map's file or games.
+- **`league new-map` takes a name of lower-case letters and digits only**, which is what the check of an iteration's changes lets a new map be named: a name with a hyphen was made and then refused at the end of the iteration.
+
+**Measured.**
+
+- **Games are not separate draws.** On the 19 training maps of iteration 37, `harrier_feedkeep` did better than its parent in 88 games against the others and worse in 60. As 148 separate games that is one chance in a hundred. They came from 13 maps, of which five went the other way: one chance in four. Over all 34 maps, counting games gave the past promotions two to three times the certainty that counting maps does.
+- **A draw says who led.** Of 2,429 drawn games between league bots on the 34 maps, one side out-produced the other over the game in 936. That side was the higher-rated bot in 85% of them; the winner of a game decided at the turn limit is in 79%. The side with more soldiers at the end was the higher-rated in 46%: the bot that never strikes ends with the most. Told apart this way, the large past steps grew (`harrier_front` from a margin of 106 games over the 34 maps to 152, `sameturn_endreserve` from 141 to 208) and the ones that showed nothing still showed nothing (`harrier_attackers` 6 and 6, `feedkeep_speedhelp` 10 and 8).
+- **Maps that are not mirrors: not kept.** Eight seeds, each as a mirror and in four uneven forms, the whole population on each (13,440 matches). With a castle of a neutral pair moved half a step and made one step cheaper or dearer, draws fell and games at the turn limit fell, but the seat then decided a third of the pairs of games, and the past promotions showed less, not more:
+
+| Kind of map | Drawn | At the limit | Pairs with one bot ahead | Pairs split by seat | The 13 past steps: margin in the known direction, of games changed |
+|---|---|---|---|---|---|
+| Mirror | 14% | 46% | 76% | 11% | +107 of 511 |
+| One pair moved and repriced | 9% | 36% | 61% | 33% | +68 of 388 |
+| Every pair moved and repriced, by chance | 10% | 39% | 60% | 33% | +63 of 281 |
+| Every pair moved and repriced in team 1's favour | 10% | 41% | 57% | 38% | +37 of 373 |
+| Every pair moved, none repriced | 13% | 53% | 67% | 23% | +148 of 494 |
+
+  A neutral castle that costs one step less is too much of an edge in this game. Moving castles without changing their price kept the seats even and the draws as they were; its +148 against the mirrors' +107 is inside what eight maps vary by (seed by seed the mirrors gave from -20 to +42). The generator's option and its code were removed. With the copies gone, one bot comes out ahead in 89% of the pairs on mirrors.
+- **The twenty maps.** `setup-38-train`, 9,744 matches of which 3,360 were played (146 s, 23 a second on 12 at once), and `setup-38-holdout`, 8,400 of which 3,360 were played (139 s), both exit 0 with `--strict`, no failed turn. The matches on the old maps are the cached ones.
+- **The past promotions on 54 maps.** Each of the thirteen parent-to-child steps in the population, in the whole field: better and worse games (of them draws told apart), the margin, and by luck.
+
+| Child | Training (29 maps) | Holdout (25 maps) | All 54 maps | By the rule |
+|---|---|---|---|---|
+| `feedkeep_speedhelp` | 91, 77 (2, 2 draws): +14, 33.1% | 89, 50 (0, 0 draws): +39, 10.8% | +53, 10.6% | unresolved |
+| `harrier_feedkeep` | 125, 111 (6, 0 draws): +14, 39.2% | 104, 89 (4, 2 draws): +15, 38.0% | +29, 33.2% | unresolved |
+| `harrier_attackers` | 20, 13 (0, 0 draws): +7, 20.9% | 6, 2 (0, 0 draws): +4, 15.6% | +11, 9.9% | unresolved |
+| `harrier_front` | 212, 72 (28, 2 draws): +140, 0.2% | 162, 80 (54, 4 draws): +82, 0.8% | +222, under 0.1% | promoted |
+| `growtrickle_feedkeep` | 123, 100 (10, 4 draws): +23, 32.3% | 144, 75 (4, 2 draws): +69, 8.6% | +92, 9.0% | unresolved |
+| `stallfeed_growtrickle` | 50, 17 (0, 0 draws): +33, under 0.1% | 36, 11 (0, 0 draws): +25, 0.2% | +58, under 0.1% | promoted |
+| `endreserve_stallfeed` | 47, 38 (3, 2 draws): +9, 38.2% | 16, 6 (0, 0 draws): +10, 9.4% | +19, 24.7% | unresolved |
+| `sameturn_endreserve` | 242, 78 (42, 0 draws): +164, 0.3% | 228, 49 (55, 0 draws): +179, 0.2% | +343, under 0.1% | promoted |
+| `sameturn_stallfeed` | 41, 27 (6, 6 draws): +14, 20.7% | 12, 13 (0, 0 draws): -1, 50.0% | +13, 25.0% | rejected: short of the rule |
+| `exact_sameturn` | 88, 11 (0, 0 draws): +77, 0.3% | 93, 18 (4, 0 draws): +75, 0.5% | +152, under 0.1% | promoted |
+| `exact_stallfeed` | 31, 13 (11, 6 draws): +18, 15.6% | 7, 1 (0, 0 draws): +6, 25.0% | +24, 7.4% | unresolved |
+| `ori_hold_exact` | 64, 66 (6, 2 draws): -2, 48.6% | 66, 76 (12, 18 draws): -10, 39.4% | -12, 39.8% | rejected: worse on training |
+| `ori_hold` | 35, 21 (8, 0 draws): +14, 29.5% | 21, 8 (0, 0 draws): +13, 10.2% | +27, 10.8% | unresolved |
+
+  Four pass, each at under 0.1% over all maps; none of the other nine is below 7%.
+- **What the twenty new maps say alone.** No bot was ever chosen on them, so they are the first measurement of these steps that selection hasn't touched. `sameturn_endreserve` (160 better, 25 worse), `stallfeed_growtrickle` (32, 9), `harrier_front` (133, 63), `exact_sameturn` (54, 18) and `feedkeep_speedhelp` (85, 40) hold on them, each at under 4% by luck. `harrier_feedkeep`, 165 better and 96 worse on the 34 maps it was chosen on, is 64 better and 104 worse on the new twenty; `ori_hold`, 43 and 12 on the old maps, is 13 and 17. A bot chosen for scoring well on some maps scored partly by luck on them.
+
+- **Iteration 38's promotions**, in its own field on the 54 maps. `speedhelp_landlate` did better than its parent in 163 games on the training maps and worse in 28, and 144 and 50 on the holdout maps: +229 on all maps at under 0.1%, promoted by this rule as by the old one. `speedhelp_fullfeed` did better in 98 and worse in 101 on the training maps: worse there, where this rule stops, with +43 on holdout at 13.9%. And `feedkeep_speedhelp`'s step over its parent is +80 on all maps at 4.6% in this field, where it was +53 at 10.6% in iteration 37's: a chance near the line moves with the field.
+
+**The standings on the new sets** (the population of iteration 38, `ori_mimic` at 1800; of the new bots' matches 2,146 and 1,850 were played, at 22 and 21 a second).
+
+Training maps (`setup-39-train`, 29 maps, 10,846 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| speedhelp_landlate | 2194 | 0.815 | 820 | 157 | 125 |
+| feedkeep_speedhelp | 2118 | 0.744 | 696 | 248 | 158 |
+| speedhelp_fullfeed | 2117 | 0.744 | 705 | 229 | 168 |
+| harrier_feedkeep | 2085 | 0.711 | 655 | 256 | 191 |
+| harrier_attackers | 2065 | 0.689 | 641 | 237 | 224 |
+| harrier_front | 2064 | 0.688 | 638 | 240 | 224 |
+| growtrickle_feedkeep | 2012 | 0.631 | 562 | 266 | 274 |
+| stallfeed_growtrickle | 1999 | 0.616 | 553 | 251 | 298 |
+| endreserve_stallfeed | 1988 | 0.604 | 524 | 283 | 295 |
+| sameturn_endreserve | 1985 | 0.600 | 519 | 285 | 298 |
+| sameturn_stallfeed | 1903 | 0.506 | 381 | 354 | 367 |
+| exact_sameturn | 1894 | 0.497 | 379 | 337 | 386 |
+| exact_stallfeed | 1831 | 0.428 | 305 | 333 | 464 |
+| ori_hold_exact | 1817 | 0.414 | 297 | 318 | 487 |
+| ori_mimic | 1800 | 0.396 | 269 | 335 | 498 |
+| ori_hold | 1799 | 0.395 | 266 | 339 | 497 |
+| level1 | 1619 | 0.154 | 0 | 304 | 682 |
+| ori_like | 1595 | 0.227 | 234 | 32 | 836 |
+| level2 | 566 | 0.000 | 0 | 0 | 986 |
+| level3 | 566 | 0.000 | 0 | 0 | 986 |
+
+Holdout maps (`setup-39-holdout`, 25 maps, 9,350 matches, exit 0):
+
+| Player | Rating | Score | W | D | L |
+| --- | --- | --- | --- | --- | --- |
+| speedhelp_landlate | 2122 | 0.786 | 672 | 150 | 128 |
+| speedhelp_fullfeed | 2070 | 0.734 | 628 | 139 | 183 |
+| feedkeep_speedhelp | 2054 | 0.717 | 576 | 211 | 163 |
+| growtrickle_feedkeep | 2028 | 0.688 | 540 | 228 | 182 |
+| harrier_feedkeep | 2017 | 0.676 | 524 | 237 | 189 |
+| harrier_attackers | 1993 | 0.649 | 515 | 203 | 232 |
+| harrier_front | 1991 | 0.646 | 513 | 202 | 235 |
+| stallfeed_growtrickle | 1976 | 0.629 | 477 | 241 | 232 |
+| endreserve_stallfeed | 1961 | 0.612 | 448 | 267 | 235 |
+| sameturn_endreserve | 1952 | 0.602 | 440 | 263 | 247 |
+| sameturn_stallfeed | 1866 | 0.501 | 322 | 307 | 321 |
+| exact_sameturn | 1864 | 0.498 | 320 | 306 | 324 |
+| exact_stallfeed | 1817 | 0.445 | 273 | 299 | 378 |
+| ori_hold_exact | 1810 | 0.437 | 266 | 298 | 386 |
+| ori_hold | 1808 | 0.435 | 262 | 303 | 385 |
+| ori_mimic | 1800 | 0.426 | 259 | 292 | 399 |
+| ori_like | 1578 | 0.232 | 220 | 0 | 730 |
+| level1 | 1576 | 0.141 | 0 | 240 | 610 |
+| level3 | 852 | 0.002 | 2 | 0 | 848 |
+| level2 | 572 | 0.000 | 0 | 0 | 850 |
+
+**Champion:** `speedhelp_landlate`, 2194 on the 29 training maps and 2122 on the 25 holdout maps. On iteration 38's 19 and 15 it was 2125 and 2155: the ratings moved with the maps, with no bot changed.
+
+**What the next iteration finds** (not done here: only an iteration changes `bots/`). On the 29 training maps, by the rule taken until no pair is left, nine of the seventeen bots leave for playing alike another, in three passes: `ori_hold_exact`, `sameturn_stallfeed`, `endreserve_stallfeed`, `ori_hold`, `harrier_front`, `stallfeed_growtrickle` and `exact_stallfeed`; then `feedkeep_speedhelp`, which ends 56% of its games as the champion promoted from it does; then `exact_sameturn`. Every retired bot is among them. That leaves six active bots, all of the main line (`speedhelp_landlate`, `speedhelp_fullfeed`, `harrier_feedkeep`, `harrier_attackers`, `growtrickle_feedkeep`, `sameturn_endreserve`), of which the cap of three in a line retires the three lowest-rated that are not the head, and the two sparring bots: 3,016 matches on the training maps where there are 10,846, and the champion at 2167 in that field. Its weakest pairing is `speedhelp_fullfeed`, 31.5 of 58. **No bot of another line is left**: `safe_hold` was deleted in iteration 38, and of the sparring bots `ori_like` takes 6 of 58 points from the champion and `ori_mimic` 3. The slate of three is an exploiter, a founder and one place for the main line. The iteration decides on its own measurement, not on this list.
+
+**Not done, not verified.** No iteration has run under these rules. The two thresholds, one time in five and one in twenty, are a choice: with them, four of thirteen past promotions pass, and a step the size of the champion's over its parent ends unresolved. Whether that is too strict for the league to move is for the next iterations to show. No outside opponent was in this checkout. A longer game was not tried: more turns would let some drawn games end, and the frozen ones would stay frozen.
+
+**Time.** The steps of this work were not clocked with `league clock`, which is the first thing to do differently: only the tournaments' own lines are measured. They give 19 minutes of playing in all, at 21 to 24 matches a second on 12 at once: two calibration runs of 8,064 matches (333 s and 342 s), the twenty maps (146 s and 139 s), and iteration 38's two new bots on all 54 (99 s and 88 s). The calibration runs were the largest share and one of them was a second pass, played because the first uneven form was too strong and its favoured maps had a bug that a test found while the run was playing: writing the test before the run would have saved six minutes. Reading the demos of drawn games adds about 2 to 5 seconds a listed bot to a run's tables (70 s for fifteen bots on all 54 maps). **To change:** the runner could report each team's production over the game with the result, which is an issue for the game's repository; until then the cost is paid once a run.
