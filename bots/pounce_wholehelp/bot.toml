@@ -1,0 +1,11 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never changed, never counted with the retired bots, never deleted.
+status = "candidate"
+# The bot this one's code was copied from. A founder keeps it too: the ledger's
+# table of the lines says which line a bot belongs to.
+parent = "pounce"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 42
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Fix: help is sent only when what lands in time covers the whole shortfall, and speed is bought for help only then; otherwise the helpers keep their soldiers: haven turn 23, wharf turn 71 (speed bought, castle fell anyway, castle 2 then got 4 a turn), breakwater turns 49 to 61 and cairn turns 42 to 48 (groups of 3 or 4 a turn eaten in clashes)."

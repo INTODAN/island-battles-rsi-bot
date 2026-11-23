@@ -1,0 +1,11 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never changed, never counted with the retired bots, never deleted.
+status = "candidate"
+# The bot this one's code was copied from. A founder keeps it too: the ledger's
+# table of the lines says which line a bot belongs to.
+parent = "fullfeed_unfreeze"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 42
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Fix: a feed leaves the feeding castle what the two strongest enemy castles that could land on it within a few turns of each other could land together, not only the strongest one: cairn turns 41 to 54 (castle 1 fed down to 4 to 6 three times, then 8 and 39 landed together from castles 4 and 5)."

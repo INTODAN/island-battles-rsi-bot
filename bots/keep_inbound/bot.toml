@@ -1,0 +1,11 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never changed, never counted with the retired bots, never deleted.
+status = "candidate"
+# The bot this one's code was copied from. A founder keeps it too: the ledger's
+# table of the lines says which line a bot belongs to.
+parent = "batchfront_keep"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 42
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Fix: keep() counts at an enemy castle the enemy groups walking to it that land within the keep's horizon: gyre turns 63 to 67 (castle 0 sent 20 to the front while 12-soldier batches walked to enemy castle 4, which then took castle 0) and fjord turn 61 (about 100 at castle 9)."
