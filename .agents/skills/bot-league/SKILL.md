@@ -5,7 +5,7 @@ description: "The bot league, which is this repository: Go bots that only AI age
 
 # The bot league
 
-This repository holds a population of Go bots, on the game's Go SDK, that play each other in the game's headless runner, and the tools around them, which are Python. [README.md](../../../README.md) is the design; read it once. To improve the bots, follow the `bot-league-iteration` skill. The runner itself belongs to the game's repository, [INTODAN/island-battles-go](https://github.com/INTODAN/island-battles-go), and is built from the commit that `runner.toml` names; its [Headless matches](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#headless-matches) section describes it.
+This repository holds a population of Go bots, on the game's Go SDK, that play each other in the game's headless runner, and the tools around them, which are Python. [README.md](../../../README.md) is the design; read it once. To improve the bots, follow the `bot-league-iteration` skill, which decides by three more: `league-population` (who is in the league), `league-ideas` (what an iteration tries) and `league-evidence` (what a result may decide). `league-breeding` holds their reasons, for whoever changes the rules. The runner itself belongs to the game's repository, [INTODAN/island-battles-go](https://github.com/INTODAN/island-battles-go), and is built from the commit that `runner.toml` names; its [Headless matches](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#headless-matches) section describes it.
 
 **Only agents change `bots/`**, and only through the loop: a change to a bot that no tournament measured doesn't belong in a pull request. Tools, maps and tests are ordinary code.
 
@@ -19,8 +19,8 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league ledger` | The ledger as an iteration starts from it: the lessons, one line for every candidate ever tried, and the last three entries in full. |
 | `uv run league tournament` | Play every active and retired bot and default levels 1 to 3 on the training maps, from both sides, and print the standings. |
 | `... tournament --focus A,B` | Play only the pairs with A or B (candidates too), and list their lost games and longest wins with the demos. The quick way to find what to read. **Its ratings don't count**: they come from those pairs alone. |
-| `... tournament --add A,B` | Add A and B, candidates too, to the whole round robin, with the same lists. The ratings to compare bots by; the cache makes it cost little more than `--focus`. |
-| `... tournament --focus A,B --parents` | Play A and B each against its parent alone (34 games on the training maps): the head-to-head rule of the selection, in seconds. Every run that lists a bot with its parent prints a table of the two: points against the parent, and in a whole round robin their ratings. |
+| `... tournament --add A,B` | Add A and B, candidates too, to the whole round robin, with the same lists. The run to select by: its ratings count, and it has the paired table and the bots that play alike; the cache makes it cost little more than `--focus`. |
+| `... tournament --focus A,B --parents` | Play A and B each against its parent alone (two games a training map, 38 on 19): the selection's first and cheapest step, in seconds. Every run that lists a bot with its parent prints a table of the two: points against the parent, and in a whole round robin their ratings and the bot's games against the others next to its parent's (better, worse, the same), with their margin and the chance of it by luck. The table judges nothing. |
 | `... tournament --maps holdout` | The holdout maps. Also `all`, or map names such as `strait,circle`. |
 | `... tournament --bots A,B --anchors 3` | Choose the bots and the default levels (`--anchors ''` for none). |
 | `... tournament --strict` | Exit with status 1 when a match wasn't played, a player failed a turn or there was no match. |
@@ -32,7 +32,8 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league new NAME --parent P --iteration N --idea "..."` | Copy bot P to a new candidate. |
 | `uv run league rematch DEMO... --bot NAME [--replaces P]` | Play league games again (demos a tournament listed) with candidate NAME in its parent's seat (or P's): the result before and after, and the first turn it commanded something else, with both bots' commands and logs. Seconds, to check that a change acts as its idea says before the gate; it can't say a bot is better. Training maps only. |
 | `uv run league status NAME active` | Change a bot's status: `candidate`, `active` or `retired`. |
-| `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. |
+| `uv run league delete NAME` | Delete a bot's directory: a rejected candidate, or a bot the population's rules remove. Git keeps what was committed. It refuses a sparring bot and the champion that `hosting/lambda/bot` names. |
+| `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. An iteration adds two to `holdout` and one to `train` before it measures. A name of lower-case letters and digits only. |
 | `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to bot NAME, through its worker, and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
 | `gofmt -w bots/NAME` | Format a bot's Go code; the checks refuse code that isn't. |
@@ -47,7 +48,9 @@ Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `
 - **Score** is points per game (a win 1, a draw 0.5).
 - **Failed turns** must be 0. A failed turn is a turn the bot passed because it raised, was too slow, or sent something the server rejects; the table's last section quotes the first failure of each game. Fix it before reading anything else from that bot's results. A match with a failed turn is played again by the next tournament, so one that only failed because the machine was busy clears itself; one that fails twice is the bot's.
 - **Slowest turn** should stay under 200 ms. A real-time game gives a bot one second, with a network in between. It is measured when a match is played, and a cached result keeps it.
-- The **pair table** shows who beats whom; the population is not a ladder, and a bot that beats the champion may lose to everyone else.
+- **Its games against the others, next to the parent's** (a whole round robin, for each listed bot that has its parent in it): the games both played against the same opponent, on the same map, from the same seat, counted as **better**, **worse** or **the same** for the bot (two drawn games are told apart by who led in production over the game, and the next column says how many were); then the **Margin** (better minus worse), the **Maps** it did better and worse on, **By luck**: the chance that a change which does nothing gives such a margin, with a map's games counted as one, since they move together; and **On these maps**: what that comes to (clear, confirmed, nothing, worse, clearly worse). Bots are deterministic, so the games that ended the same say nothing, and the others are the evidence that the bot is better or not. `league-evidence` says what chance is small enough to mean something. A rating difference of a few points doesn't.
+- **Bots that play alike** (a whole round robin; the heading says on which maps): the pairs that ended at least half of those same games the same to the soldier, the result, the length, the castles and the soldiers. Such a pair is one bot counted twice in every rating; `league-population` says which of the two leaves.
+- The **pair table** shows who beats whom; the population is not a ladder, and a bot that beats the champion may lose to everyone else. It also says how much of a bot's field is its own line: a bot's games against its relatives tell little about its games against anyone else.
 - The **map table** shows where a bot is weak. A bot at 12/12 on most maps and 2/12 on one has a hole worth an iteration.
 
 A draw at the generation limit (`generation_cap`) between two bots that stopped attacking is common. It is half a point, and usually a sign that a bot doesn't know how to finish.
@@ -81,12 +84,12 @@ The game's rules and the SDK are in three skills copied from the game's Python b
 ## Statuses
 
 - `candidate`: new and unmeasured. Tournaments leave it out unless `--focus` or `--bots` names it.
-- `active`: in the population, and a possible parent.
-- `retired`: no longer changed, kept as an opponent so that old strengths still have to be beaten.
-- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent, never counts among the six retired bots, and is never deleted. `ori_mimic` is also the rating anchor, so its code never changes: a better imitation is a new sparring bot. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
+- `active`: in the population, and a possible parent. Each belongs to a line (a founder and its descendants), which the ledger's table **The lines** names: the champion's is the main line, the others side lines.
+- `retired`: a fixed opponent: no longer changed, kept so that what it does still has to be beaten. An old head, the head of a closed line, or an exploiter, which was written only to beat the champion and is retired the day it is admitted.
+- `sparring`: a fixed opponent built to play like a real one (`ori_mimic` plays by the rules read off the hosted bot's lobby games, turn by turn; `ori_like`, an earlier and rougher stand-in, by its habits). It plays every tournament like a retired bot, is never a parent of an improvement (a founder may start from its code), never counts among the retired bots, and is never deleted. `ori_mimic` is also the rating anchor, so its code never changes: a better imitation is a new sparring bot. Change one only as a change of the league's setup, measured with a full tournament, never inside an iteration.
 
 ## Outside opponents
 
 A real player's bot can play every tournament without its code coming into this public repository. `opponents.local.toml` (git ignores it) names each one by its project directory, interpreter and `module:function` ([`league_tools/opponents.py`](../../../league_tools/opponents.py) has the format). Tournaments add them like the default bots; `--no-opponents` leaves them out. Their games count in the ratings, so a candidate must beat them too. Name them in the ledger as "the player's bot", never by the person's name, and never copy their code here.
 
-Deleting a bot is deleting its directory; git keeps it. Never edit an `active` or `retired` bot's code in place: its results in the ledger would stop being true. Copy it to a candidate.
+Deleting a bot is `uv run league delete NAME`; git keeps it. Never edit an `active` or `retired` bot's code in place: its results in the ledger would stop being true. Copy it to a candidate.

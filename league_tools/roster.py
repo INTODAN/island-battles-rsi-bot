@@ -10,9 +10,11 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-from .paths import BOTS
+from .paths import BOTS, LEAGUE
 
 STATUSES = ("candidate", "active", "retired", "sparring")
+# The file that names the champion the hosted bot plays as: the deploy builds that bot.
+HOSTED = LEAGUE / "hosting" / "lambda" / "bot"
 NAME = re.compile(r"[a-z][a-z0-9_]*")
 ANCHOR = re.compile(r"level([0-9]+)")
 
@@ -73,9 +75,10 @@ def write_bot(bot: Bot) -> None:
     lines = [
         "# candidate: new and unproven. active: in the population. retired: no longer",
         "# developed, kept as an opponent. sparring: a fixed opponent built to play like a",
-        "# real one; never a parent, never counted with the retired bots, never deleted.",
+        "# real one; never changed, never counted with the retired bots, never deleted.",
         f"status = {_toml_string(bot.status)}",
-        "# The bot this one was copied from, or empty for a founder.",
+        "# The bot this one's code was copied from. A founder keeps it too: the ledger's",
+        "# table of the lines says which line a bot belongs to.",
         f"parent = {_toml_string(bot.parent)}",
         "# The league iteration that created it (ledger/iterations.md).",
         f"iteration = {bot.iteration}",
@@ -118,6 +121,25 @@ def set_status(name: str, status: str) -> Bot:
         idea=current.idea,
     )
     write_bot(bot)
+    return bot
+
+
+def delete_bot(name: str) -> Bot:
+    """Delete a bot's directory: a rejected candidate, or a bot the population's rules remove.
+
+    Git keeps what was committed. A sparring bot holds the rating scale and
+    stands for a real opponent, and the champion is the bot the hosted bot
+    plays as (``HOSTED`` names it), so neither is ever deleted.
+
+    Raises:
+        ValueError: There is no such bot, or it is a sparring bot or the champion.
+    """
+    bot = load_bot(name)
+    if bot.status == "sparring":
+        raise ValueError(f"{name} is a sparring bot, which is never deleted")
+    if HOSTED.is_file() and HOSTED.read_text(encoding="utf-8").strip() == name:
+        raise ValueError(f"{name} is the champion that {HOSTED.relative_to(LEAGUE)} names, which is never deleted")
+    shutil.rmtree(bot.directory)
     return bot
 
 

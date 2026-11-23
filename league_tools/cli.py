@@ -140,8 +140,9 @@ def _new(arguments: argparse.Namespace) -> int:
 
 
 def _new_map(arguments: argparse.Namespace) -> int:
-    if not re.fullmatch(r"[a-z][a-z0-9-]*", arguments.name) or list(MAPS.glob(f"*/{arguments.name}.json")):
-        raise ValueError(f"{arguments.name!r} is taken or not a map name: lower-case letters, digits and -")
+    # Letters and digits only: what the check of an iteration's changes (hosting/rsi/scope.py) lets a new map be named.
+    if not re.fullmatch(r"[a-z][a-z0-9]*", arguments.name) or list(MAPS.glob(f"*/{arguments.name}.json")):
+        raise ValueError(f"{arguments.name!r} is taken or not a map name: lower-case letters and digits")
     target = MAPS / arguments.set / f"{arguments.name}.json"
     target.write_text(json.dumps(maps.generate(arguments.name, arguments.seed), indent=2) + "\n", encoding="utf-8")
     print(target)
@@ -166,6 +167,12 @@ def _clock(arguments: argparse.Namespace) -> int:
 def _status(arguments: argparse.Namespace) -> int:
     bot = roster.set_status(arguments.name, arguments.status)
     print(f"{bot.name} is now {bot.status}")
+    return 0
+
+
+def _delete(arguments: argparse.Namespace) -> int:
+    bot = roster.delete_bot(arguments.name)
+    print(f"deleted {bot.directory} ({bot.status}); git keeps what was committed")
     return 0
 
 
@@ -285,6 +292,12 @@ def main(argv: list[str] | None = None) -> int:
     status.add_argument("name")
     status.add_argument("status", choices=roster.STATUSES)
     status.set_defaults(handler=_status)
+
+    delete = commands.add_parser(
+        "delete", help="delete a bot's directory: a rejected candidate, or a bot the population's rules remove"
+    )
+    delete.add_argument("name")
+    delete.set_defaults(handler=_delete)
 
     new_map = commands.add_parser("new-map", help="make a fair two-team map from a seed")
     new_map.add_argument("name")

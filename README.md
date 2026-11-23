@@ -14,7 +14,7 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | `maps/holdout/` | The maps that only give numbers: nobody reads their games, so a bot can't be fitted to them. |
 | `go.mod`, `go.sum` | The one Go module of every bot, which pins the game's Go SDK. |
 | `league_tools/` | The `league` command (Python): tournaments, ratings, the game digest, the roster and the map maker. |
-| `ledger/iterations.md` | What every iteration tried, measured, kept and learned. The league's memory between sessions. |
+| `ledger/iterations.md` | What every iteration tried, measured, kept and learned, with the lines (the strategies alive in the league) and the lessons at its top. The league's memory between sessions. |
 | `ledger/real-games.txt` | The ids of the hosted bot's real games that an iteration has studied. |
 | `opponents.local.toml` (not in git) | Outside opponents: real players' bots that play every tournament from their own projects ([`league_tools/opponents.py`](league_tools/opponents.py)). |
 | `scripts/serve_maps.py`, `scripts/lobby-run.js` | Play a bot against a hosted bot in lobby games on the league's maps, several tabs at once, when a person asks for it. An iteration never plays another player's bot. |
@@ -23,7 +23,7 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | `runs/` (not in git) | Results, the result cache and the demos of every match played here, and the bots' binaries (`runs/bin/`). A git worktree's tournaments use the main checkout's `runs/cache/`, `runs/bin/` and `.runner/`. |
 | `runner.toml` | The commit of the game that the league plays. |
 | `.runner/` (not in git) | The game's source at that commit, and the runner built from it. |
-| `.agents/skills/` | The procedures an agent follows here: the league's three (the league, an iteration, measuring time), and the game's rules. |
+| `.agents/skills/` | The procedures an agent follows here: the league, an iteration and measuring time, the three skills an iteration decides by (the population, the ideas, the evidence) with the research behind them, and the game's rules. |
 
 ## How a game is played
 
@@ -62,19 +62,22 @@ One **iteration** is one pass, and ends as one commit. The [bot-league-iteration
 
 0. **Claim.** Iterations run one at a time, each from the last one's ledger entry. `scripts/claim-iteration.sh claim` pushes the branch `claude/league-iteration-N` before anything else, and fails when another session or the automated iteration holds N; `scripts/claim-iteration.sh status` says who does. The iteration's commit replaces the claim on that branch, and the number is free again once it has merged.
 
-1. **Measure.** Play the population and the default bots on the training maps. Most of it comes from the cache.
-2. **Study.** Take the champion's lost and drawn games, and its slow wins, on the training maps. Read the digest, then the turns that decided the game with both bots' logs. Write each finding as: what happened (map, turn), why, and the change that would fix it.
-3. **Vary.** One candidate per idea: `league new` copies a parent, and the agent changes only that directory. Three kinds of ideas: a **fix** of something a game showed, a **graft** of a mechanism another bot has, and, when two iterations promoted nothing, a new **founder** with a different strategy.
+1. **Measure.** Play the population and the default bots on the training maps, after adding two holdout maps and a training map that no earlier choice has touched. Most of it comes from the cache. Of two bots that play alike, one leaves before anything else is measured. Then decide what the iteration's candidates will be.
+2. **Study.** Read the games those candidates need: the champion's lost and drawn games against bots outside its own line first, its slow wins, each side line's losses. Read the digest, then the turns that decided the game with both bots' logs. Write each finding as: what happened (map, turn), why, and the change that would fix it.
+3. **Vary.** One candidate per idea: `league new` copies a bot, and the agent changes only that directory. Five kinds: a **fix** of something three games showed, a **graft** of a mechanism another bot has, a **simplification** that removes one, a **founder** with a new strategy, and an **exploiter** written only to beat the champion. Some places of every iteration explore.
 4. **Gate.** `scripts/check.sh` passes, no failed turn, no turn slower than 200 ms.
-5. **Select.** In a round robin of the whole population with the candidates added, a candidate is promoted when it beats its parent head to head, rates higher than it on the training maps, and doesn't rate lower than it on the holdout maps. A rejected candidate is deleted; the ledger keeps what it tried and its numbers.
-6. **Record.** The standings, the ideas, the decisions and what was learned about the game go in `ledger/iterations.md`, with a review of the league itself: whether its field, maps and rules can still tell a strong bot, and what would fix them when they can't.
+5. **Select.** In a round robin of the whole population with the candidates added, a fix or a graft is promoted when its games against everyone else, set next to its parent's, are clearly better on the training and holdout maps together and better by a margin on the holdout maps alone. A simplification is promoted when it is not clearly worse. A founder is admitted as a new line when it takes a third of the points from the champion, and an exploiter as a fixed opponent when it takes three fifths. A rejected candidate is deleted; the ledger keeps what it tried and its numbers.
+6. **Record.** The standings, the lines, the ideas, the decisions and what was learned about the game go in `ledger/iterations.md`, with a review of the league itself: whether its field, maps and rules can still tell a strong bot, and what would fix them when they can't.
 
 What keeps the loop honest:
 
-- **Holdout maps** catch a bot that learned the training maps instead of the game. Their games are never read.
+- **Holdout maps** catch a bot that learned the training maps instead of the game. Their games are never read, and every iteration adds two, with one training map.
 - **The default bots, the retired and sparring bots and the outside opponents stay in every tournament**, so a new bot must still beat the old ones, and a strategy that only beats the current champion doesn't win.
 - **One idea per candidate**, so a result says something about the idea.
-- **The population stays varied**: at most six active bots, and a bot is retired only when another does everything it does better.
+- **A result has to be clear.** Bots are deterministic, so a candidate is compared with its parent game by game against the same opponents, and promoted on the games that changed, not on a rating a few points higher. A map's games move together, so they are counted as one draw of the map, not as so many games. And a drawn game still says who led: two draws are told apart by who out-produced the other over the game.
+- **The population stays varied.** A line is a strategy and the bots descended from its founder. Beside the champion's line the league keeps up to two side lines, each worked every iteration and kept for as long as it still improves, however far below the champion; and of two bots that play alike only one stays, so that no bot is counted twice.
+
+The method, its reasons and its sources are the [league-breeding skill](.agents/skills/league-breeding/SKILL.md).
 
 ## Rules for a bot
 
@@ -108,6 +111,7 @@ uv run league digest DEMO --turns 40-55     # those turns whole, with both bots'
 uv run league new NAME --parent PARENT --iteration N --idea "..."
 uv run league rematch DEMO... --bot NAME       # those games again with NAME in its parent's seat: did the change act?
 uv run league status NAME active            # or: candidate, retired, sparring
+uv run league delete NAME                   # a rejected candidate, or a bot the population's rules remove
 uv run league new-map NAME --seed N --set train
 uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot
 uv run league unpack DEMO                   # a plain .json for the demo viewer
