@@ -3,7 +3,7 @@
     python3 hosting/rsi/scope.py BASE [HEAD] [--names-from runs/real]
 
 An iteration may change a bot's directory under ``bots/``, the ledger
-(``ledger/iterations.md``, ``ledger/real-games.txt`` and a real game's study,
+(``ledger/iterations.md``, ``ledger/real-games.txt``, ``ledger/progress.csv`` and a real game's study,
 ``ledger/studies/<game id>.md``) and the deployed bot's
 name (``hosting/lambda/bot``), and add new map files to ``maps/train/`` or
 ``maps/holdout/``. Anything else in the diff from BASE to HEAD fails the
@@ -33,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 ALLOWED = (
     re.compile(r"^bots/[a-z][a-z0-9_]*/[^/].*$"),
-    re.compile(r"^ledger/(iterations\.md|real-games\.txt)$"),
+    re.compile(r"^ledger/(iterations\.md|real-games\.txt|progress\.csv)$"),
     re.compile(r"^ledger/studies/[0-9]+\.md$"),
     re.compile(r"^hosting/lambda/bot$"),
 )

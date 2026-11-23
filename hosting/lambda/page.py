@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import csv
+import math
 import re
+from collections.abc import Callable
 from datetime import datetime
 from html import escape
 from pathlib import Path
@@ -28,11 +31,178 @@ def load_studies(*directories: Path) -> dict[int, list[str]]:
     return studies
 
 
+def load_progress(*paths: Path) -> list[dict[str, Any]]:
+    """The league's progress (ledger/progress.csv), from the first of ``paths`` that exists: a row per iteration.
+
+    Each row has its iteration, date, minutes (None when not recorded), champion, its training rating and that
+    rating's scale (the anchor the ratings had then: ratings compare only within one scale).
+    """
+    for path in paths:
+        if path.is_file():
+            with path.open(newline="") as file:
+                return [
+                    {
+                        "iteration": int(row["iteration"]),
+                        "date": row["date"],
+                        "minutes": float(row["minutes"]) if row["minutes"] else None,
+                        "champion": row["champion"],
+                        "rating": int(row["rating"]),
+                        "scale": row["scale"],
+                    }
+                    for row in csv.DictReader(file)
+                ]
+    return []
+
+
+# What each rating scale was anchored on, from the ledger's setups.
+SCALES = {
+    "level3": "level3 at 1000",
+    "unanchored": "no fixed point",
+    "ori_mimic": "ori_mimic at 1800",
+}
+_W, _H = 640, 240
+_LEFT, _RIGHT, _TOP, _BOTTOM = 48, 16, 16, 32
+
+
+def _ticks(low: float, high: float, count: int = 4) -> list[float]:
+    """Round tick values that cover low to high."""
+    span = max(high - low, 1.0)
+    raw = span / count
+    step = 10 ** math.floor(math.log10(raw))
+    for nice in (1, 2, 2.5, 5, 10):
+        if nice * step >= raw:
+            step *= nice
+            break
+    first = math.floor(low / step) * step
+    return [first + step * k for k in range(int(math.ceil((high - first) / step)) + 1)]
+
+
+def _chart(
+    title: str, unit: str, rows: list[dict[str, Any]], key: str, *, zero: bool, label: Callable[[dict[str, Any]], str]
+) -> str:
+    """A line chart as inline SVG of ``key`` over the iteration, a rating's line broken where its scale changes."""
+    points = [row for row in rows if row[key] is not None]
+    if len(points) < 2:
+        return ""
+    # From the first iteration that has a value to the last iteration.
+    rows = [row for row in rows if row["iteration"] >= points[0]["iteration"]]
+    first, last = rows[0]["iteration"], rows[-1]["iteration"]
+    values = [row[key] for row in points]
+    ticks = _ticks(0 if zero else min(values), max(values))
+    low, high = ticks[0], ticks[-1]
+
+    def x(iteration: int) -> float:
+        return _LEFT + (iteration - first) / max(last - first, 1) * (_W - _LEFT - _RIGHT)
+
+    def y(value: float) -> float:
+        return _TOP + (high - value) / max(high - low, 1) * (_H - _TOP - _BOTTOM)
+
+    grid = "".join(
+        f'<line class="grid" x1="{_LEFT}" x2="{_W - _RIGHT}" y1="{y(t):.1f}" y2="{y(t):.1f}"/>'
+        f'<text class="tick" x="{_LEFT - 8}" y="{y(t) + 4:.1f}" text-anchor="end">{t:,.0f}</text>'
+        for t in ticks
+    )
+    step = max(1, round((last - first) / 8 / 5) * 5) if last - first > 10 else 1
+    xticks = "".join(
+        f'<text class="tick" x="{x(i):.1f}" y="{_H - 10}" text-anchor="middle">{i}</text>'
+        for i in range(first, last + 1)
+        if (i - first) % step == 0 or i == last
+    )
+    # A line breaks where a value is missing or the scale changes; a dashed line marks each change of scale.
+    runs: list[list[dict[str, Any]]] = []
+    previous: dict[str, Any] | None = None
+    for row in rows:
+        joined = (
+            previous is not None
+            and row[key] is not None
+            and previous[key] is not None
+            and (key != "rating" or row["scale"] == previous["scale"])
+            and row["iteration"] == previous["iteration"] + 1
+        )
+        if row[key] is not None:
+            if joined:
+                runs[-1].append(row)
+            else:
+                runs.append([row])
+        previous = row
+    lines = "".join(
+        f'<polyline class="series" points="{" ".join(f"{x(r['iteration']):.1f},{y(r[key]):.1f}" for r in run)}"/>'
+        for run in runs
+        if len(run) > 1
+    )
+    breaks = "".join(
+        f'<line class="break" x1="{x(row["iteration"]) - 0.5 * (x(1) - x(0)):.1f}" '
+        f'x2="{x(row["iteration"]) - 0.5 * (x(1) - x(0)):.1f}" y1="{_TOP}" y2="{_H - _BOTTOM}"/>'
+        for before, row in zip(rows, rows[1:], strict=False)
+        if key == "rating" and row["scale"] != before["scale"]
+    )
+    dots = "".join(
+        f'<circle class="dot" cx="{x(r["iteration"]):.1f}" cy="{y(r[key]):.1f}" r="4">'
+        f"<title>{escape(label(r))}</title></circle>"
+        for r in points
+    )
+    end = points[-1]
+    return (
+        f'<figure class="chart"><figcaption><span class="label">{escape(title)}</span>'
+        f'<span class="sub">{escape(unit)}</span></figcaption>'
+        f'<svg viewBox="0 0 {_W} {_H}" role="img" aria-label="{escape(title, quote=True)}">'
+        f"{grid}{xticks}{breaks}{lines}{dots}"
+        f'<text class="end" x="{x(end["iteration"]) - 8:.1f}" y="{y(end[key]) - 10:.1f}" text-anchor="end">'
+        f"{end[key]:,.0f}</text></svg></figure>"
+    )
+
+
+def _progress(rows: list[dict[str, Any]]) -> str:
+    """The league's section: an iteration's time and the champion's rating, over the iterations."""
+    if not rows:
+        return ""
+    timed = _chart(
+        "Time per iteration",
+        "minutes, from the claim to the final tables",
+        rows,
+        "minutes",
+        zero=True,
+        label=lambda r: f"Iteration {r['iteration']}: {r['minutes']:g} minutes",
+    )
+    rated = _chart(
+        "Champion's rating",
+        "Elo on the training maps; a dashed line is a change of the rating's anchor",
+        rows,
+        "rating",
+        zero=False,
+        label=lambda r: (
+            f"Iteration {r['iteration']}: {r['champion']}, {r['rating']} ({SCALES.get(r['scale'], r['scale'])})"
+        ),
+    )
+    table = "".join(
+        f"<tr><td>{r['iteration']}</td><td>{escape(r['date'])}</td>"
+        f"<td>{'–' if r['minutes'] is None else f'{r["minutes"]:g}'}</td><td>{escape(r['champion'])}</td>"
+        f"<td>{r['rating']}</td><td>{escape(SCALES.get(r['scale'], r['scale']))}</td></tr>"
+        for r in reversed(rows)
+    )
+    anchors = sum(row["scale"] != before["scale"] for before, row in zip(rows, rows[1:], strict=False))
+    timed_from = next((r["iteration"] for r in rows if r["minutes"] is not None), None)
+    untimed = (
+        f" Iterations before {timed_from} recorded no time." if timed_from and timed_from > rows[0]["iteration"] else ""
+    )
+    times = {1: "once", 2: "twice"}.get(anchors, f"{anchors} times")
+    moved = f"the league re-anchored them {times}, and " if anchors else ""
+    return (
+        f'<section class="card progress"><h2>The league</h2>'
+        f'<p class="sub">Each iteration writes candidates, measures them and keeps the better ones. Ratings compare '
+        f"only within one anchor: {moved}a rating also moves when the population or the maps change.{untimed}</p>"
+        f"{timed}{rated}"
+        f"<details><summary>Every iteration</summary><table><thead><tr><th>Iteration</th><th>Date</th>"
+        f"<th>Minutes</th><th>Champion</th><th>Rating</th><th>Anchor</th></tr></thead><tbody>{table}</tbody></table>"
+        f"</details></section>"
+    )
+
+
 _STYLE = """
 :root {
   --bg: #0a1322; --card: #0f1b2e; --line: #1d2b43; --text: #e8edf5; --muted: #8b9ab3;
   --won-bg: #12392a; --won: #6fe0a5; --lost-bg: #46201d; --lost: #ff9a8a; --draw-bg: #16233a; --draw: #d9e2f0;
-  --live: #6fe0a5;
+  --live: #6fe0a5; --series: #6aa8f5;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
@@ -75,6 +245,23 @@ h2 { font-size: 30px; margin: 4px 0 8px; }
 .empty { color: var(--muted); padding: 16px 0 4px; }
 footer { color: var(--muted); font-size: 14px; margin-top: 32px; }
 footer a { color: var(--text); }
+.progress { margin-bottom: 28px; }
+.chart { margin: 20px 0 0; }
+.chart figcaption { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.chart svg { display: block; width: 100%; height: auto; margin-top: 8px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .break { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.chart .tick { fill: var(--muted); font-size: 12px; }
+.chart .end { fill: var(--text); font-size: 13px; font-weight: 600; }
+.chart .series { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--series); stroke: var(--card); stroke-width: 2; }
+.chart .dot:hover { r: 6; }
+details { margin-top: 20px; }
+summary { cursor: pointer; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; }
+.progress details { overflow-x: auto; }
 .sign-in { max-width: 460px; margin: 18vh auto 0; }
 .google-button { min-height: 44px; margin: 8px 0; }
 """
@@ -210,9 +397,16 @@ def _game(game: dict[str, Any], study: list[str] | None = None) -> str:
 
 
 def render(
-    bot: str, summary: dict[str, Any], games: list[dict[str, Any]], studies: dict[int, list[str]] | None = None
+    bot: str,
+    summary: dict[str, Any],
+    games: list[dict[str, Any]],
+    studies: dict[int, list[str]] | None = None,
+    progress: list[dict[str, Any]] | None = None,
 ) -> str:
-    """The home page as HTML; studies are the iterations' studies of the games, by game id."""
+    """The home page as HTML.
+
+    ``studies`` are the iterations' studies of the games, by game id; ``progress`` is the league's (``load_progress``).
+    """
     studies = studies or {}
     latest = summary["latest"]
     record = summary["record"]
@@ -258,6 +452,7 @@ def render(
 <p class="intro">Every real game it plays is kept as a zip.</p>
 <div class="status{live}"><span class="dot"></span>{escape(status)}</div>
 <section class="stats">{stats}</section>
+{_progress(progress or [])}
 <section class="card"><h2>All games</h2>{listed}</section>
 <footer>
 <p>When a game ends, the game sends the bot its outcome and a link to its demo, with every team's logs. Each zip

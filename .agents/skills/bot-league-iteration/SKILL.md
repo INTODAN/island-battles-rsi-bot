@@ -40,7 +40,7 @@ git push --force-with-lease=refs/heads/claude/league-iteration-N:CLAIM origin HE
 
 The claim holds until `main` has the iteration's ledger entry. An iteration that is done but not pushed keeps the number: say so in the report, since every other iteration waits for it.
 
-**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, the directory of a bot that the population's rules delete (`uv run league delete NAME`), `ledger/iterations.md`, the study of each real game the iteration studied (`ledger/studies/<id>.md`, below), and the champion's name in `hosting/lambda/bot` when it changed. Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are step 0's three, and only before the iteration's first measurement.
+**What you may change:** the directories of the candidates you create under `bots/`, the `bot.toml` of a bot whose status changes, the directory of a bot that the population's rules delete (`uv run league delete NAME`), `ledger/iterations.md`, its row of `ledger/progress.csv`, the study of each real game the iteration studied (`ledger/studies/<id>.md`, below), and the champion's name in `hosting/lambda/bot` when it changed. Nothing else: not another bot's code, the tools, the tests, an existing map, `runner.toml` or these skills. New map files are step 0's three, and only before the iteration's first measurement.
 
 **When something doesn't work, stop.** A tool that crashes, a command from a skill that fails, a check that failed before you changed anything, or a result that can't be right (a bot that wins every game after a small change, a tournament with no matches): stop, and report what you ran and what it printed. Don't work around it, and don't fix the tool inside the iteration. A wrong measurement is worse than no iteration.
 
@@ -271,6 +271,8 @@ Append an entry to `ledger/iterations.md`, in the shape of the entries before it
 - **Ideas not tried**: the findings that got no place, each with its game and turns;
 - the time: each step's, the total and last iteration's total, the slowest steps and what was or will be done about them.
 - the review of the league itself, under **The league itself** (below).
+
+Add the iteration's row to `ledger/progress.csv`, which the hosted bot's home page charts: `iteration,date,minutes,champion,rating,scale`, with the total minutes from the claim to the final tables (the **Time**'s total, empty if not measured), the champion and its rating on this iteration's final training table, and the rating's anchor (`ori_mimic` since the setup after iteration 35; a setup that moves the anchor names a new one). A test fails when an iteration of the ledger has no row.
 
 When the champion changed, write its name in `hosting/lambda/bot`: the hosted bot deploys it once the iteration is on main.
 

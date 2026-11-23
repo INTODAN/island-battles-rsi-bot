@@ -109,6 +109,7 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
         ("D", "bots/old_bot/main.go"),
         ("M", "ledger/iterations.md"),
         ("M", "ledger/real-games.txt"),
+        ("M", "ledger/progress.csv"),
         ("A", "ledger/studies/471.md"),
         ("M", "hosting/lambda/bot"),
         ("A", "maps/train/new_map.json"),
