@@ -14,6 +14,10 @@ opponent's logs must not be able to change a workflow, a tool or a test.
 With ``--names-from``, the players' names in the real games' demos under that
 directory must not appear in the lines the diff adds: the repository is public,
 and the ledger describes real games without names.
+A name that BASE's files already hold as a word (a display name that is an
+ordinary word, such as one the bots' comments use) leaks nothing new and can't
+be told from that word, so it is not checked: every candidate copies its
+parent's comments, and they would all fail.
 """
 
 from __future__ import annotations
@@ -60,6 +64,20 @@ def player_names(directory: Path, ignore: set[str]) -> set[str]:
         for entry in demo.get("logs", []):
             names.update(player.get("display_name", "") for player in entry.get("players", []))
     return {name for name in names if len(name.strip()) >= MIN_NAME and name.lower() not in ignore}
+
+
+def already_public(names: set[str], base: str) -> set[str]:
+    """The names that BASE's tracked files already hold as a whole word, in any case."""
+    public = set()
+    for name in names:
+        found = subprocess.run(
+            ["git", "grep", "-q", "-i", "-w", "-F", "-e", name, base, "--"],
+            cwd=ROOT,
+            capture_output=True,
+        )
+        if found.returncode == 0:
+            public.add(name)
+    return public
 
 
 def added_lines(diff: str) -> list[tuple[str, int, str]]:
@@ -112,6 +130,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.names_from is not None:
         bots = {path.name.lower() for path in (ROOT / "bots").iterdir() if path.is_dir()}
         names = player_names(args.names_from, bots | {f"level{n}" for n in range(1, 4)})
+        public = already_public(names, args.base)
+        if public:
+            print(f"{len(public)} of the {len(names)} names are words BASE already holds: not checked")
+        names -= public
         added = added_lines(_git("diff", "--unified=0", f"{args.base}...{args.head}"))
         for path in args.also:
             added += [(str(path), n, text) for n, text in enumerate(path.read_text().splitlines(), 1)]
