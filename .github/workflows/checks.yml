@@ -42,23 +42,40 @@ jobs:
         run: uv run --locked league tournament --maps circle --run-id checks --strict
 
   # An iteration's pull request (a claude/league-iteration-N branch, which the
-  # automated iteration uses too) may change only bots, the ledger, the
-  # deployed bot's name and new maps: hosting/rsi/scope.py. Other pull
-  # requests pass. Branch protection requires this check, so that an
-  # automated iteration that read something it shouldn't have can't merge a
-  # change to a workflow, a tool or a test.
+  # automated iteration and the integrator use) may change only bots, the
+  # ledger, the lines, the deployed bot's name and new maps; a run's
+  # (claude/league-run-<id>) may only add its candidates, its own files, new
+  # maps and new detectors: hosting/rsi/scope.py. Other pull requests pass.
+  # Branch protection requires this check, so that a run that read something
+  # it shouldn't have can't merge a change to a workflow, a tool or a test.
   scope:
     name: Iteration scope
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - name: The kind of branch
+        id: kind
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          kind=""
+          if [ "$EVENT" = pull_request ]; then
+            case "$HEAD_REF" in
+              claude/league-iteration-*) kind=iteration ;;
+              claude/league-run-*) kind=run ;;
+              claude/league-curator-*) kind=curator ;;
+            esac
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          [ -n "$kind" ] || echo "not an iteration's, a run's or the curator's pull request"
       - uses: actions/checkout@v5
-        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'claude/league-iteration-')
+        if: steps.kind.outputs.kind != ''
         with:
           fetch-depth: 0
-      - name: The iteration changes only what an iteration may change
-        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'claude/league-iteration-')
-        run: python3 hosting/rsi/scope.py "origin/${{ github.base_ref }}" HEAD
-      - name: Not an iteration
-        if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'claude/league-iteration-')
-        run: echo "not an iteration's pull request"
+      - name: The branch changes only what its kind may change
+        if: steps.kind.outputs.kind != ''
+        env:
+          KIND: ${{ steps.kind.outputs.kind }}
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 hosting/rsi/scope.py "origin/$BASE_REF" HEAD --kind "$KIND"
