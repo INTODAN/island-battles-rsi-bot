@@ -831,6 +831,12 @@ jobs:
             echo "::error::the ledger's last entry is iteration $n, but this run claimed iteration $CLAIMED"
             exit 1
           fi
+          # The second half replaces the hand-over's last line with its own part;
+          # while the line is there the progress test excuses the missing row.
+          if grep -q '^Second half:' ledger/iterations.md; then
+            echo "::error::the ledger still holds the hand-over's \"Second half:\" line"
+            exit 1
+          fi
           today=$(date -u +%Y-%m-%d)
           for id in ${IDS//,/ }; do echo "$id $today" >> ledger/real-games.txt; done
           git config user.name "island-battles-rsi[bot]"
