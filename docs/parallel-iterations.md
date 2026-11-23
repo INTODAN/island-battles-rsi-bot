@@ -247,7 +247,7 @@ Each step is useful alone and can be measured before the next starts. The time o
 2. **The detectors.** `league_tools/detectors/` with the first ones written from **Lessons so far** and the turning point, `league mistakes`, and the players running them after each match. Check: on iteration 39's games, the flags point at the turns its findings named. This makes even today's single iteration cheaper, before anything runs in parallel.
 3. **The rules as code.** `league decide`, which reads the selection's tables and prints the decisions and the population's upkeep that the skills now ask an agent to make. Run it next to the agent in two or three iterations. It must agree with every decision the agent made, or the difference must be a mistake the agent made.
 4. **Runs and the integrator.** Split the ledger (`ledger/runs/`, the integrator's entries, proposed lessons, the curator run). Add `league integrate` with batches, the integrate workflow, the run branches and the leases of part 3. Change the [`bot-league-iteration`](../.agents/skills/bot-league-iteration/SKILL.md) skill: step 2 starts from `league mistakes` and hands windows to Haiku, and steps 5 to 7 shrink to writing the proposal. Change `scope.py` for `claude/league-run-` branches: they may add a detector, and may change no status but a candidate's. Check with two runs at once from the same base, one of them a main-line fix that is sure to pass: the second must integrate against the first's promotion.
-5. **Many runs.** The idea queue, the dispatcher, and `RSI_MAX_RUNS=10`. Lift the concurrency group of `real-game-iteration.yml` off the run.
+5. **Many runs.** The idea queue, the dispatcher, and `RSI_MAX_RUNS=10`. Lift the concurrency group of `real-game-iteration.yml` off the run. Raise the cap of side lines to four, with its setup entry in the ledger ([below](#four-side-lines-once-runs-are-parallel)).
 
 ## Decided
 
@@ -256,7 +256,26 @@ Each step is useful alone and can be measured before the next starts. The time o
 - **10 runs at once to start**, with no cap in the design.
 - **Runs may add detectors.**
 - **To spend less of the subscription:** cheaper models for the bulk reading and writing, and ideas ranked by evidence. No candidates without Claude: the rule that a number is not an idea stays.
+- **Four side lines** instead of two, from the step that starts many runs (below).
 
-## Still open
+## Four side lines, once runs are parallel
 
-- **Two side lines**, the population's cap, limit the parallel places outside the main line to about four. More side lines would give more independent lines to work on at once, which is the island model of the evolution literature that [`league-breeding`](../.agents/skills/league-breeding/SKILL.md) draws on. That is a change of the breeding rules, measured on its own, not part of this design.
+The population's cap of **two side lines becomes four** in step 5 of the build, the step that starts many runs at once. It is a change of the league's setup, so it gets its own **Setup after iteration N** entry in the ledger, and [`league-population`](../.agents/skills/league-population/SKILL.md) and [`league-ideas`](../.agents/skills/league-ideas/SKILL.md) change with it.
+
+**Why four.**
+
+- **The league's main weakness is a field made of the champion's relatives.** After iteration 36, 71% of the champion's games, and 132.5 of the 141.5 points it lost, were against its own line and the sparring bot it began from (`league-breeding`, *What the review measured*). Every side line is a strategy that tests the champion from outside. Four of them make a field that measures the champion against more ways of playing.
+- **The research the league follows says to keep more niches.** NEAT protects new structure inside its own species until it is tuned. POET's hardest problems were solved by moving solutions between niches. The Darwin Gödel Machine did better by keeping every working program than by building on the best one. The cap of two was set for an iteration of three to six candidates, and `league-breeding` says the league's lines are its niches.
+- **Side lines are where parallel runs don't collide.** Main-line runs all start from one head, and when two of them pass, one is superseded. Runs on different side lines never touch each other's bots. With one run per side line at a time, four side lines are four runs that can't conflict.
+- **The step changes came from outside the line** (`league-ideas`, *Why*): founders written from a real game's winner (iteration 7), from the real opponent's rules (25), and against a habit of those rules (34). Four places give founders twice the room.
+
+**Why not now, and why not more.**
+
+- **Not with one iteration at a time.** The slate gives every side line a place before the main line, and keeps one place for the main line. With four side lines, a slate of three or six would be mostly side lines, and the champion's line would get one candidate an iteration. Parallel runs remove that limit: each side line has its own run, and the main line has the rest.
+- **Not more than four, yet.** Each side line adds up to three active bots, so four lines bring the population to about 25 players (three main-line bots, twelve on side lines, eight fixed opponents, the sparring bots and the default bots). With the store, a new candidate then costs about 25 × 2 × 57 ≈ 2,900 matches, under a minute on Lambda. Beyond that, the field's ratings and the **Bots that play alike** table start to fill with weak relatives of weak lines. Four is a step that can be measured. If, after ten integrations with four, every side line still promotes and the champion gains points against them, the next step is six.
+
+**What else changes with it.**
+
+- **Founders get a lower cost to try.** With more free places, a founder is written whenever a place is free, as now. The rule that admits it (a third of the points from the champion, and playing like no bot in the league) stays as it is.
+- **Closing a side line is unchanged**: two iterations of work in a row without a promotion. With parallel runs, an iteration of work for a line is an integration that had a candidate of that line. One run per side line at a time keeps that count meaningful.
+- **What would show it was wrong.** Check after ten integrations with four side lines. If more than half of the side lines are closed without having promoted anything, or the champion's points against the references stopped rising, go back to two. The ledger's entry for the change says to check this.
