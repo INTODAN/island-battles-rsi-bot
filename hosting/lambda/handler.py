@@ -181,12 +181,17 @@ def _answer(status: int, body: object) -> dict[str, Any]:
     }
 
 
-def tokeninfo(credential: str) -> dict[str, Any]:
-    """Google's claims of an ID token, once Google says it is genuine."""
+def tokeninfo(credential: str) -> object:
+    """Google's claims of an ID token, once Google says it is genuine.
+
+    Google answers 400 to a token that isn't; any other failure (an outage, a limit) raises
+    ``httpx.HTTPError``, which isn't the credential's fault.
+    """
     with httpx.Client(timeout=5.0) as client:
         response = client.get(owner.TOKENINFO_URL, params={"id_token": credential})
-    if response.status_code != 200:
+    if response.status_code == 400:
         raise owner.Refused("Google didn't accept the credential")
+    response.raise_for_status()
     return response.json()
 
 
@@ -196,35 +201,52 @@ def _is_owner(event: dict[str, Any]) -> bool:
 
 def _sign_in(event: dict[str, Any]) -> dict[str, Any]:
     """Sign the owner in with the ID token that Google's button gave the page."""
-    data = _body(event)
     try:
+        data = _body(event)
         credential = json.loads(data).get("credential", "") if len(data) <= 8192 else ""
-    except ValueError, AttributeError:
+    except ValueError, AttributeError, RecursionError:
         credential = ""
+    nonce = owner.cookie_value(event, owner.NONCE_COOKIE) or ""
     try:
-        session = OWNER.sign_in(str(credential), tokeninfo, time.time())
+        session = OWNER.sign_in(str(credential), nonce, tokeninfo, time.time())
     except owner.Refused as refusal:
         return _answer(403, {"detail": str(refusal)})
     except httpx.HTTPError, ValueError:
         return _answer(502, {"detail": "Google couldn't be asked about the credential; try again"})
     answer = _answer(200, {"signed_in": True})
-    answer["cookies"] = [owner.set_cookie(session, owner.SESSION_SECONDS)]
+    answer["cookies"] = [
+        owner.set_cookie(session, owner.SESSION_SECONDS),
+        owner.set_cookie("", 0, owner.NONCE_COOKIE),
+        owner.set_cookie("", 0, owner.SIGNED_OUT_COOKIE),
+    ]
     return answer
 
 
 def _sign_out() -> dict[str, Any]:
+    """End the session in this browser, and keep it from signing in silently until the button is used."""
     answer = _answer(200, {"signed_in": False})
-    answer["cookies"] = [owner.set_cookie("", 0)]
+    answer["cookies"] = [
+        owner.set_cookie("", 0),
+        owner.set_cookie("1", owner.SIGNED_OUT_SECONDS, owner.SIGNED_OUT_COOKIE),
+    ]
     return answer
 
 
-def _closed() -> dict[str, Any]:
-    """The sign-in page, for whoever isn't the signed-in owner."""
+def _closed(event: dict[str, Any]) -> dict[str, Any]:
+    """The sign-in page, for whoever isn't the signed-in owner, with the nonce its sign-in must carry.
+
+    A browser keeps its nonce while it has one, so two of its tabs on the page ask for the same.
+    """
     client_id = OWNER.client_id if OWNER.ready else ""
+    nonce = owner.cookie_value(event, owner.NONCE_COOKIE)
+    if not owner.valid_nonce(nonce):
+        nonce = owner.new_nonce()
+    signed_out = owner.cookie_value(event, owner.SIGNED_OUT_COOKIE) == "1"
     return {
         "statusCode": 401,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render_sign_in(client_id),
+        "cookies": [owner.set_cookie(str(nonce), owner.NONCE_SECONDS, owner.NONCE_COOKIE)] if client_id else [],
+        "body": page.render_sign_in(client_id, str(nonce), signed_out=signed_out),
     }
 
 
@@ -297,7 +319,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     if method == "POST" and path == "/sign-out":
         return _sign_out()
     if method == "GET" and path == "/":
-        return _home(_store) if _is_owner(event) else _closed()
+        return _home(_store) if _is_owner(event) else _closed(event)
     if method == "GET" and path == "/api/games":
         if not _is_owner(event):
             return _answer(401, {"detail": "the games are the owner's: sign in on the home page"})

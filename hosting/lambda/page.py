@@ -87,10 +87,9 @@ for (const node of document.querySelectorAll('time[datetime]')) {
 }
 document.getElementById('sign-out').addEventListener('click', async (event) => {
   event.preventDefault();
-  // As the game's Sign out: no silent sign-in until the button is used again.
-  try { localStorage.setItem('owner-signed-out', '1'); } catch (error) {}
-  await fetch('/sign-out', {method: 'POST'});
-  location.reload();
+  // As the game's Sign out: no silent sign-in until the button is used again, which the
+  // bot remembers in a cookie of its own.
+  try { await fetch('/sign-out', {method: 'POST'}); } finally { location.reload(); }
 });
 """
 
@@ -98,31 +97,37 @@ document.getElementById('sign-out').addEventListener('click', async (event) => {
 # with the same options, and a silent sign-in (auto_select) unless the owner signed out.
 _SIGN_IN_SCRIPT = """
 const clientId = document.body.dataset.clientId;
+const nonce = document.body.dataset.nonce;
+const signedOut = document.body.dataset.signedOut === '1';
 const message = document.getElementById('message');
 const button = document.getElementById('google-button');
-let signedOut = false;
-try { signedOut = localStorage.getItem('owner-signed-out') === '1'; } catch (error) {}
 
 async function signIn(response) {
   if (!response.credential) return;
   message.textContent = 'Signing you in…';
-  const answer = await fetch('/sign-in', {method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({credential: response.credential})});
+  let answer;
+  try {
+    answer = await fetch('/sign-in', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({credential: response.credential})});
+  } catch (error) {
+    message.textContent = "The bot couldn't be reached. Try again.";
+    return;
+  }
   if (answer.ok) {
-    try { localStorage.removeItem('owner-signed-out'); } catch (error) {}
     location.reload();
     return;
   }
-  let detail = 'Sign-in failed.';
+  let detail = 'sign-in failed';
   try { detail = (await answer.json()).detail || detail; } catch (error) {}
   message.textContent = detail.charAt(0).toUpperCase() + detail.slice(1) + '.';
-  google.accounts.id.disableAutoSelect();
+  // Only a refusal stops the silent sign-in: Google or the bot failing isn't the account's fault.
+  if (answer.status === 403) google.accounts.id.disableAutoSelect();
 }
 
 window.onGoogleLibraryLoad = () => {
   const id = google.accounts.id;
-  id.initialize({client_id: clientId, callback: signIn, auto_select: true, cancel_on_tap_outside: false,
-    context: 'signin', itp_support: true, use_fedcm_for_prompt: true});
+  id.initialize({client_id: clientId, nonce: nonce, callback: signIn, auto_select: true,
+    cancel_on_tap_outside: false, context: 'signin', itp_support: true, use_fedcm_for_prompt: true});
   id.renderButton(button, {type: 'standard', theme: 'outline', size: 'large', text: 'signin_with',
     shape: 'rectangular', logo_alignment: 'center',
     width: Math.round(Math.min(400, Math.max(200, button.clientWidth || 380)))});
@@ -270,8 +275,11 @@ learned from it is the study that the iteration which studied it wrote.</p>
 """
 
 
-def render_sign_in(client_id: str) -> str:
-    """The page that a visitor who isn't the signed-in owner sees: Google's button alone, and nothing about the bot."""
+def render_sign_in(client_id: str, nonce: str = "", *, signed_out: bool = False) -> str:
+    """The page that a visitor who isn't the signed-in owner sees: Google's button alone, and nothing about the bot.
+
+    Its sign-in asks Google for ``nonce``, and isn't silent when ``signed_out``.
+    """
     if client_id:
         body = (
             '<div id="google-button" class="google-button"></div>'
@@ -283,7 +291,8 @@ def render_sign_in(client_id: str) -> str:
     else:
         body = '<p class="sub">Sign-in isn\'t available.</p>'
     return f"""{_head("Sign in")}
-<body data-client-id="{escape(client_id, quote=True)}">
+<body data-client-id="{escape(client_id, quote=True)}" data-nonce="{escape(nonce, quote=True)}" \
+data-signed-out="{"1" if signed_out else ""}">
 <main>
 <section class="card sign-in">
 <h2>Sign in</h2>
