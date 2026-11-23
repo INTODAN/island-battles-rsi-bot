@@ -6,4 +6,4 @@
 # sets of maps, and record the new standings in the ledger before the next
 # iteration. Copy the rules skills again too (see AGENTS.md).
 repository = "https://github.com/INTODAN/island-battles-go"
-commit = "d6e86b3c86d18b1f2301bfbe7b214a2cc2dd8529"
+commit = "3f1503ec0ece2d85c3ad9f4b0bcc4d036f7fec79"

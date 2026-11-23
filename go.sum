@@ -1,5 +1,5 @@
-github.com/INTODAN/island-battles-go/clients/island-battles-go v1.5.0 h1:aFy3V5GweEVjP9MeVM7OI7nnxYoT2TpeOZC85aLYH6I=
-github.com/INTODAN/island-battles-go/clients/island-battles-go v1.5.0/go.mod h1:JGK1KDg1x/zaQsch7gahGjKdFQcLVMkJs32JYf0Q7f0=
+github.com/INTODAN/island-battles-go/clients/island-battles-go v1.7.0 h1:weMBVGP4gIpYspjXb0CPqszCEQ4uPqQiX9OoX17mLKc=
+github.com/INTODAN/island-battles-go/clients/island-battles-go v1.7.0/go.mod h1:JGK1KDg1x/zaQsch7gahGjKdFQcLVMkJs32JYf0Q7f0=
 github.com/centrifugal/centrifuge-go v0.10.11 h1:ipq+Vcw3vUuuKpoA6hyyi+FsZoGuLmkgcyn8x5eVkc0=
 github.com/centrifugal/centrifuge-go v0.10.11/go.mod h1:yONZBopAssVw7mluSRs/6YTYkqKe+llSGIokNVlBDZ4=
 github.com/centrifugal/protocol v0.16.0 h1:bAQm4YvONSPqq6kR8UgBNyf5Yh63AHKnjSKj/g9anPk=

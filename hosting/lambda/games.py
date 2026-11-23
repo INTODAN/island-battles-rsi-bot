@@ -205,7 +205,7 @@ class KnownMaps:
         for directory in directories:
             for path in sorted(directory.glob("**/*.json")):
                 data = json.loads(path.read_text())
-                shapes.setdefault(_shape(data["castles"]), data.get("map_name") or path.stem)
+                shapes.setdefault(_shape(data["castles"]), path.stem)
         return cls(shapes)
 
     def name(self, generation: dict[str, Any]) -> str:

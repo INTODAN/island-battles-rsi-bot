@@ -5,7 +5,7 @@ description = "Island Battles bots that AI agents write and improve, and the too
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "island-battles-python>=1.5.0",
+    "island-battles-python>=1.7.0",
 ]
 
 [project.optional-dependencies]

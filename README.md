@@ -10,7 +10,7 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 |---|---|
 | `bots/<name>/main.go` | A bot: a Go program, `package main`, whose `play` plays one turn and whose `main` is `islandbattles.Main(play)`. Its directory is a package of its own (more `.go` files may sit beside `main.go`) and imports nothing from another bot. |
 | `bots/<name>/bot.toml` | The bot's status (`candidate`, `active`, `retired` or `sparring`), its parent, the iteration that made it and its idea in a sentence. |
-| `maps/train/` | The maps whose games an agent may study. `claw` is the official game's default map, rebuilt from the first board of a real game. |
+| `maps/train/` | The maps whose games an agent may study. `claw` and `star-of-david-duo` are the official game's default maps for two teams, as the game serves them (`league official-maps`). |
 | `maps/holdout/` | The maps that only give numbers: nobody reads their games, so a bot can't be fitted to them. |
 | `go.mod`, `go.sum` | The one Go module of every bot, which pins the game's Go SDK. |
 | `league_tools/` | The `league` command (Python): tournaments, ratings, the game digest, the roster and the map maker. |
@@ -47,6 +47,10 @@ This repository holds bots and the tools that measure them. The game, its rules,
 - **The bots' SDK is the game's Go module** (`github.com/INTODAN/island-battles-go/clients/island-battles-go`, the version `go.mod` requires), as for any player's Go bot. Moving it is a change of the setup like moving the pin. The tools are Python and read turns and demos with the Python SDK from PyPI (`island-battles-python` in `uv.lock`); so do outside opponents and the hosted bot's handler.
 - **To try a runner or a rule that isn't merged yet**, set `ISLAND_BATTLES_GO` to a checkout of the game: the runner is then built from there.
 - **Something the league needs from the game** (a faster runner, a new option, a map's file) is an issue in the game's repository, and is done there.
+
+### Official maps
+
+The game lists its default maps at `GET /map/templates` and serves each one's map file at `GET /map/templates/{map_template_id}` (INTODAN/island-battles-go#390). `uv run league official-maps` saves every default map for two teams under the league's name for it (its name in lower case, words joined by hyphens): a new one to `maps/train/` (`--set holdout` for the other set), and a map the league already has again in its own set when the served file changed. A new or changed official map moves every rating like any new map, so it is a change of the league's setup: play both sets and record the standings in the ledger before the next iteration's first measurement. Maps for three or more teams are left out until the tournament pairs more than two (#1).
 
 ## Ratings
 
@@ -123,6 +127,7 @@ uv run league rematch DEMO... --bot NAME       # those games again with NAME in 
 uv run league status NAME active            # or: candidate, retired, sparring
 uv run league delete NAME                   # a rejected candidate, or a bot the population's rules remove
 uv run league new-map NAME --seed N --set train
+uv run league official-maps                 # the official game's default two-team maps, as it serves them: new ones go to train
 uv run league replay DEMO... --bot NAME --team 2   # how closely a bot repeats a team's commands: for a sparring bot
 uv run league unpack DEMO                   # a plain .json for the demo viewer
 gofmt -w bots/NAME                          # format a bot's Go code, as the checks want it
@@ -136,6 +141,5 @@ scripts/check.sh                            # format, lint, types and tests of t
 - **The champion plays nowhere but here.** Shipping it means `island-battles-bot package` and an upload, a hosted bot, or a rated bot name on the leaderboard. Before that it must play real lobby games with `island-battles-bot run`, where turns have deadlines and a network.
 - **No Go bot template in the game.** The rules skills come from the game's Python template, whose examples are Python; the `bot-league` skill maps them to the Go SDK. A Go template with its own skills would replace that.
 - **Two teams only.** The runner plays any number of teams; the tournament pairs two.
-- **Official maps come by hand.** The game lists its default maps but doesn't serve their map files (INTODAN/island-battles-go#390). `claw` was rebuilt from a saved demo's first board; a new default map needs the same.
-- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in). The league doesn't play that hosted bot itself: every game against it is one its owner can learn from too. The game's runner can't play hosted bots yet anyway (INTODAN/island-battles-go#407).
+- **Real opponents only by proxy.** A player's bot plays every tournament as an outside opponent, and two sparring bots play like the hosted bot of the real games (`ori_mimic`, built from its commands in lobby demos, makes its exact commands on 75% of its turns; `ori_like` is an older, rougher stand-in). The league doesn't play that hosted bot itself: every game against it is one its owner can learn from too. The game's headless runner plays only bots it starts itself; bot-only games against hosted and uploaded bots run on the server, through the Python SDK's `island-battles-bot match` (INTODAN/island-battles-go#407), which the league doesn't use for that hosted bot.
 - **Real games are studied one iteration at a time.** The hosted bot keeps every real game it plays as a zip with the game's own demo ([hosting/lambda/README.md](hosting/lambda/README.md#its-games)), and each one starts an automated iteration that studies it ([hosting/rsi/README.md](hosting/rsi/README.md)). Its pull request merges itself when the checks pass, so a bot can reach main and the hosted bot without a person reading it.

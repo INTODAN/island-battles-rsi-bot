@@ -6,6 +6,7 @@ import json
 import re
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from island_battles_client import (
@@ -684,6 +685,40 @@ def test_new_map_takes_only_a_name_an_iteration_may_add(tmp_path: Path, monkeypa
     assert cli.main(["new-map", "far-shore", "--seed", "8", "--set", "train"]) != 0
     assert cli.main(["new-map", "flats", "--seed", "8", "--set", "holdout"]) != 0
     assert [path.name for path in tmp_path.rglob("*.json")] == ["flats.json"]
+
+
+def test_official_maps_are_the_served_two_team_maps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    served = {
+        "https://game.test/map/templates": {
+            "maps": [
+                {"map_template_id": 1, "map_name": "Claw", "team_count": 2},
+                {"map_template_id": 2, "map_name": "Star of David", "team_count": 3},
+                {"map_template_id": 3, "map_name": "Star of David Duo", "team_count": 2},
+            ]
+        },
+        "https://game.test/map/templates/1": {"map_name": "Claw", "player_amount": 2, "castles": []},
+        "https://game.test/map/templates/3": {"map_name": "Star of David Duo", "player_amount": 2, "castles": [1]},
+    }
+    asked: list[str] = []
+
+    def get(url: str) -> dict[str, Any]:
+        asked.append(url)
+        return served[url]
+
+    found = maps.official("https://game.test/", get)
+    assert list(found) == ["claw", "star-of-david-duo"] and "https://game.test/map/templates/2" not in asked
+    assert found["claw"] == served["https://game.test/map/templates/1"]
+
+    monkeypatch.setattr(cli, "MAPS", tmp_path)
+    monkeypatch.setattr(maps, "_get_json", get)
+    for directory in ("train", "holdout"):
+        (tmp_path / directory).mkdir()
+    # A map the league has keeps its set and takes the served file; a new one goes to the set asked for.
+    (tmp_path / "holdout" / "claw.json").write_text(json.dumps({"map_name": "claw"}))
+    assert cli.main(["official-maps", "--game-url", "https://game.test", "--set", "train"]) == 0
+    assert json.loads((tmp_path / "holdout" / "claw.json").read_text())["map_name"] == "Claw"
+    assert (tmp_path / "train" / "star-of-david-duo.json").is_file()
+    assert not (tmp_path / "train" / "claw.json").exists()
 
 
 def test_the_runner_is_pinned_to_one_commit_of_the_game() -> None:
