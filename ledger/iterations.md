@@ -8,10 +8,10 @@ A line is a founder and the bots descended from it: one strategy. The main line 
 
 | Line | Its strategy | Head | Other active bots | State |
 |---|---|---|---|---|
-| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce` | none | **main** since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it |
-| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | `speedhelp_landlate` (the champion of iterations 38 and 39), `harrier_feedkeep` (retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`) | the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); 0 iterations of work without a promotion |
+| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce` | none | **main** since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once) |
+| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | `speedhelp_landlate` (the champion of iterations 38 and 39), `harrier_feedkeep` (retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`) | the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); 1 iteration of work without a promotion (41) |
 | `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots | none | closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. |
-| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | `batchfront` | side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 0 iterations of work without a promotion |
+| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | `batchfront` | side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 1 iteration of work without a promotion (41) |
 
 ## Lessons so far
 
@@ -88,6 +88,8 @@ Short, general statements about the game that the games have shown. Add to them,
 - **A bot with no reserve loses its castles to strikes sized to what it left.** `batchfront` spent castles down to 1 to 8 soldiers beside enemy castles of 30 to 45 (upgrades on `circle`, a take on `gyre`, feed batches on `gyre`, `inlet` and `haven`), and each was struck at exactly that. Keeping what the strongest enemy castle within 4 turns could land, less the castle's growth, beat its parent 42 of 62 and was clear on both sets (iteration 40's `batchfront_keep`); a horizon of 8 or 14 turns cost the economy and lost the head-to-head (26 and 20 of 62), as iteration 2's static reserve did.
 - **Pricing the enemy's spare instead of its stock beats the `ori` line.** A founder that counts an enemy castle's threat and its help as only its soldiers above the reserve the `ori` rules keep took 47 to 51 of 62 from every `ori` bot, where the same founder counting the whole stock took 3 (iteration 40's `pounce`): that line keeps most of its soldiers as reserves it never sends, and a bot that knows it strikes past them. It takes fewer points from the sparring bots than the `ori` champion (101 of 124 against 114 on training, 86 against 106.5 of 116 on holdout) and loses to `batchfront`, which keeps no such reserve.
 - **Uncapped harassment of every castle is not a gain for the line that freezes.** Grafting `punisher`'s groups at every enemy castle into the champion beat it 47 of 62 and was clear on training (+89), and showed nothing on the 27 holdout maps (+4 at 46.7%) (iteration 40's `landlate_punish`, unresolved), as iteration 33's `harrier` fell on holdout.
+- **`pounce`'s losses come from where its soldiers stand, not from how it prices threats.** In iteration 41 three fixes of its pricing (counting the groups walking in to each enemy castle, keeping back what enemy groups walking at a castle would take, and striking up to 10 turns out instead of 6) each acted in the games they came from and turned some losses into wins there, and each was worse in the field (−46, −7 and −73 games). Its hoard sits 7 to 13 turns from every enemy castle on `wharf`, `bight` and `far-shores`: a bot with no front has its soldiers where it can neither strike nor help in time.
+- **A rule that stops every strike while any castle is short stops too many.** `batchfront_keep` with no strike while `reinforce` reported a castle short lost to its parent 21.5 of 64 and was clearly worse (iteration 41's `keep_nostrike`): a castle is short on most turns of a long game.
 
 From a real game between two players' bots on the official map, `claw` (2026-11-21, 195 turns; read with `league digest`, not played here):
 
@@ -3016,3 +3018,93 @@ Holdout maps (`iteration-40-holdout`, 5,104 matches; the first run played 754 an
 - **The automated iteration can't finish a first half** since the check of `ledger/progress.csv` was added: a hand-over is a ledger entry without its row. Both of today's runs for iteration 40 failed there. *For a person:* let the check skip a hand-over, or have the first half write a provisional row.
 
 **Time** (`league clock report`, from the claim at 17:19:04; the reading of the skills and the ledger before the claim, and the wait for the Actions runs, not clocked): 0 ledger 0.6 min, 1 measure 0.6, 2 study 5.0, 3 vary 4.0, 4 gate 3.3, 5 select 4.4, 6 record 1.9; 19.8 minutes in all, 17:19:04 to 17:38:53 UTC (iteration 39: 21.8 on the clock). **Where it went:** playing about 7 minutes (the gate's 4,267 matches in 170 s, the holdout selection's 2,736 in 114 s, the final holdout table's 754 in 41 s, the subagents' head-to-heads and the founder's runs); thinking the rest: the studies (seven Sonnet subagents at once, 17:22:37 to 17:24:02, the longest 1.5 minutes), the founder (17:21:46 to 17:28:52, 7.1 minutes, beside the studies and the fixes: the slowest single piece, as in iteration 39), the fixes 1 to 1.5 minutes each with Sonnet, the record. No failure but the one timed-out turn, 2 seconds to play again. **What was different:** iteration 39's proposal was done: the founder, the graft and the simplification started before the study, since they need no finding, and the study and the fixes all ran on Sonnet. **To change:** *the next iteration:* the gate's and the holdout's plays (about 5 minutes) are the largest single share left, and they play only the candidates' new matches; nothing to cut there without doing less. *A tool:* the holdout selection could start playing the candidates' holdout matches in the background (`--shard`-like, no tables) as soon as the training selection passes them, while the paired table is read. *The workflow:* the progress-row check above.
+
+## Iteration 41: the new champion's pricing, fixed three ways, and nothing promoted
+
+**Date:** 2026-11-23. **Maps:** 32 training, 31 holdout: the map sets grew by `slough` (training, seed 4103) and `jetty` and `berm` (holdout, seeds 4101 and 4102). **Matches:** 5,632 in the first measurement (`iteration-41-before`, 176 played). Run on one desktop, from the branch of iteration 40 (not yet merged; claimed with `--base`). No real game was named. Five candidates, written by subagents (four on Sonnet, `pounce_strikes` on the default model); eight studies, on Sonnet.
+
+**The population as found.** No pair played alike. The field: `pounce` 2134, `punisher` 2124, `fullfeed_unfreeze` 2055, `speedhelp_landlate` 2040, `batchfront_keep` 1985, `harrier_feedkeep` 1984, `growtrickle_feedkeep` 1949, `sameturn_endreserve` 1935, `batchfront` 1906, `ori_mimic` 1800, `ori_like` 1673. The champion is alone in its line: none of its games or lost points are against its own line. It lost 182.5 points of 704: 40.5 to `batchfront_keep`, 37 to `batchfront`, 19 to `punisher`, 17 to `ori_like`, 15 to `fullfeed_unfreeze`, the rest 8 to 13 each. `batchfront_keep` and `batchfront` each take over a third: no exploiter due.
+
+**The slate** (five places; two side lines): `ori`'s candidate, `batchfront`'s candidate, three for the main line, each a fix of a finding from the champion's games against players outside its line (it has no line of its own yet). A sixth would have been a second fix of the same pricing.
+
+**Findings** (eight games, each by its own subagent; the decisive lines of findings 1 and 4 checked in the candidates' rematches):
+
+1. **The hoard never strikes.** `wharf` against `batchfront_keep` (`c54ffb6b…`, turns 57 to 63, 102 to 118 at home, `waiting`), `bight` against `batchfront_keep` (`e455f1aa…`, turns 30 to 71, 67 to 113, no `pounce>` line all game), `far-shores` against `ori_like` (`7ca89f6a…`, turns 56 to 73, 132 to 235). The diagnosis (a log of the cheapest failed strike): the castles holding it are 7 to 13 turns from every enemy castle, beyond `punishWalk` (6); `threat` cut nothing.
+2. **The batches an enemy castle has walking in are invisible.** `bayou` against `ori_like` (`8fc75a34…`), turns 55 to 61: castle 7 bought production and speed (32 to 4) while three groups of 12 walked in to castle 8 (8, then 32), which struck it with 28. `wharf`: castles at 5 soldiers fed trains of 12. **Cause:** `enemySpare` reads an enemy castle's stock only.
+3. **Help and upgrades spend a castle that enemy groups are already walking at.** `bight` turns 72 to 77 (castle 0 from 73 to 6 in help to castle 4, then struck); `breakwater` against `punisher` (`d45bda30…`), turns 21 to 26. In the code, `safeOut` already plays every landing; the gap is only where our own help offsets an enemy group.
+4. **`fullfeed_unfreeze`'s new rule counts one turn of growth too many.** `circle` against `punisher` (`5922b563…`), turn 12: `production4@0 unfrozen` took 32 to 6 against a group of 25 landing on turn 17; `coversLandings` counted 26, the castle held 22; a castle produces nothing on the turn it buys. `speedhelp_landlate` drew the game.
+5. **`batchfront_keep` strikes while its own castles are short.** `islands` against `speedhelp_landlate` (`509cbbe4…`), turns 63 to 66; `fjord` against `sameturn_endreserve` (`bba36fca…`), turn 61; iteration 40's `haven` game, turn 52.
+6. Also seen, not given a place: `pounce` loses `haven` as team 1 to every `ori` bot on the same turns (51 to 58): its home sent 13 at a castle of 2, and 24, 13 and 1 from three castles took it; the captured castles ping-pong with garrisons of 2 to 8 (castle 5 nine times). `ori` bots spend a border castle on neutrals and harassment beside a stocked `batchfront` castle (`strait` turns 30 and 41 to 52).
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | Decision |
+|---|---|---|---|---|---|---|---|---|
+| `pounce_massthreat` | pounce | Fix: the threat to a castle counts each enemy castle's soldiers with its own side's groups walking in to it that land within six turns (`mass>`). (`threat` was already a sum over enemy castles. Rematch: `bayou` turn 32, a production level not bought, loss → win; `wharf` turn 43, loss → loss; the two `haven` games never acted.) | 31/64 | 2049 (2085) | 34, 80 (−46; 8 better, 11 worse; 4.2%): clearly worse | 99.5 (103) | not played | **rejected**: clearly worse on training |
+| `pounce_inbound` | pounce | Fix: what a castle may send is also capped by what the enemy groups walking at it alone would take, its own inbound help not counted (`inbound>`). (Rematch: `bight` turn 79, no 1-soldier help, loss → loss; `bayou` turn 42, castle 9 kept 4, loss → win; `breakwater` never acted.) | 32/64 | 2080 (2085) | 15, 22 (−7; 6 better, 10 worse; 25.8%): worse | 100 (103) | 5, 2 (+3, 50%): nothing; all maps −1 | **rejected**: not confirmed on holdout, and no margin on all maps |
+| `pounce_strikes` | pounce | Fix: a strike may land up to 10 turns out, not 6 (`punishWalk`), since its price already counts the target's growth and the help that lands by then; the cheapest failed strike is logged (`nostrike>`). (Rematch: `wharf` turn 42, loss → loss; `bight` turn 30, loss → win; `far-shores` turn 28, loss → win.) | 33.5/64 | 2031 (2085) | 85, 158 (−73; 10 better, 16 worse; 3.1%): clearly worse | 91 (103) | not played | **rejected**: clearly worse on training, and 12 points fewer against the references |
+| `unfreeze_margin` | fullfeed_unfreeze | Fix: `coversLandings` counts no growth on the turn of the purchase. (Rematch: both `circle` seats, turn 12, `saving`, loss → draw; `shingle` turn 67, win → win sooner; `inlet` unchanged.) | 32/64 | 2007 (2013) | 4, 14 (−10; 2 better, 5 worse; 18.0%): clearly worse | 106.5 (106.5) | not played | **rejected**: clearly worse on training; plays alike its parent (88%) |
+| `keep_nostrike` | batchfront_keep | Fix: no strike planned or launched while `reinforce` reports a castle short (`nostrike`). (Rematch: `islands` turn 38, `fjord` turn 63, `haven` turn 28 (as `batchfront`); losses → losses at the limit.) | 21.5/64 | 1968 (2003) | 69, 96 (−27; 8 better, 16 worse; 14.2%): clearly worse | 83 (94) | not played | **rejected**: clearly worse on training |
+
+The gate: `scripts/check.sh` passes; `iteration-41-parents` and `iteration-41-candidates` (5,120 matches, 4,783 played in 205 s) exit 0 with no failed turn; slowest turns 15.6 to 25.2 ms. The selection: `iteration-41-select` (all cached); `iteration-41-select-holdout` for `pounce_inbound` (1,220 played in 58 s) and `iteration-41-select-all`.
+
+**Status changes:** the five candidates deleted. The population is iteration 40's. `iteration-41-after` lists no bots that play alike.
+
+Training maps (`iteration-41-train`, 5,632 matches, exit 0):
+
+| Player | Rating | Score | W | D | L | Failed turns | Slowest turn (ms) |
+|---|---|---|---|---|---|---|---|
+| pounce | 2134 | 0.788 | 635 | 41 | 156 | 0 | 19.3 |
+| punisher | 2124 | 0.779 | 632 | 32 | 168 | 0 | 23.7 |
+| fullfeed_unfreeze | 2055 | 0.709 | 540 | 100 | 192 | 0 | 17.1 |
+| speedhelp_landlate | 2040 | 0.693 | 533 | 87 | 212 | 0 | 20.7 |
+| batchfront_keep | 1985 | 0.632 | 500 | 52 | 280 | 0 | 15.2 |
+| harrier_feedkeep | 1984 | 0.631 | 469 | 112 | 251 | 0 | 28.0 |
+| growtrickle_feedkeep | 1949 | 0.593 | 442 | 102 | 288 | 0 | 18.2 |
+| sameturn_endreserve | 1935 | 0.577 | 414 | 132 | 286 | 0 | 21.8 |
+| batchfront | 1906 | 0.546 | 432 | 44 | 356 | 0 | 26.6 |
+| ori_mimic | 1800 | 0.436 | 305 | 116 | 411 | 0 | 22.8 |
+| ori_like | 1673 | 0.328 | 261 | 24 | 547 | 0 | 17.8 |
+| level1 | 1439 | 0.060 | 0 | 84 | 620 | 0 | 10.7 |
+| level3 | 1065 | 0.007 | 5 | 0 | 699 | 0 | 10.1 |
+| level2 | 838 | 0.001 | 1 | 0 | 703 | 0 | 10.0 |
+
+Holdout maps (`iteration-41-holdout`, 5,456 matches, exit 0):
+
+| Player | Rating | Score | W | D | L | Failed turns | Slowest turn (ms) |
+|---|---|---|---|---|---|---|---|
+| pounce | 2076 | 0.751 | 591 | 29 | 186 | 0 | 54.1 |
+| punisher | 2062 | 0.737 | 577 | 34 | 195 | 0 | 15.4 |
+| batchfront_keep | 2043 | 0.717 | 560 | 35 | 211 | 0 | 11.9 |
+| speedhelp_landlate | 2007 | 0.678 | 511 | 71 | 224 | 0 | 17.5 |
+| fullfeed_unfreeze | 2006 | 0.676 | 515 | 60 | 231 | 0 | 20.3 |
+| harrier_feedkeep | 1964 | 0.630 | 460 | 96 | 250 | 0 | 37.9 |
+| growtrickle_feedkeep | 1958 | 0.623 | 453 | 99 | 254 | 0 | 18.0 |
+| batchfront | 1927 | 0.588 | 459 | 30 | 317 | 0 | 16.1 |
+| sameturn_endreserve | 1888 | 0.545 | 382 | 115 | 309 | 0 | 22.7 |
+| ori_mimic | 1800 | 0.453 | 308 | 115 | 383 | 0 | 19.7 |
+| ori_like | 1652 | 0.328 | 264 | 0 | 542 | 0 | 24.6 |
+| level1 | 1379 | 0.047 | 0 | 64 | 618 | 0 | 11.6 |
+| level3 | 918 | 0.003 | 2 | 0 | 680 | 0 | 13.6 |
+| level2 | 637 | 0.000 | 0 | 0 | 682 | 0 | 18.3 |
+
+**Champion:** `pounce`, unchanged: **2134** on training (iteration 40: 2132 on 31 maps) and **2076** on holdout (2073 on 29). Against the references: 103 of 128 on training (`ori_mimic` 56, `ori_like` 47), 89 of 124 on holdout (54, 35). Its weakest pairing: `batchfront_keep`, 23.5 of 64 on training and 19 of 62 on holdout; then `batchfront`, 27 and 20.
+
+**Where it still loses:** to the `batchfront` line and `ori_like`, the bots that keep no reserve and feed one front; its soldiers stand far from every enemy castle. **The next iteration starts with** the champion's place: where its soldiers stand. It has no front; a graft of a front (rear castles feeding the castle nearest the enemy, as both side lines do) is a graft, not a fix of its pricing, and the three fixes of its pricing this iteration all failed. `ori` and `batchfront` each have one iteration of work without a promotion: a second closes them.
+
+**Ideas not tried:**
+- `pounce` captures castles it can't hold (`haven`, castle 5 changing hands nine times with garrisons of 2 to 8): a strike should also pay the garrison the enemy's spare would take back.
+- `pounce` sends help in pieces sized to each turn's shortfall (`wharf` turns 47 to 56, ten groups of 4 to 19 into castle 6, which fell): help once in one group or not at all.
+- `pounce`'s neutral takes with senders landing apart (`bayou` turn 59, 20 and 17 landing two turns apart; the enemy took the weakened neutral).
+- `batchfront_keep` expands late: a second castle at production 1 pays no neutral (`islands` turns 10 to 34).
+- `batchfront_keep`'s keep ignores groups walking in to an enemy castle (`fjord` turn 61, about 100 at castle 9).
+- The `ori` line's harassment and upgrades drain a castle beside a stocked enemy castle (`strait` turns 36 to 52).
+- The ideas of iteration 40's list stand.
+
+### The league itself
+
+- **The champion takes fewer points from the references than the one it replaced** (second iteration): 103 of 128 on training against `speedhelp_landlate`'s 118 in the same table (`ori_mimic` 61, `ori_like` 57), and 89 of 124 on holdout against 114.5. Raised in iteration 40 with a proposed change of the main-line rule; still open, and the hosted bot runs `pounce` once iteration 40 merges.
+- **The champion has no line of its own**, so its lost points are all against other lines, for the first time since iteration 24. The field's variety is better than it was; its weakest pairings are both of one side line.
+- **Three fixes of one bot's pricing failed together.** Each acted in its games and turned losses there into wins (`bayou`, `bight`, `far-shores`), and each was worse against the field. Rematches on a finding's games keep pointing one way and the field the other, as in iterations 37 and 39: the selection is doing its job.
+- **Who teaches nothing.** `level2` and `level3` win 1 and 5 games, `level1` only draws (sixth iteration).
+- **Iteration 40 is not merged.** Iteration 41 was claimed on its branch; until a person merges iteration 40 (it changes the champion, see its review), every later iteration stacks on it.
+
+**Time** (`league clock report`): 0 ledger 0.3 min, 1 measure 0.4, 2 study 4.2, 3 vary 2.9, 4 gate 3.8, 5 select 1.9, 6 record 0.8; 14.3 minutes in all, 17:41:30 to 17:55:46 UTC (iteration 40: 19.8). **Where it went:** playing about 5.5 minutes (the gate's 4,783 matches in 205 s, the holdout selection's 1,220 in 58 s); thinking the rest: eight studies at once on Sonnet (17:43:24 to 17:45:15, the longest 1.9 minutes), five writers at once (17:46:07 to 17:48:55, the longest `pounce_strikes` at 2.8 minutes with its diagnosis). **What was different:** no founder, whose inner loop was iteration 40's longest piece; the fixes started the moment their findings were in, before the last study finished. **To change:** *the next iteration:* the gate run is now the largest share (3.8 minutes, 4,783 matches); every candidate's head-to-head was already played, so nothing more can be cached. *A tool:* the gate's whole-field run could be started per candidate as each writer finishes (they are independent), so that it overlaps the writing of the others; today it waits for the last writer.
