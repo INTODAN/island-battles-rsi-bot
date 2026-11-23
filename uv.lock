@@ -160,6 +160,11 @@ dependencies = [
     { name = "island-battles-python" },
 ]
 
+[package.optional-dependencies]
+store = [
+    { name = "boto3" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "boto3" },
@@ -169,7 +174,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "island-battles-python", specifier = ">=1.5.0" }]
+requires-dist = [
+    { name = "boto3", marker = "extra == 'store'", specifier = ">=1.44.9" },
+    { name = "island-battles-python", specifier = ">=1.5.0" },
+]
+provides-extras = ["store"]
 
 [package.metadata.requires-dev]
 dev = [

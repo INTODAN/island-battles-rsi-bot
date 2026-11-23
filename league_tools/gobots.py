@@ -44,18 +44,31 @@ def fingerprint(directory: Path) -> str:
     return hashlib.sha256(f"{SDK_MODULE} {sdk_version()} {code_fingerprint(directory)}".encode()).hexdigest()
 
 
-def binary_path(name: str) -> Path:
-    """Where the binary of a bot's current code goes, named by its fingerprint."""
-    return BINARIES / f"{name}-{fingerprint(BOTS / name)[:16]}"
+def binary_path(name: str, bots: Path = BOTS) -> Path:
+    """Where the binary of a bot's current code goes, named by its fingerprint.
+
+    Args:
+        name: The bot.
+        bots: The directory that holds the bot's: the league's ``bots/``, or a
+            player's copy of code from the match store.
+    """
+    return BINARIES / f"{name}-{fingerprint(bots / name)[:16]}"
 
 
-def build(names: Iterable[str]) -> dict[str, Path]:
+def build(names: Iterable[str], bots: Path = BOTS, environment: dict[str, str] | None = None) -> dict[str, Path]:
     """Build the bots that have no binary of their current code yet, in one go build, and return every binary.
+
+    Args:
+        names: The bots.
+        bots: The directory that holds them, whose parent holds the Go module
+            (``go.mod``): the league's ``bots/`` by default. A binary is named
+            by its bot and its code's fingerprint, wherever the code was.
+        environment: The go build's environment; this process's by default.
 
     Raises:
         RuntimeError: A bot didn't compile.
     """
-    wanted = {name: binary_path(name) for name in dict.fromkeys(names)}
+    wanted = {name: binary_path(name, bots) for name in dict.fromkeys(names)}
     missing = [name for name, binary in wanted.items() if not binary.is_file()]
     if missing:
         BINARIES.mkdir(parents=True, exist_ok=True)
@@ -70,19 +83,20 @@ def build(names: Iterable[str]) -> dict[str, Path]:
                     "-ldflags=-s -w",
                     "-o",
                     output + os.sep,
-                    *(f"./bots/{name}" for name in missing),
+                    *(f"./{bots.name}/{name}" for name in missing),
                 ],
-                cwd=LEAGUE,
+                cwd=bots.parent,
                 check=False,
                 capture_output=True,
                 text=True,
+                env=environment,
             )
             if built.returncode != 0:
                 raise RuntimeError(f"a bot didn't build:\n{built.stderr.strip()}")
             for name in missing:
                 # A bot edited while it built may hold the new code: never keep it under the old code's hash.
-                if binary_path(name) != wanted[name]:
-                    raise RuntimeError(f"bots/{name} changed while it was built; build it again")
+                if binary_path(name, bots) != wanted[name]:
+                    raise RuntimeError(f"{bots.name}/{name} changed while it was built; build it again")
                 os.replace(Path(output) / name, wanted[name])
     return wanted
 

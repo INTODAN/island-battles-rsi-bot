@@ -8,6 +8,12 @@ dependencies = [
     "island-battles-python>=1.5.0",
 ]
 
+[project.optional-dependencies]
+# A match store in S3 (LEAGUE_STORE=s3://...): league_tools/store.py imports boto3 only then.
+store = [
+    "boto3>=1.44.9",
+]
+
 [project.scripts]
 league = "league_tools.cli:main"
 
@@ -43,5 +49,5 @@ convention = "google"
 testpaths = ["tests"]
 
 [tool.ty.environment]
-# The hosted bot's and the automated iteration's modules, which their tests import by name.
-extra-paths = ["hosting/lambda", "hosting/rsi"]
+# The hosted bot's, the automated iteration's and the Lambda player's modules, which their tests import by name.
+extra-paths = ["hosting/lambda", "hosting/rsi", "hosting/players"]

@@ -44,14 +44,26 @@
 # (scripts/claim-iteration.sh): while the next number is claimed, the run waits
 # for that iteration to merge, up to RSI_CLAIM_WAIT_MINUTES.
 #
+# With a match store (the repository variable LEAGUE_STORE, hosting/players/),
+# the runners share their matches through it instead of artifacts: the warm and
+# gate runners play their shards into it, and then the queue (league player
+# --drain). Claude's steps run their tournaments in request mode: they read the
+# store and ask for the matches it lacks, and never write a result. A players
+# job, on runners Claude never ran on, plays what they ask for until the second
+# half has ended. Without LEAGUE_STORE, all of this is as before.
+#
 # Claude's steps have no write access anywhere: a read-only GitHub token, no
-# AWS credentials, no git credentials. The App token that pushes and merges is
+# AWS credentials (with a store, a role that can only ask for matches), no git
+# credentials. The App token that pushes and merges is
 # made after the second half has finished; the one that pushes the claim before
 # it is revoked at once. Setup: hosting/rsi/README.md.
 #
 # Repository variables: AWS_GAMES_READ_ROLE_ARN, GAMES_BUCKET, RSI_APP_ID,
 # RSI_MODEL (optional, default opus), RSI_GAMES_PER_RUN (optional, default 10),
 # RSI_CLAIM_WAIT_MINUTES (optional, default 90), RSI_SHARDS (optional, default 8).
+# With a match store: LEAGUE_STORE, AWS_STORE_PLAYER_ROLE_ARN,
+# AWS_STORE_REQUEST_ROLE_ARN, and optionally LEAGUE_PLAYER_FUNCTION,
+# RSI_STORE_PLAYERS (default 2) and LEAGUE_GO_VERSION (default 1.25).
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, RSI_APP_PRIVATE_KEY.
 name: Real-game iteration
 
@@ -87,6 +99,7 @@ jobs:
       base: ${{ steps.claim.outputs.base }}
       shards: ${{ steps.shards.outputs.shards }}
       count: ${{ steps.shards.outputs.count }}
+      players: ${{ steps.shards.outputs.players }}
       cache: ${{ steps.claim.outputs.cache }}
     steps:
       - uses: actions/checkout@v5
@@ -112,10 +125,13 @@ jobs:
         id: shards
         env:
           COUNT: ${{ vars.RSI_SHARDS || '8' }}
+          PLAYERS: ${{ vars.RSI_STORE_PLAYERS || '2' }}
         run: |
           [[ "$COUNT" =~ ^[1-9][0-9]?$ ]] || { echo "::error::RSI_SHARDS must be a number from 1 to 99"; exit 1; }
+          [[ "$PLAYERS" =~ ^[1-9]$ ]] || { echo "::error::RSI_STORE_PLAYERS must be a number from 1 to 9"; exit 1; }
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "shards=[$(seq -s, 1 "$COUNT")]" >> "$GITHUB_OUTPUT"
+          echo "players=[$(seq -s, 1 "$PLAYERS")]" >> "$GITHUB_OUTPUT"
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -194,6 +210,8 @@ jobs:
 
   # The population's round robin on the training and the holdout maps, a shard
   # per runner. From a warm cache each shard plays nothing and takes a minute.
+  # With a match store, each shard comes from the store and goes to it, and the
+  # runner then plays what is queued there.
   warm:
     name: Warm ${{ matrix.shard }}/${{ needs.claim.outputs.count }}
     needs: claim
@@ -203,6 +221,10 @@ jobs:
     strategy:
       matrix:
         shard: ${{ fromJSON(needs.claim.outputs.shards) }}
+    env:
+      LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+      LEAGUE_PLAYER_ID: github-warm-${{ matrix.shard }}
+      LEAGUE_RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -212,16 +234,77 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.claim.outputs.cache }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: vars.LEAGUE_STORE != ''
+        with:
+          role-to-assume: ${{ vars.AWS_STORE_PLAYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Play the shard
         env:
           SHARD: ${{ matrix.shard }}/${{ needs.claim.outputs.count }}
         run: uv run --locked league tournament --maps all --shard "$SHARD" --run-id "warm-${{ matrix.shard }}"
 
+      - name: Play what is queued in the store
+        if: vars.LEAGUE_STORE != ''
+        run: uv run --locked league player --drain
+
       - uses: ./.github/actions/league-cache-upload
-        if: always()
+        if: always() && vars.LEAGUE_STORE == ''
         with:
           name: cache-warm-${{ matrix.shard }}
+
+  # With a match store: the players of what Claude's steps ask for. Those steps
+  # run their tournaments in request mode and never play a match into the
+  # store; these runners, where Claude never ran, play the queue, from code in
+  # the store that they check first (league_tools/player.py), until the second
+  # half has ended.
+  players:
+    name: Player ${{ matrix.player }}
+    needs: claim
+    if: vars.LEAGUE_STORE != '' && needs.claim.outputs.ids != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 480
+    strategy:
+      matrix:
+        player: ${{ fromJSON(needs.claim.outputs.players) }}
+    env:
+      LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+      LEAGUE_PLAYER_ID: github-player-${{ matrix.player }}
+      LEAGUE_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.claim.outputs.base }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/league-cache
+        with:
+          key-prefix: ${{ needs.claim.outputs.cache }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+
+      # For as long as the iteration may run: the role's maximum session must allow it.
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_STORE_PLAYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 28800
+
+      - name: Play the queue until the second half has ended
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while :; do
+            uv run --locked league player --drain --max-seconds 600 || echo "::warning::league player stopped; starting it again"
+            state=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+              --paginate --jq '.jobs[] | select(.name == "Select (second half)") | .status')
+            if [ "$state" = completed ]; then
+              exit 0
+            fi
+            sleep 10
+          done
 
   # Steps 0 to 3, step 4's head-to-head and the hand-over.
   study:
@@ -231,6 +314,14 @@ jobs:
     timeout-minutes: 180
     outputs:
       candidates: ${{ steps.handover.outputs.candidates }}
+    # With a match store, Claude's tournaments ask for what the store lacks
+    # and never write a result: the request role can't either.
+    env:
+      LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+      LEAGUE_STORE_MODE: request
+      LEAGUE_PLAYER_ID: github-study
+      LEAGUE_RUN_ID: ${{ github.run_id }}
+      LEAGUE_PLAYER_FUNCTION: ${{ vars.LEAGUE_PLAYER_FUNCTION }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -244,8 +335,9 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.claim.outputs.cache }}
-          shards: cache-warm-*
+          shards: ${{ vars.LEAGUE_STORE == '' && 'cache-warm-*' || '' }}
           save-as: warm
+          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
 
       - uses: aws-actions/configure-aws-credentials@v5
         with:
@@ -258,8 +350,18 @@ jobs:
           IDS: ${{ needs.claim.outputs.ids }}
         run: |
           uv run --locked python hosting/rsi/real_games.py --bucket "$BUCKET" --out runs/real --ids "$IDS"
-          # The AWS credentials end here: nothing after this step reads S3.
+          # The games' credentials end here: nothing after this step reads them.
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+
+      # With a match store, the only credentials Claude's step has: the
+      # request role reads the store and creates requests, bots' code and
+      # maps there, and can write no result, lease or failed attempt.
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: vars.LEAGUE_STORE != ''
+        with:
+          role-to-assume: ${{ vars.AWS_STORE_REQUEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 14400
 
       # `claude setup-token` wraps the token across two lines in a narrow
       # terminal, and a pasted secret keeps the line break, which fails Claude's
@@ -533,6 +635,10 @@ jobs:
     strategy:
       matrix:
         shard: ${{ fromJSON(needs.claim.outputs.shards) }}
+    env:
+      LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+      LEAGUE_PLAYER_ID: github-gate-${{ matrix.shard }}
+      LEAGUE_RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -542,7 +648,14 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.claim.outputs.cache }}
-          shards: cache-*
+          shards: ${{ vars.LEAGUE_STORE == '' && 'cache-*' || '' }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: vars.LEAGUE_STORE != ''
+        with:
+          role-to-assume: ${{ vars.AWS_STORE_PLAYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -557,8 +670,12 @@ jobs:
           git apply --binary runs/handover/first-half.patch
           uv run --locked league tournament --maps all --add "$CANDIDATES" --shard "$SHARD" --run-id "gate-${{ matrix.shard }}"
 
+      - name: Play what is queued in the store
+        if: vars.LEAGUE_STORE != ''
+        run: uv run --locked league player --drain
+
       - uses: ./.github/actions/league-cache-upload
-        if: always()
+        if: always() && vars.LEAGUE_STORE == ''
         with:
           name: cache-gate-${{ matrix.shard }}
 
@@ -573,6 +690,14 @@ jobs:
       && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    # The hand-over was written by a step that read real games: with a match
+    # store, this half's tournaments ask for matches too, and write no result.
+    env:
+      LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+      LEAGUE_STORE_MODE: request
+      LEAGUE_PLAYER_ID: github-select
+      LEAGUE_RUN_ID: ${{ github.run_id }}
+      LEAGUE_PLAYER_FUNCTION: ${{ vars.LEAGUE_PLAYER_FUNCTION }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -583,12 +708,14 @@ jobs:
       # Saved before Claude runs, never after: Claude could write results
       # into runs/cache that every later iteration would trust. What the second
       # half plays (a failed turn played again, a fixed candidate) is played
-      # again by the next run's warm runners when it matters.
+      # again by the next run's warm runners when it matters. With a match
+      # store, it asks the players instead, and the store keeps what they play.
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.claim.outputs.cache }}
-          shards: cache-*
+          shards: ${{ vars.LEAGUE_STORE == '' && 'cache-*' || '' }}
           save-as: gate
+          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -617,6 +744,15 @@ jobs:
           [ -n "$token" ] || { echo "::error::the secret CLAUDE_CODE_OAUTH_TOKEN is empty"; exit 1; }
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      # With a match store, as in the first half: credentials that can ask
+      # for matches and read them, and write no result.
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: vars.LEAGUE_STORE != ''
+        with:
+          role-to-assume: ${{ vars.AWS_STORE_REQUEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 14400
 
       # The real games are not on this runner while Claude runs: what they
       # showed is in the hand-over.
@@ -898,7 +1034,7 @@ jobs:
   # measuring-time skill's numbers for the next run's review.
   times:
     name: Times
-    needs: [claim, warm, study, gate, select]
+    needs: [claim, warm, players, study, gate, select]
     if: always() && needs.claim.result != 'skipped'
     runs-on: ubuntu-24.04
     timeout-minutes: 10

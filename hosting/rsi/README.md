@@ -22,13 +22,15 @@ real-game-iteration.yml (GitHub Actions), on several runners
 deploy-bot.yml deploys the champion that hosting/lambda/bot names
 ```
 
+With a match store (the repository variable `LEAGUE_STORE`, [hosting/players/README.md](../players/README.md)), the runners share their matches through the store, not artifacts: each warm and gate runner plays its shard into the store and then the store's queue (`league player --drain`), and both Claude steps run their tournaments in request mode (`LEAGUE_STORE_MODE=request`): they read the store and queue what it lacks. A **players** job of `RSI_STORE_PLAYERS` runners (2) runs beside them and plays that queue until the second half has ended. A match played once, by any run or any machine, is never played again. Without `LEAGUE_STORE`, everything is as described here otherwise.
+
 | File | What it is |
 | --- | --- |
 | [`notifier.py`](notifier.py) | The Lambda that turns a packed zip into a `repository_dispatch`. |
 | [`real_games.py`](real_games.py) | Lists the games bucket and unpacks the final games no iteration has studied, newest `--limit` first. |
 | [`scope.py`](scope.py) | Fails when an iteration's diff touches anything but `bots/<name>/`, the ledger (with `ledger/studies/<id>.md`, the study of a real game that the bot's page shows), `hosting/lambda/bot` or a new map, and when a real game's player name is on an added line. The pull request checks run it on every `claude/league-iteration-` branch. |
 | [`../../.github/workflows/real-game-iteration.yml`](../../.github/workflows/real-game-iteration.yml) | The workflow. |
-| [`../../.github/actions/`](../../.github/actions/) | `league-cache` sets up a runner and merges into its `runs/cache` what the run's other runners played; `league-cache-upload` uploads what this runner played. |
+| [`../../.github/actions/`](../../.github/actions/) | `league-cache` sets up a runner and merges into its `runs/cache` what the run's other runners played; `league-cache-upload` uploads what this runner played. With a match store, neither shares matches: the store does. |
 
 ## How it behaves
 
@@ -45,9 +47,10 @@ deploy-bot.yml deploys the champion that hosting/lambda/bot names
 
 A real game's demo holds the other players' names and their bots' log lines: text written by someone else, which Claude reads. The protections hold even if the model is talked into something:
 
-- **Claude's steps can write nothing outside their runners.** Their GitHub token is the workflow's read-only one, the checkout keeps no git credentials, the AWS credentials are cleared before it starts, and its tools are the league's commands, the file tools and `scripts/check.sh`: no web, no `git push`, no `gh`.
+- **Claude's steps can write nothing outside their runners.** Their GitHub token is the workflow's read-only one, the checkout keeps no git credentials, the AWS credentials are cleared before it starts, and its tools are the league's commands, the file tools and `scripts/check.sh`: no web, no `git push`, no `gh`. With a match store, the one AWS role Claude's steps have is the store's request role: it reads the store and creates requests, bots' code and maps (create only, never replace), and IAM gives it no write to results, leases or failed attempts, whatever the tools on the runner were changed to do.
 - **Nothing after Claude runs from Claude's working tree.** Claude's tools can change any file there, the league's tools, `scope.py`, `.github/actions/` and `.git` too. After each half, only the paths an iteration may change (`bots/`, `maps/`, the ledger, `hosting/lambda/bot`) are copied into a fresh checkout of the base, and that checkout's own tools commit, check (`scope.py` with names, `scripts/check.sh`) and push them. The name check reads the real games downloaded again after Claude, not the copies Claude had.
 - **No result Claude could have written is trusted.** The cache is saved before each Claude step, never after, and what the first half's runner played isn't passed on: a fabricated result in `runs/cache` would otherwise count as a played match in the gate or in every later iteration. The gate's runners play the candidates only once the first half passed `scripts/check.sh`, whose bot tests hold their imports to pure standard modules.
+- **With a match store, a request can't fake a result either.** Claude's steps only ask; the players job's runners (Claude never ran on them) and the Lambda players play. A player builds only code from the store, and refuses a request whose code doesn't have the fingerprint asked for, imports anything but the SDK and the bot tests' pure standard packages, has cgo or assembly, names a map that isn't its hash, or has a key that isn't the game it describes; it builds and plays the bots without its AWS credentials in their environment. So the first half's candidates can play before `scripts/check.sh` has passed on them: the player applies the import rule itself. Every result in the store says which machine and run played it (`played_by`). What a misled model can still do is queue many matches: they cost players' time, and a request service with a daily limit per token is the follow-up ([hosting/players/README.md](../players/README.md#what-is-left-for-later)).
 - **The App token that pushes and merges is made after Claude has finished**, and only after the scope check and `scripts/check.sh` pass.
 - **The scope check is required by branch protection.** A change to a workflow, a tool, a test, a skill or an existing map can't merge from an iteration's branch, however it got there.
 - **No names.** The scope check also fails when a player's name from the studied demos is on an added line or in the pull request's body, and prints the place, never the name: the checks' logs of a public repository are public.
@@ -82,6 +85,7 @@ Once, by hand. Nothing works until all of it is done; until then the dispatches 
 4. **A ruleset for `main`:** require a pull request (no approvals), and require the status checks **League** and **Iteration scope**. Without the required checks, `gh pr merge --auto` merges at once.
 5. **A fine-grained token for the notifier:** this repository only, Contents: read and write (what `repository_dispatch` needs). It goes into SSM below, not into GitHub.
 6. Optional variables: `RSI_MODEL` (`opus` or `sonnet`), `RSI_GAMES_PER_RUN`, `RSI_CLAIM_WAIT_MINUTES`, `RSI_SHARDS` (the runners that play at once, 8 by default; a public repository's free plan runs 20 jobs at a time).
+7. Optional, the match store: `LEAGUE_STORE`, `AWS_STORE_PLAYER_ROLE_ARN` and `AWS_STORE_REQUEST_ROLE_ARN`, with `LEAGUE_PLAYER_FUNCTION`, `RSI_STORE_PLAYERS` and `LEAGUE_GO_VERSION` if wanted: [hosting/players/README.md](../players/README.md) says what to make first. The players job holds its role for up to 8 hours and the Claude steps theirs for 4: set the roles' maximum session duration to allow it.
 
 ### AWS (`eu-central-1`, next to the hosted bot)
 

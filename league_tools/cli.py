@@ -13,6 +13,7 @@ from pathlib import Path
 from . import clock as clock_module
 from . import digest as digest_module
 from . import ledger, maps, opponents, roster, tournament
+from . import player as player_module
 from . import rematch as rematch_module
 from . import replay as replay_module
 from .paths import LEDGER, MAPS, RUNS
@@ -71,6 +72,12 @@ def _tournament(arguments: argparse.Namespace) -> int:
         )
         return 1
     return 0
+
+
+def _player(arguments: argparse.Namespace) -> int:
+    if arguments.batch < 1:
+        raise ValueError("--batch is a number of matches, 1 or more")
+    return player_module.run(arguments.drain, arguments.batch, arguments.max_seconds, arguments.parallel)
 
 
 def _digest(arguments: argparse.Namespace) -> int:
@@ -223,6 +230,23 @@ def main(argv: list[str] | None = None) -> int:
         help="exit with status 1 when a match was not played, a player failed a turn or there was no match",
     )
     play.set_defaults(handler=_tournament)
+
+    player_command = commands.add_parser(
+        "player",
+        help="play the matches that others asked the match store (LEAGUE_STORE) for, built from the store's code "
+        "alone, and write their results there",
+    )
+    player_command.add_argument(
+        "--drain", action="store_true", help="stop once no queued match is left that this player could lease"
+    )
+    player_command.add_argument(
+        "--batch", type=int, default=50, help="matches leased and played in one run of the runner; default 50"
+    )
+    player_command.add_argument(
+        "--max-seconds", type=float, help="take no new batch after this many seconds; default: no limit"
+    )
+    player_command.add_argument("--parallel", type=int, default=0, help="matches at once; default: the CPUs")
+    player_command.set_defaults(handler=_player)
 
     study = commands.add_parser("digest", help="print a demo as a timeline, events and logs")
     study.add_argument("demo")
