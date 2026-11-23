@@ -285,6 +285,9 @@ def test_an_expired_lease_is_taken_over_and_a_held_one_renewed(tmp_path: Path) -
     assert leases.held(b) == []
     assert leases.take(b, "idea/abc", "run-b").run == "run-b"
     assert leases.renew(b, "run-b") == ["idea/abc"]
+    leases.take(b, "run/run-b", "run-b")
+    assert leases.drop(a, "run-b") == ["idea/abc", "run/run-b"]
+    assert leases.held(a) == []
 
 
 def test_a_key_is_checked() -> None:
@@ -296,3 +299,17 @@ def test_a_key_is_checked() -> None:
             continue
         raise AssertionError(bad)
     assert re.match(r"^\d{8}-[0-9a-f]{6}$", leases.new_run_id())
+
+
+def test_a_proposal_whose_files_are_withdrawn_leaves_the_tree_as_it_was(tmp_path: Path) -> None:
+    root = _repository(tmp_path)
+    branch = _commit_run(
+        root, "r-9", {"bots/bad/main.go": "package main\n", "ledger/runs/r-9.md": "", "maps/train/new.json": "{}"}
+    )
+    proposal = integrate.collect(branch, cwd=root)
+    assert isinstance(proposal, integrate.Proposal)
+    integrate.bring(proposal, cwd=root)
+    assert (root / "bots" / "bad" / "main.go").is_file()
+    integrate.withdraw(proposal, cwd=root)
+    assert not (root / "bots" / "bad").exists() and not (root / "maps" / "train" / "new.json").exists()
+    assert _git(root, "status", "--porcelain") == ""

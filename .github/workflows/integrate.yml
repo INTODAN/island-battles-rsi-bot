@@ -1,0 +1,200 @@
+# The integrator: every run's proposal waiting on a claude/league-run-<id>
+# branch becomes an iteration on main, one after another, the oldest base first
+# (league_tools/integrate.py, docs/parallel-iterations.md).
+#
+# Runs work in parallel, each from the main it started on, and push their
+# proposals; this is the one step that happens one at a time. It runs no
+# model: the selection and population rules are code (league_tools/decide.py).
+# It takes every waiting proposal in one batch, so a burst of runs is one
+# workflow run, not one each.
+#
+#   collect   each branch only adds what a run may add (scope.py --kind run)
+#   decide    the selection's tournaments, every match from the cache or the
+#             store, or played once; the population's upkeep
+#   record    iteration N's entry, the lines, progress.csv, the real games
+#   check     scripts/check.sh, then the scope of the whole batch
+#   merge     one pull request (claude/league-iteration-N[-M]) merged when the
+#             checks pass; then the runs' branches and leases are deleted
+#
+# It is started by a schedule, by hand, or by a repository_dispatch of type
+# run-ready, which the automated runs send. Never by a push: a run's branch
+# could carry another version of this file.
+#
+# Repository variables: RSI_APP_ID, LEAGUE_STORE (optional, s3://...),
+# LEAGUE_STORE_ROLE_ARN (optional, the store's write role for GitHub's OIDC).
+# Secret: RSI_APP_PRIVATE_KEY.
+name: Integrate
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [run-ready]
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write
+
+concurrency:
+  group: integrate
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+  LABEL: integrated-runs
+
+jobs:
+  integrate:
+    name: Integrate the waiting runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The waiting runs
+        id: runs
+        run: |
+          branches=$(git ls-remote origin 'refs/heads/claude/league-run-*' | cut -f2 | sed 's#^refs/heads/##')
+          if [ -z "$branches" ]; then
+            echo "No run is waiting."
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for branch in $branches; do
+            git fetch -q origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+          done
+          echo "count=$(echo "$branches" | wc -l)" >> "$GITHUB_OUTPUT"
+          echo "branches=$(echo $branches)" >> "$GITHUB_OUTPUT"
+          echo "Waiting: $branches"
+
+      # Someone else's integration still open: wait for a person, as the
+      # automated iteration does.
+      - name: No earlier integration is still open
+        if: steps.runs.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open --json url --jq '.[].url')
+          if [ -n "$open" ]; then
+            echo "::error::an integration's pull request is still open: $open"
+            exit 1
+          fi
+
+      - name: The cache's key
+        if: steps.runs.outputs.count != '0'
+        id: key
+        run: echo "cache=league-$(sha256sum runner.toml | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/league-cache
+        if: steps.runs.outputs.count != '0'
+        with:
+          key-prefix: ${{ steps.key.outputs.cache }}
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: steps.runs.outputs.count != '0' && vars.LEAGUE_STORE_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.LEAGUE_STORE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Integrate, one iteration each
+        if: steps.runs.outputs.count != '0'
+        id: integrate
+        env:
+          BRANCHES: ${{ steps.runs.outputs.branches }}
+          LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+          LEAGUE_PLAYER_ID: integrate-${{ github.run_id }}
+        run: |
+          git config user.name "island-battles-rsi[bot]"
+          git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
+          first=$(grep -oP '^## Iteration \K[0-9]+' ledger/iterations.md | sort -n | tail -1)
+          refs=""
+          for branch in $BRANCHES; do refs="$refs origin/$branch"; done
+          uv run --locked league integrate $refs --commit | tee "$RUNNER_TEMP/integrated.txt"
+          last=$(grep -oP '^## Iteration \K[0-9]+' ledger/iterations.md | sort -n | tail -1)
+          if [ "$first" = "$last" ]; then
+            echo "::warning::no proposal could be integrated"
+            echo "integrated=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          first=$((first + 1))
+          name="claude/league-iteration-$first"
+          [ "$first" = "$last" ] || name="$name-$last"
+          echo "integrated=1" >> "$GITHUB_OUTPUT"
+          echo "branch=$name" >> "$GITHUB_OUTPUT"
+          echo "base=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
+          git log --oneline "origin/main..HEAD"
+
+      - name: Checks of the tools and of every bot
+        if: steps.integrate.outputs.integrated == '1'
+        run: scripts/check.sh
+
+      - name: The batch stays in an iteration's scope
+        if: steps.integrate.outputs.integrated == '1'
+        env:
+          BASE: ${{ steps.integrate.outputs.base }}
+        run: python3 hosting/rsi/scope.py "$BASE" HEAD
+
+      - uses: actions/create-github-app-token@v2
+        if: steps.integrate.outputs.integrated == '1'
+        id: app
+        with:
+          app-id: ${{ vars.RSI_APP_ID }}
+          private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
+
+      - name: Open the pull request and merge it when the checks pass
+        if: steps.integrate.outputs.integrated == '1'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BRANCH: ${{ steps.integrate.outputs.branch }}
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
+          gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --color 0e8a16 \
+            --description "Runs' proposals integrated by league integrate, merged without review" --force
+          body="$RUNNER_TEMP/body.md"
+          {
+            echo "The integrator decided these runs' proposals on main, one iteration each:"
+            echo
+            sed 's/^/- /' "$RUNNER_TEMP/integrated.txt"
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$body"
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+            --title "League iterations: $(git log --format=%s origin/main..HEAD | head -1 | cut -c1-80)" \
+            --body-file "$body" --label "$LABEL"
+          gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --merge
+
+      - name: Wait for the merge
+        if: steps.integrate.outputs.integrated == '1'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BRANCH: ${{ steps.integrate.outputs.branch }}
+        run: |
+          for _ in $(seq 120); do
+            state=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
+            [ "$state" = MERGED ] && { echo "merged"; exit 0; }
+            [ "$state" = CLOSED ] && { echo "::error::the pull request was closed"; exit 1; }
+            sleep 30
+          done
+          echo "::error::the pull request didn't merge within an hour; see its checks"
+          exit 1
+
+      # The runs whose proposals were integrated, or skipped for good (out of
+      # scope, a name taken), are done: their branches and leases go. A run
+      # skipped for another reason keeps its branch for a person to read.
+      - name: Delete the integrated runs' branches and leases
+        if: steps.integrate.outputs.integrated == '1'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+        run: |
+          url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          grep -oP '^League iteration [0-9]+: run \K[a-z0-9-]+' "$RUNNER_TEMP/integrated.txt" | while read -r run; do
+            git push -q "$url" ":refs/heads/claude/league-run-$run" || echo "::warning::branch of run $run not deleted"
+            LEASE_PUSH_URL="$url" uv run --locked league lease drop --run "$run" || true
+          done

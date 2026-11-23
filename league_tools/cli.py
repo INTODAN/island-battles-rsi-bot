@@ -265,6 +265,9 @@ def _lease(arguments: argparse.Namespace) -> int:
     if action == "renew":
         print("\n".join(leases_module.renew(backend, arguments.run)))
         return 0
+    if action == "drop":
+        print("\n".join(leases_module.drop(backend, arguments.run)))
+        return 0
     if not arguments.key:
         raise ValueError(f"league lease {action} needs a key")
     if action == "take":
@@ -478,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
         "lease",
         help="hold work that should happen once (a run, a real game, a game to study, a place, an idea, a name)",
     )
-    lease.add_argument("action", choices=("run", "take", "release", "renew", "list"))
+    lease.add_argument("action", choices=("run", "take", "release", "renew", "drop", "list"))
     lease.add_argument(
         "key", nargs="?", help="such as slot/CHAMPION/side-NAME, idea/HASH, study/KEY; a prefix for list"
     )

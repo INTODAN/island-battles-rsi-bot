@@ -157,6 +157,16 @@ def held(backend: Backend, prefix: str = "") -> list[Lease]:
     return sorted(leases, key=lambda lease: lease.key)
 
 
+def drop(backend: Backend, run: str) -> list[str]:
+    """Give back every lease a run holds, as the integrator does once the run is integrated; returns their keys."""
+    dropped = []
+    for key in backend.keys(""):
+        found = backend.read(key)
+        if found is not None and Lease.parse(found[0]).run == run and backend.delete(key, found[1]):
+            dropped.append(key)
+    return dropped
+
+
 def renew(backend: Backend, run: str, hours: float = HOURS) -> list[str]:
     """Renew every lease a run holds; returns their keys."""
     renewed = []

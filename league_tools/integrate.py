@@ -146,6 +146,31 @@ def bring(proposal: Proposal, cwd: Path = LEAGUE) -> None:
     _git("checkout", proposal.branch, "--", *proposal.added, cwd=cwd)
 
 
+def verify(proposal: Proposal, cwd: Path = LEAGUE) -> str | None:
+    """Why the proposal's bots may not play, or None: the bots' checks pass with its files in.
+
+    A bot is untrusted code: the checks hold it to pure standard packages (no
+    file, network or clock) before it plays on a machine that writes the store.
+    """
+    if not proposal.candidates:
+        return None
+    checked = subprocess.run(["go", "test", "./tests/..."], cwd=cwd, capture_output=True, text=True)
+    if checked.returncode != 0:
+        return f"run {proposal.run}: the bots' checks fail with its candidates: {checked.stdout[-2000:]}"
+    return None
+
+
+def withdraw(proposal: Proposal, cwd: Path = LEAGUE) -> None:
+    """Take a proposal's files out of the working tree again."""
+    _git("rm", "-q", "-r", "-f", "--cached", "--ignore-unmatch", "--", *proposal.added, cwd=cwd)
+    for path in proposal.added:
+        (cwd / path).unlink(missing_ok=True)
+    for name in proposal.candidates:
+        directory = cwd / "bots" / name
+        if directory.is_dir() and not any(directory.iterdir()):
+            directory.rmdir()
+
+
 def next_iteration(ledger_text: str) -> int:
     """One more than the ledger's last ``## Iteration N``."""
     found = [ITERATION.match(line) for line in ledger_text.splitlines()]
@@ -337,6 +362,11 @@ def integrate(branches: Iterable[str], commit: bool = False, date: str | None = 
             outcomes.append(Outcome(proposal.run, None, f"skipped: an earlier run of this batch took {taken[0]}"))
             continue
         bring(proposal)
+        refused = verify(proposal)
+        if refused is not None:
+            withdraw(proposal)
+            outcomes.append(Outcome(proposal.run, None, f"skipped: {refused}"))
+            continue
         iteration = next_iteration((LEDGER / "iterations.md").read_text(encoding="utf-8"))
         outcomes.append(integrate_one(proposal, iteration, today, committer if commit else None))
     return outcomes
