@@ -67,6 +67,91 @@ RUN_ADDS = (
     NEW_DETECTOR_TEST,
 )
 KINDS = ("iteration", "run", "curator")
+
+# What a detector a run adds may import and call: it reads one demo and returns
+# flags, so it touches no file, process or network and reaches no object it
+# wasn't given. A detector's test may import pytest and the flags' module too.
+# The check reads the source and runs nothing: a run's Python is checked here,
+# before any check or tool imports it on a machine that holds credentials.
+DETECTOR_MODULES = frozenset(
+    {
+        "__future__",
+        "dataclasses",
+        "math",
+        "typing",
+        "collections",
+        "itertools",
+        "functools",
+        "statistics",
+        "re",
+        "league_tools.digest",
+        "league_tools.detectors",
+    }
+)
+DETECTOR_TEST_MODULES = DETECTOR_MODULES | {"pytest", "league_tools.flags"}
+FORBIDDEN_NAMES = frozenset(
+    {
+        "__import__",
+        "eval",
+        "exec",
+        "compile",
+        "open",
+        "getattr",
+        "setattr",
+        "delattr",
+        "globals",
+        "locals",
+        "vars",
+        "breakpoint",
+        "input",
+        "memoryview",
+    }
+)
+
+
+def rule_breaks(
+    source: str, package: str = "league_tools.detectors", allowed: frozenset[str] = DETECTOR_MODULES
+) -> list[str]:
+    """What in a detector's (or its test's) source breaks the rules: imports off the list, forbidden names, dunders."""
+    import ast
+
+    def ok(module: str) -> bool:
+        return module in allowed or module.startswith("league_tools.detectors.")
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as error:
+        return [f"not Python: {error.msg}"]
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found += [f"import {alias.name}" for alias in node.names if not ok(alias.name)]
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                parent = package.split(".")[: len(package.split(".")) - (node.level - 1)]
+                base = ".".join(parent + ([base] if base else []))
+            if ok(base):
+                continue
+            found += [f"from {base} import {alias.name}" for alias in node.names if not ok(f"{base}.{alias.name}")]
+        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
+            found.append(node.id)
+        elif isinstance(node, ast.Attribute) and (
+            node.attr in FORBIDDEN_NAMES or (node.attr.startswith("__") and node.attr.endswith("__"))
+        ):
+            found.append(f".{node.attr}")
+    return found
+
+
+def impure(path: str, source: str) -> list[str]:
+    """The rules an added detector or detector test breaks; nothing for any other file."""
+    if NEW_DETECTOR.match(path):
+        return rule_breaks(source)
+    if NEW_DETECTOR_TEST.match(path):
+        return rule_breaks(source, "tests.detectors", DETECTOR_TEST_MODULES)
+    return []
+
+
 # Shorter names match too much ordinary text to check.
 MIN_NAME = 3
 
@@ -182,6 +267,11 @@ def main(argv: list[str] | None = None) -> int:
     for change in out_of_scope(changes, args.kind, base_bots):
         print(f"out of a {args.kind}'s scope: {change}", file=sys.stderr)
         failed = True
+    for status, path in changes:
+        if status == "A" and (NEW_DETECTOR.match(path) or NEW_DETECTOR_TEST.match(path)):
+            for problem in impure(path, _git("show", f"{args.head}:{path}")):
+                print(f"{path} breaks the detectors' rules: {problem}", file=sys.stderr)
+                failed = True
     if args.names_from is not None:
         bots = {path.name.lower() for path in (ROOT / "bots").iterdir() if path.is_dir()}
         names = player_names(args.names_from, bots | {f"level{n}" for n in range(1, 4)})

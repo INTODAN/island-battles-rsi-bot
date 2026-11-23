@@ -298,6 +298,18 @@ def play(
                 check_imports(tree, name, clean)
             except Refused as error:
                 bad[name] = str(error)
+        good = [name for name in names if name not in bad]
+        try:
+            binaries = gobots.build(good, bots=tree / "bots", environment=clean)
+        except RuntimeError:
+            # One bot that doesn't compile fails the whole build: build each alone,
+            # and refuse the matches of the ones that fail, not the batch.
+            binaries = {}
+            for name in good:
+                try:
+                    binaries |= gobots.build([name], bots=tree / "bots", environment=clean)
+                except RuntimeError as error:
+                    bad[name] = f"the bot {name} doesn't compile: {str(error)[-500:]}"
         for entry in [entry for entry in ready if bad.keys() & set(entry["seats"])]:
             reason = next(bad[name] for name in entry["seats"] if name in bad)
             _refuse(store, entry["key"], reason, heartbeat.pop(entry["key"]))
@@ -305,7 +317,6 @@ def play(
             ready.remove(entry)
         if not ready:
             return played, refused
-        binaries = gobots.build([name for name in names if name not in bad], bots=tree / "bots", environment=clean)
 
         def keep(line: dict[str, Any]) -> None:
             nonlocal played

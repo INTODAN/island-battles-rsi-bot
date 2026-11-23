@@ -706,16 +706,19 @@ class Heartbeat:
             with self._lock:
                 due = [lease for lease in self.leases.values() if lease.expires < soon]
             for lease in due:
-                try:
-                    renewed = self.store.renew(lease, LEASE_MARGIN_SECONDS)
-                except Exception:  # A renewal that fails is tried again next time.
-                    continue
+                # Renewed under the lock, so that a match that ends meanwhile is
+                # popped with the lease as renewed, whose tag its release needs.
                 with self._lock:
-                    if lease.key in self.leases:
-                        if renewed is None:
-                            del self.leases[lease.key]
-                        else:
-                            self.leases[lease.key] = renewed
+                    if self.leases.get(lease.key) is not lease:
+                        continue
+                    try:
+                        renewed = self.store.renew(lease, LEASE_MARGIN_SECONDS)
+                    except Exception:  # A renewal that fails is tried again next time.
+                        continue
+                    if renewed is None:
+                        del self.leases[lease.key]
+                    else:
+                        self.leases[lease.key] = renewed
 
     def __enter__(self) -> Self:
         """Start renewing."""

@@ -8,7 +8,7 @@ nothing that changes the population. The integrator does, in this order, for
 every proposal waiting:
 
 1. **Collect.** The branch only adds what a run may add (``scope.py --kind run``)
-   and nothing that main already has under the same name; else it is skipped,
+   and nothing that main already has under the same name; else it is refused,
    with the reason. Its files are brought into the working tree.
 2. **Decide**, the oldest base first: the selection's runs with the proposal's
    candidates (``decide.play_selection``), each judged against its parent and,
@@ -37,6 +37,7 @@ import tomllib
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 from . import decide as decide_module
@@ -51,8 +52,13 @@ MINUTES = re.compile(r"^Minutes:\s*([0-9]+(?:\.[0-9]+)?)\s*$", re.MULTILINE)
 LINES_HEADING = "## The lines"
 LESSONS_HEADING = "## Lessons so far"
 
-sys.path.insert(0, str(LEAGUE / "hosting" / "rsi"))
-import scope  # noqa: E402
+
+def _scope() -> ModuleType:
+    """hosting/rsi/scope.py, imported when the integrator needs it (a Lambda player's image has no hosting/)."""
+    sys.path.insert(0, str(LEAGUE / "hosting" / "rsi"))
+    import scope
+
+    return scope
 
 
 def _git(*arguments: str, cwd: Path = LEAGUE) -> str:
@@ -124,9 +130,14 @@ def collect(branch: str, cwd: Path = LEAGUE) -> Proposal | str:
     changes = [(line.split("\t")[0][0], line.split("\t")[-1]) for line in lines if line.strip()]
     listed = _git("ls-tree", "-d", "--name-only", base, "bots/", cwd=cwd).splitlines()
     base_bots = {line.split("/", 1)[1] for line in listed if "/" in line}
+    scope = _scope()
     bad = scope.out_of_scope(changes, "run", base_bots)
     if bad:
         return f"run {run}: out of a run's scope: {', '.join(bad)}"
+    for _, path in changes:
+        problems = scope.impure(path, _git("show", f"{branch}:{path}", cwd=cwd)) if path.endswith(".py") else []
+        if problems:
+            return f"run {run}: {path} breaks the detectors' rules: {', '.join(problems)}"
     added = [path for _, path in changes]
     if f"ledger/runs/{run}.md" not in added:
         return f"run {run}: no ledger/runs/{run}.md, the run's account"
@@ -147,16 +158,28 @@ def bring(proposal: Proposal, cwd: Path = LEAGUE) -> None:
 
 
 def verify(proposal: Proposal, cwd: Path = LEAGUE) -> str | None:
-    """Why the proposal's bots may not play, or None: the bots' checks pass with its files in.
+    """Why the proposal's code may not run here, or None: the bots' checks, and the detectors' tests, pass with it in.
 
     A bot is untrusted code: the checks hold it to pure standard packages (no
     file, network or clock) before it plays on a machine that writes the store.
+    A detector and its test were already read for the same rules (``collect``),
+    so running their tests runs only pure code; a detector whose test fails
+    would fail ``scripts/check.sh`` after the batch, and every proposal with it.
     """
-    if not proposal.candidates:
-        return None
-    checked = subprocess.run(["go", "test", "./tests/..."], cwd=cwd, capture_output=True, text=True)
-    if checked.returncode != 0:
-        return f"run {proposal.run}: the bots' checks fail with its candidates: {checked.stdout[-2000:]}"
+    if proposal.candidates:
+        checked = subprocess.run(["go", "test", "./tests/..."], cwd=cwd, capture_output=True, text=True)
+        if checked.returncode != 0:
+            return f"run {proposal.run}: the bots' checks fail with its candidates: {checked.stdout[-2000:]}"
+    if any(path.endswith(".py") for path in proposal.added):
+        tests = ["tests/test_detectors.py"] + [path for path in proposal.added if path.startswith("tests/detectors/")]
+        checked = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *tests],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        if checked.returncode != 0:
+            return f"run {proposal.run}: the detectors' tests fail with its detectors: {checked.stdout[-2000:]}"
     return None
 
 
@@ -340,14 +363,25 @@ def integrate_one(
 
 
 def integrate(branches: Iterable[str], commit: bool = False, date: str | None = None) -> list[Outcome]:
-    """Integrate every run's branch that can be, the oldest base first, each as one iteration."""
+    """Integrate every run's branch that can be, the oldest base first, each as one iteration.
+
+    A proposal that can't be integrated is **refused** (out of a run's scope, a
+    name main has, checks that fail with it: it never will be) or has **failed**
+    (an error while deciding it, which may pass next time); either way the
+    others go on. With ``commit``, a failed proposal's changes are undone.
+    """
     today = date or datetime.datetime.now(datetime.UTC).date().isoformat()
     outcomes: list[Outcome] = []
     proposals: list[Proposal] = []
     for branch in branches:
         found = collect(branch)
         if isinstance(found, str):
-            outcomes.append(Outcome(branch, None, f"skipped: {found}"))
+            try:
+                run = run_of(branch)
+            except ValueError:
+                outcomes.append(Outcome(branch, None, f"skipped: {found}"))
+                continue
+            outcomes.append(Outcome(run, None, f"refused {run}: {found}"))
         else:
             proposals.append(found)
     proposals.sort(key=lambda proposal: (proposal.base_time, proposal.run))
@@ -359,17 +393,33 @@ def integrate(branches: Iterable[str], commit: bool = False, date: str | None = 
     for proposal in proposals:
         taken = [path for path in proposal.added if (LEAGUE / path).exists()]
         if taken:
-            outcomes.append(Outcome(proposal.run, None, f"skipped: an earlier run of this batch took {taken[0]}"))
+            outcomes.append(Outcome(proposal.run, None, f"refused {proposal.run}: an earlier run took {taken[0]}"))
             continue
         bring(proposal)
         refused = verify(proposal)
         if refused is not None:
             withdraw(proposal)
-            outcomes.append(Outcome(proposal.run, None, f"skipped: {refused}"))
+            outcomes.append(Outcome(proposal.run, None, f"refused {proposal.run}: {refused}"))
             continue
         iteration = next_iteration((LEDGER / "iterations.md").read_text(encoding="utf-8"))
-        outcomes.append(integrate_one(proposal, iteration, today, committer if commit else None))
+        try:
+            outcomes.append(integrate_one(proposal, iteration, today, committer if commit else None))
+        except Exception as error:  # One proposal that fails must not stop the others.
+            if not commit:
+                raise
+            restore()
+            outcomes.append(Outcome(proposal.run, None, f"failed {proposal.run}: {type(error).__name__}: {error}"))
     return outcomes
+
+
+def restore(cwd: Path = LEAGUE) -> None:
+    """Put the paths an iteration writes back as the last commit has them: a proposal that failed leaves nothing."""
+    paths = ["bots", "ledger", "maps", "hosting/lambda/bot", "league_tools/detectors", "tests"]
+    _git("reset", "-q", "--", *paths, cwd=cwd)
+    tracked = [path for path in paths if _git("ls-tree", "HEAD", "--", path, cwd=cwd).strip()]
+    if tracked:
+        _git("checkout", "-q", "HEAD", "--", *tracked, cwd=cwd)
+    _git("clean", "-fdq", "--", *paths, cwd=cwd)
 
 
 def waiting_branches(remote: str = "origin") -> list[str]:

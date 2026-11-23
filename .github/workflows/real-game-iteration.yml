@@ -67,7 +67,7 @@
 # RSI_MAX_RUNS (optional, default 10), RSI_SHARDS (optional, default 8).
 # With a match store: LEAGUE_STORE, AWS_STORE_PLAYER_ROLE_ARN,
 # AWS_STORE_REQUEST_ROLE_ARN, and optionally LEAGUE_PLAYER_FUNCTION,
-# RSI_STORE_PLAYERS (default 2) and LEAGUE_GO_VERSION (default 1.25).
+# RSI_STORE_PLAYERS (default 2) and LEAGUE_GO_VERSION (default: the exact version in .go-version, which the Lambda players are built with too).
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, RSI_APP_PRIVATE_KEY.
 name: Real-game iteration
 
@@ -285,7 +285,7 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.start.outputs.cache }}
-          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION }}
 
       - uses: aws-actions/configure-aws-credentials@v5
         if: vars.LEAGUE_STORE != ''
@@ -334,7 +334,7 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.start.outputs.cache }}
-          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION }}
 
       # For as long as the run may take: the role's maximum session must allow it.
       - uses: aws-actions/configure-aws-credentials@v5
@@ -391,7 +391,7 @@ jobs:
           key-prefix: ${{ needs.start.outputs.cache }}
           shards: ${{ vars.LEAGUE_STORE == '' && 'cache-warm-*' || '' }}
           save-as: warm
-          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION }}
 
       # The jobs' times so far, for the run's account of where the time went.
       - name: The run's times so far
@@ -732,7 +732,7 @@ jobs:
       - uses: ./.github/actions/league-cache
         with:
           key-prefix: ${{ needs.start.outputs.cache }}
-          go-version: ${{ vars.LEAGUE_GO_VERSION || '1.25' }}
+          go-version: ${{ vars.LEAGUE_GO_VERSION }}
 
       - uses: actions/download-artifact@v4
         with:

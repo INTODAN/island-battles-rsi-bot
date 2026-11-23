@@ -6,9 +6,9 @@ runs every detector over the demos this machine's cache holds, when it holds
 some, and checks that none flags most of a game.
 """
 
-import ast
 import gzip
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -29,67 +29,10 @@ from league_tools.paths import CACHE
 
 PACKAGE = Path(flags.PACKAGE)
 
-# What a detector may import and call: it reads one demo and returns flags,
-# and runs on every machine that computes flags, so it touches no file,
-# process or network and reaches no object it wasn't given.
-ALLOWED_MODULES = {
-    "__future__",
-    "dataclasses",
-    "math",
-    "typing",
-    "collections",
-    "itertools",
-    "functools",
-    "statistics",
-    "re",
-    "league_tools.digest",
-    "league_tools.detectors",
-}
-FORBIDDEN_NAMES = {
-    "__import__",
-    "eval",
-    "exec",
-    "compile",
-    "open",
-    "getattr",
-    "setattr",
-    "delattr",
-    "globals",
-    "locals",
-    "vars",
-    "breakpoint",
-    "input",
-    "memoryview",
-}
-
-
-def _allowed(module: str) -> bool:
-    return module in ALLOWED_MODULES or module.startswith("league_tools.detectors.")
-
-
-def rule_breaks(source: str, package: str = "league_tools.detectors") -> list[str]:
-    """What in a detector module's source breaks the rules: imports off the list, forbidden names, dunder attributes."""
-    found = []
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Import):
-            found += [f"import {alias.name}" for alias in node.names if not _allowed(alias.name)]
-        elif isinstance(node, ast.ImportFrom):
-            base = node.module or ""
-            if node.level:
-                parent = package.split(".")[: len(package.split(".")) - (node.level - 1)]
-                base = ".".join(parent + ([base] if base else []))
-            if _allowed(base):
-                continue
-            for alias in node.names:
-                if not _allowed(f"{base}.{alias.name}"):
-                    found.append(f"from {base} import {alias.name}")
-        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
-            found.append(node.id)
-        elif isinstance(node, ast.Attribute) and (
-            node.attr in FORBIDDEN_NAMES or (node.attr.startswith("__") and node.attr.endswith("__"))
-        ):
-            found.append(f".{node.attr}")
-    return found
+# The rule lives in hosting/rsi/scope.py, which checks a run's added detectors
+# from their source before anything imports them.
+sys.path.insert(0, str(Path(__file__).parent.parent / "hosting" / "rsi"))
+from scope import rule_breaks  # noqa: E402
 
 
 def test_every_detector_module_imports_and_calls_only_what_is_allowed() -> None:

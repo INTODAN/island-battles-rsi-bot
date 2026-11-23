@@ -70,27 +70,22 @@ class Backend(Protocol):
     """Where leases live: create only if absent, replace only if unchanged, delete, list."""
 
     def create(self, key: str, text: str) -> bool:
-        """Create the key's ref; False when it exists."""
         """Create the key's lease; False when one exists."""
         raise NotImplementedError
 
     def read(self, key: str) -> tuple[str, str] | None:
-        """The key's lease text and the commit its ref points at, or None."""
         """The key's lease text and its version, or None."""
         raise NotImplementedError
 
     def replace(self, key: str, version: str, text: str) -> bool:
-        """Point the key's ref at a new lease if it still points at version."""
         """Replace the key's lease if its version is still this one."""
         raise NotImplementedError
 
     def delete(self, key: str, version: str) -> bool:
-        """Delete the key's ref if it still points at version."""
         """Delete the key's lease if its version is still this one."""
         raise NotImplementedError
 
     def keys(self, prefix: str) -> list[str]:
-        """The keys under a prefix that have a ref on the remote."""
         """The keys under a prefix that have a lease."""
         raise NotImplementedError
 

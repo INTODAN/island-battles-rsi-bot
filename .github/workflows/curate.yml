@@ -95,12 +95,11 @@ jobs:
       - name: The curator stays in its scope
         if: steps.waiting.outputs.go == '1'
         run: |
+          git config user.name "island-battles-rsi[bot]"
+          git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           git add -A ledger
-          python3 hosting/rsi/scope.py HEAD --kind curator 2>/dev/null || true
-          changed=$(git diff --cached --name-status | awk '{print $1" "$2}')
-          echo "$changed"
-          bad=$(echo "$changed" | grep -vE '^(M ledger/iterations\.md|D ledger/lessons/[a-z0-9][a-z0-9-]*\.md)$' || true)
-          [ -z "$bad" ] || { echo "::error::the curator changed more than it may: $bad"; exit 1; }
+          git commit -q -m "Fold the runs' proposed lessons into the ledger"
+          python3 hosting/rsi/scope.py origin/main HEAD --kind curator
 
       - uses: actions/create-github-app-token@v2
         if: steps.waiting.outputs.go == '1'
@@ -114,10 +113,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          git config user.name "island-battles-rsi[bot]"
-          git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           branch="claude/league-curator-$GITHUB_RUN_ID"
-          git commit -q -m "Fold the runs' proposed lessons into the ledger"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$branch"
           gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
             --title "Fold the runs' proposed lessons into the ledger" \

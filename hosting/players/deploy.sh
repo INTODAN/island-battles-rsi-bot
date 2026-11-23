@@ -10,7 +10,7 @@
 #   REPOSITORY   island-battles-league-player   (the ECR repository)
 #   FUNCTION     island-battles-league-player   (the Lambda function)
 #   ARCH         arm64, or x86_64: the function's architecture, and the runner's
-#   GO_VERSION   the Go that builds the runner: the requesters' own, for one runner build
+#   GO_VERSION   the Go that builds the runner: by default .go-version's, which the workflows use too, for one runner build
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -18,7 +18,7 @@ region="${AWS_REGION:-eu-central-1}"
 repository="${REPOSITORY:-island-battles-league-player}"
 function="${FUNCTION:-island-battles-league-player}"
 arch="${ARCH:-x86_64}"
-go_version="${GO_VERSION:-1.25.0}"
+go_version="${GO_VERSION:-$(cat "$(dirname "$0")/../../.go-version")}"
 case "$arch" in
   arm64) platform=linux/arm64 ;;
   x86_64) platform=linux/amd64 ;;

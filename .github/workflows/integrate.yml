@@ -96,11 +96,14 @@ jobs:
         with:
           key-prefix: ${{ steps.key.outputs.cache }}
 
+      # Three hours, the job's timeout: the role's maximum session duration
+      # must allow it (hosting/players/README.md).
       - uses: aws-actions/configure-aws-credentials@v5
         if: steps.runs.outputs.count != '0' && vars.LEAGUE_STORE_ROLE_ARN != ''
         with:
           role-to-assume: ${{ vars.LEAGUE_STORE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 10800
 
       - name: Integrate, one iteration each
         if: steps.runs.outputs.count != '0'
@@ -130,9 +133,14 @@ jobs:
           echo "base=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
           git log --oneline "origin/main..HEAD"
 
+      # The checks run the runs' detectors' tests: without the store's
+      # credentials, although collect() read those files for the rules first.
       - name: Checks of the tools and of every bot
         if: steps.integrate.outputs.integrated == '1'
-        run: scripts/check.sh
+        run: |
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
+          env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
+            -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL scripts/check.sh
 
       - name: The batch stays in an iteration's scope
         if: steps.integrate.outputs.integrated == '1'
@@ -184,17 +192,42 @@ jobs:
           echo "::error::the pull request didn't merge within an hour; see its checks"
           exit 1
 
-      # The runs whose proposals were integrated, or skipped for good (out of
-      # scope, a name taken), are done: their branches and leases go. A run
-      # skipped for another reason keeps its branch for a person to read.
-      - name: Delete the integrated runs' branches and leases
-        if: steps.integrate.outputs.integrated == '1'
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: always() && steps.integrate.outcome == 'success' && vars.LEAGUE_STORE_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.LEAGUE_STORE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/create-github-app-token@v2
+        if: always() && steps.integrate.outcome == 'success'
+        id: cleanup_app
+        with:
+          app-id: ${{ vars.RSI_APP_ID }}
+          private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
+
+      # The runs whose proposals were integrated are done: their branches and
+      # leases go. A refused run (out of a run's scope, a name main has, checks
+      # that fail with it) never will be: its branch moves to
+      # claude/league-refused-run-<id> for a person to read, so that it is not
+      # collected again. A run that failed (an error while deciding) waits for
+      # the next integration.
+      - name: Clear the integrated and the refused runs
+        if: always() && steps.integrate.outcome == 'success'
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_TOKEN: ${{ steps.cleanup_app.outputs.token }}
           LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+          MERGED: ${{ steps.integrate.outputs.integrated == '1' && job.status == 'success' }}
         run: |
           url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          grep -oP '^League iteration [0-9]+: run \K[a-z0-9-]+' "$RUNNER_TEMP/integrated.txt" | while read -r run; do
-            git push -q "$url" ":refs/heads/claude/league-run-$run" || echo "::warning::branch of run $run not deleted"
+          if [ "$MERGED" = true ]; then
+            grep -oP '^League iteration [0-9]+: run \K[a-z0-9-]+' "$RUNNER_TEMP/integrated.txt" | while read -r run; do
+              git push -q "$url" ":refs/heads/claude/league-run-$run" || echo "::warning::branch of run $run not deleted"
+              LEASE_PUSH_URL="$url" uv run --locked league lease drop --run "$run" || echo "::warning::leases of $run kept"
+            done
+          fi
+          grep -oP '^refused \K[a-z0-9-]+' "$RUNNER_TEMP/integrated.txt" | while read -r run; do
+            echo "::warning::run $run refused: $(grep "^refused $run:" "$RUNNER_TEMP/integrated.txt" | cut -c1-300)"
+            git push -q "$url" "refs/remotes/origin/claude/league-run-$run:refs/heads/claude/league-refused-run-$run" \
+              && git push -q "$url" ":refs/heads/claude/league-run-$run" || echo "::warning::run $run not moved"
             LEASE_PUSH_URL="$url" uv run --locked league lease drop --run "$run" || true
           done

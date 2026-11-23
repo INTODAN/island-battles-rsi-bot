@@ -124,9 +124,31 @@ def recent_ideas(ledger_text: str, root: Path, recent: int = 3) -> list[str]:
     return list(dict.fromkeys(reversed(ideas)))
 
 
-def superseded(ledger_text: str) -> list[str]:
-    """The candidate lines of the ledger whose decision was **superseded**, newest first."""
-    return [line for line in reversed(candidates(ledger_text)) if "**superseded**" in line]
+CANDIDATE_LINE = re.compile(r"^- (\d+): `([^`]+)`")
+
+
+def superseded(ledger_text: str, recent: int = 10) -> list[str]:
+    """The superseded candidates of the last ``recent`` iterations that no later candidate grafted, newest first.
+
+    A later candidate whose idea names the superseded one (``Graft from NAME``,
+    or its name anywhere in the idea) took the place: it is closed.
+    """
+    lines = candidates(ledger_text)
+    numbers = [int(found.group(1)) for line in lines if (found := CANDIDATE_LINE.match(line))]
+    if not numbers:
+        return []
+    newest = max(numbers)
+    out = []
+    for index, line in enumerate(lines):
+        found = CANDIDATE_LINE.match(line)
+        if not found or "**superseded**" not in line or int(found.group(1)) <= newest - recent:
+            continue
+        name = found.group(2)
+        later = lines[index + 1 :]
+        if any(re.search(rf"\b{re.escape(name)}\b", other.split(": ", 2)[-1]) for other in later):
+            continue
+        out.append(line)
+    return list(reversed(out))
 
 
 def queue(

@@ -352,3 +352,44 @@ def test_a_lease_that_can_be_neither_written_nor_read_is_an_error_not_a_loop() -
         assert "write access" in str(error)
     else:
         raise AssertionError("no error")
+
+
+def test_a_runs_detector_or_detector_test_that_breaks_the_rules_is_refused_before_anything_imports_it(
+    tmp_path: Path,
+) -> None:
+    root = _repository(tmp_path)
+    clean = "from league_tools.detectors import Flag\n\n\ndef detect(demo):\n    return []\n"
+    sneaky = "import os\n\n\ndef test_x():\n    os.system('true')\n"
+    good = _commit_run(root, "r-5", {"league_tools/detectors/late.py": clean, "ledger/runs/r-5.md": ""})
+    bad = _commit_run(root, "r-6", {"tests/detectors/test_late.py": sneaky, "ledger/runs/r-6.md": ""})
+    assert isinstance(integrate.collect(good, cwd=root), integrate.Proposal)
+    assert "breaks the detectors' rules: import os" in str(integrate.collect(bad, cwd=root))
+    assert scope.impure("tests/detectors/test_x.py", "import pytest\nfrom league_tools import flags\n") == []
+    assert scope.impure("league_tools/detectors/x.py", "import pytest") == ["import pytest"]
+    assert scope.impure("bots/x/main.go", "import os") == []
+
+
+def test_a_failed_proposal_is_undone_to_the_last_commit(tmp_path: Path) -> None:
+    root = _repository(tmp_path)
+    branch = _commit_run(root, "r-7", {"bots/half/main.go": "package main\n", "ledger/runs/r-7.md": ""})
+    proposal = integrate.collect(branch, cwd=root)
+    assert isinstance(proposal, integrate.Proposal)
+    integrate.bring(proposal, cwd=root)
+    (root / "ledger" / "lines.toml").write_text("half written")
+    integrate.restore(cwd=root)
+    assert _git(root, "status", "--porcelain") == ""
+    assert not (root / "bots" / "half").exists() and "half" not in (root / "ledger" / "lines.toml").read_text()
+
+
+def test_a_superseded_change_is_a_place_until_a_later_candidate_grafts_it_or_it_grows_old() -> None:
+    def entry(number: int, rows: str) -> str:
+        header = "| Candidate | Parent | Idea | Decision |\n|---|---|---|---|\n"
+        return f"## Iteration {number}: x\n\n{header}{rows}\n"
+
+    superseded_row = "| `x_hold` | champ | Fix: hold. | **superseded**: beat its parent only |\n"
+    text = "# Ledger\n\n" + entry(40, superseded_row)
+    assert [line.split("`")[1] for line in ideas.superseded(text)] == ["x_hold"]
+    grafted = text + entry(41, "| `y_graft` | champ2 | Graft from x_hold: hold. | **rejected**: z |\n")
+    assert ideas.superseded(grafted) == []
+    old = text + "".join(entry(n, f"| `c{n}` | champ | Fix: other {n}. | **rejected**: z |\n") for n in range(41, 52))
+    assert ideas.superseded(old) == []

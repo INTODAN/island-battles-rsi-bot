@@ -26,9 +26,10 @@ inputs:
     default: ""
   go-version:
     description: >-
-      The Go that builds the runner and the bots. With a match store, a runner built by another Go has
-      another hash, and its matches other keys: the store's players need the same one.
-    default: "1.25"
+      The Go that builds the runner and the bots; empty for the exact version in .go-version. With a
+      match store, a runner built by another Go has another hash, and its matches other keys: every
+      machine that shares the store (the jobs, the Lambda players) builds with .go-version's.
+    default: ""
 
 runs:
   using: composite
@@ -41,6 +42,7 @@ runs:
     - uses: actions/setup-go@v6
       with:
         go-version: ${{ inputs.go-version }}
+        go-version-file: .go-version
         cache: false
 
     - uses: actions/cache/restore@v4

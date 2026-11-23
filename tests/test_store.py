@@ -419,3 +419,34 @@ def test_the_lambda_player_drains_batches_until_its_time_is_nearly_up(monkeypatc
 
     assert lambda_player.handler({}, Context())["status"] == 0
     assert called == [["player", "--drain", "--batch", "25", "--max-seconds", "180"]]
+
+
+def test_a_bot_that_doesnt_compile_is_refused_and_the_rest_of_the_batch_plays(
+    league: League, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    broken = _request(league, ["first", "second"])
+    fine = _request(league, ["third", "fourth"])
+    monkeypatch.setattr(player, "check_imports", lambda tree, name, environment=None: None)
+
+    def build(names: object, bots: Path = league.bots, environment: dict[str, str] | None = None) -> dict[str, Path]:
+        names = list(names)  # ty: ignore[invalid-argument-type]
+        if "first" in names:
+            raise RuntimeError("bots/first/main.go:3: undefined: x")
+        return {name: league.root / "bin" / name for name in names}
+
+    monkeypatch.setattr(tournament.gobots, "build", build)
+    assert player.run(drain=True) == 0
+    assert league.played() == [fine["key"]]
+    assert not league.open().is_queued(broken["key"]) and "first doesn't compile" in capsys.readouterr().err
+
+
+def test_a_lease_renewed_while_its_match_ends_is_released_with_its_new_tag(league: League) -> None:
+    held = league.open().lease("k" * 32, 0.05)
+    assert held is not None
+    beat = store.Heartbeat(league.open(), [held], interval=0.01)
+    with beat:
+        time.sleep(0.1)
+        lease = beat.pop("k" * 32)
+    assert lease is not None
+    league.open().release(lease)
+    assert league.open().holder("k" * 32) is None
