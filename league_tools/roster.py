@@ -1,4 +1,4 @@
-"""The league's bots: one directory each under ``bots/``, with a ``bot.toml``."""
+"""The league's bots: one directory each under ``bots/``, a Go program (``main.go``) with a ``bot.toml``."""
 
 from __future__ import annotations
 
@@ -32,11 +32,6 @@ class Bot:
         """The bot's directory."""
         return BOTS / self.name
 
-    @property
-    def entry(self) -> str:
-        """The bot's ``module:function``, for the SDK's worker."""
-        return f"bots.{self.name}.bot:play"
-
 
 def load_bot(name: str) -> Bot:
     """Read a bot's ``bot.toml``.
@@ -47,8 +42,8 @@ def load_bot(name: str) -> Bot:
     if not NAME.fullmatch(name):
         raise ValueError(f"{name!r} is not a bot name: lower-case letters, digits and _, starting with a letter")
     path = BOTS / name / "bot.toml"
-    if not path.is_file() or not (BOTS / name / "bot.py").is_file():
-        raise ValueError(f"there is no bot {name!r}: {path.parent} needs bot.py and bot.toml")
+    if not path.is_file() or not (BOTS / name / "main.go").is_file():
+        raise ValueError(f"there is no bot {name!r}: {path.parent} needs main.go and bot.toml")
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     bot = Bot(
         name=name,
@@ -104,7 +99,7 @@ def new_bot(name: str, parent: str, iteration: int, idea: str) -> Bot:
     if (BOTS / name).exists():
         raise ValueError(f"there is already a bot {name!r}")
     source = load_bot(parent)
-    shutil.copytree(source.directory, BOTS / name, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(source.directory, BOTS / name)
     bot = Bot(name=name, status="candidate", parent=parent, iteration=iteration, idea=idea)
     write_bot(bot)
     return bot
@@ -126,12 +121,15 @@ def set_status(name: str, status: str) -> Bot:
     return bot
 
 
+def sources(directory: Path) -> list[Path]:
+    """A bot's Go files that build into it: every ``.go`` file but its tests."""
+    return sorted(path for path in directory.rglob("*.go") if not path.name.endswith("_test.go"))
+
+
 def fingerprint(directory: Path) -> str:
-    """A hash of every Python file under a directory: the code that plays."""
+    """A hash of a bot's Go files, its tests left out: the code that plays."""
     digest = hashlib.sha256()
-    for path in sorted(directory.rglob("*.py")):
-        if "__pycache__" in path.parts:
-            continue
+    for path in sources(directory):
         digest.update(path.relative_to(directory).as_posix().encode())
         digest.update(b"\0")
         digest.update(path.read_bytes())

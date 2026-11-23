@@ -3,8 +3,8 @@
 Its purpose is building and re-checking a sparring bot (``status = "sparring"``)
 that imitates a real opponent, from lobby demos of games against it. For every
 turn of one team the replay reads the team's real commands off the demo
-(``team_commands``), builds the turn the team saw, calls the bot's ``play`` on
-it and compares the two sets of commands, by category. Each turn is replayed
+(``team_commands``), builds the turn the team saw, plays it through the bot's
+worker, as a tournament does, and compares the two sets of commands, by category. Each turn is replayed
 open loop: the bot always sees the real board, never one its own commands made.
 
 Categories, by the board of the turn:
@@ -20,19 +20,16 @@ Categories, by the board of the turn:
 from __future__ import annotations
 
 import collections
-import importlib
-import logging
 import math
-import sys
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
-from island_battles_client import BotTurn, BotTurnResult
+from island_battles_client import BotTurn
 from island_battles_client.fixture import fixture_turn_data
 
 from .digest import load_demo
-from .paths import LEAGUE
+from .gobots import Worker, WorkerError
+from .roster import load_bot
 
 # The most a category's total may differ from the team's and still count as the same command.
 TOLERANCE = {"neutral": 1, "attack": 2, "defence": 2, "feed": 1}
@@ -175,16 +172,14 @@ def classify(
     return found
 
 
-def bot_commands(result: BotTurnResult) -> tuple[list[Upgrade], list[Send]]:
-    """The upgrades and sends in what a bot's ``play`` returned."""
+def bot_commands(result: dict[str, Any]) -> tuple[list[Upgrade], list[Send]]:
+    """The upgrades and sends in a bot's result (a BotTurnResult as JSON)."""
     upgrades: list[Upgrade] = []
     sends: list[Send] = []
-    for command in result.commands:
-        data = command.model_dump() if hasattr(command, "model_dump") else command
-        kind, parameters = data["command_type"], data["parameters"]
+    for command in result["commands"]:
+        kind, parameters = command["command_type"], command["parameters"]
         if kind == "upgrade_castle":
-            upgrade = parameters["upgrade_type"]
-            upgrades.append((parameters["castle_id"], str(getattr(upgrade, "value", upgrade))))
+            upgrades.append((parameters["castle_id"], str(parameters["upgrade_type"])))
         elif kind == "send_soldier_group":
             sends.append(
                 (parameters["origin_castle_id"], parameters["destination_castle_id"], parameters["soldier_amount"])
@@ -192,15 +187,6 @@ def bot_commands(result: BotTurnResult) -> tuple[list[Upgrade], list[Send]]:
         else:
             upgrades.append((parameters.get("castle_id"), kind))
     return upgrades, sends
-
-
-def load_bot(name: str) -> ModuleType:
-    """The module ``bots/NAME/bot.py``."""
-    if not (LEAGUE / "bots" / name / "bot.py").is_file():
-        raise ValueError(f"there is no bot {name!r}: bots/{name}/bot.py is missing")
-    if str(LEAGUE) not in sys.path:
-        sys.path.insert(0, str(LEAGUE))
-    return importlib.import_module(f"bots.{name}.bot")
 
 
 class Report:
@@ -318,10 +304,9 @@ def _compare(
 
 def replay(demos: list[tuple[str, dict[str, Any]]], bot_name: str, color: int = 2, examples: int = 4) -> Report:
     """Replay every turn of a team in the demos, which the team still had a castle in, through a bot."""
-    bot = load_bot(bot_name)
+    load_bot(bot_name)
     report = Report(bot_name, examples)
-    logging.disable(logging.CRITICAL)
-    try:
+    with Worker(bot_name) as bot:
         for name, demo in demos:
             for real in team_commands(demo, color):
                 index = real["turn"] - 1
@@ -330,13 +315,12 @@ def replay(demos: list[tuple[str, dict[str, Any]]], bot_name: str, color: int = 
                     continue
                 where = f"{name} t{real['turn']}"
                 try:
-                    upgrades, sends = bot_commands(bot.play(bot_turn(demo, index, color)))
-                except Exception as error:  # a bot that crashes made no command
-                    report.note(f"bot error {type(error).__name__}: {str(error)[:60]}", where)
+                    result = bot.play(bot_turn(demo, index, color).model_dump(mode="json"))
+                    upgrades, sends = bot_commands(result)
+                except WorkerError as error:  # a bot that fails made no command
+                    report.note(f"bot error: {(str(error).strip().splitlines() or ['no message'])[0][:60]}", where)
                     upgrades, sends = [], []
                 _compare(report, frame, color, where, real, upgrades, sends)
-    finally:
-        logging.disable(logging.NOTSET)
     return report
 
 

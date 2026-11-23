@@ -13,6 +13,8 @@ on:
     branches: [main]
     paths:
       - bots/**
+      - go.mod
+      - go.sum
       - hosting/lambda/**
       - ledger/studies/**
       - uv.lock
@@ -44,6 +46,12 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
+      # The bots are Go programs: the checks test them, and build.sh builds the champion for Lambda's arm64.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache: false
+
       - name: Checks of the tools and of every bot
         run: scripts/check.sh
 
@@ -62,7 +70,7 @@ jobs:
         env:
           BUCKET: ${{ vars.BOT_BUCKET }}
           FUNCTION: ${{ vars.BOT_FUNCTION }}
-          BOT: bots.${{ steps.build.outputs.bot }}.bot:play
+          BOT: ${{ steps.build.outputs.bot }}
         run: |
           aws s3 cp dist/lambda/bot.zip "s3://$BUCKET/bot.zip" --only-show-errors
           aws lambda update-function-code --function-name "$FUNCTION" \
@@ -78,7 +86,7 @@ jobs:
       - name: The hosted bot answers as the new bot
         env:
           FUNCTION: ${{ vars.BOT_FUNCTION }}
-          BOT: bots.${{ steps.build.outputs.bot }}.bot:play
+          BOT: ${{ steps.build.outputs.bot }}
         run: |
           url=$(aws lambda get-function-url-config --function-name "$FUNCTION" --query FunctionUrl --output text)
           health=$(curl -sS --fail --retry 3 "${url%/}/health")

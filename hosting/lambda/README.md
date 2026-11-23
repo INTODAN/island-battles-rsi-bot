@@ -1,6 +1,6 @@
 # A league bot as a hosted bot on AWS Lambda
 
-A [hosted bot](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#hosted-and-uploaded-bots) is a public HTTPS URL. The game POSTs each turn's `TurnDelivery` to it and waits up to 5 seconds for a 2xx. The bot submits its answer itself, with the delivery's token. [`handler.py`](handler.py) does that on a Lambda function URL, using the SDK's own `serve` code to play and submit. It submits before it answers, because Lambda freezes once the handler returns.
+A [hosted bot](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#hosted-and-uploaded-bots) is a public HTTPS URL. The game POSTs each turn's `TurnDelivery` to it and waits up to 5 seconds for a 2xx. The bot submits its answer itself, with the delivery's token. [`handler.py`](handler.py) does that on a Lambda function URL, using the Python SDK's own `serve` code to play and submit. The bot is a league bot, a Go program: the zip carries it built for Lambda's arm64, and the handler plays each turn through its worker (the Go SDK's JSON Lines protocol, as the league's runner plays it), in one process that a warm instance keeps between turns. It submits before it answers, because Lambda freezes once the handler returns.
 
 ## What is deployed
 
@@ -8,14 +8,14 @@ In `eu-central-1`, next to the game:
 
 | Resource | Name |
 | --- | --- |
-| Function | `island-battles-league-bot`: `python3.14`, arm64, 512 MB, 15 s timeout, reserved concurrency 5, env `BOT=bots.<bot>.bot:play` for the bot that [`bot`](bot) names, `GAMES_BUCKET` and `GAMES_KEY` (see [Its games](#its-games)), and `GOOGLE_CLIENT_ID`, `OWNER_EMAIL` and `SESSION_SECRET` (see [The owner's sign-in](#the-owners-sign-in)) |
+| Function | `island-battles-league-bot`: `python3.14`, arm64, 512 MB, 15 s timeout, reserved concurrency 5, env `BOT=<bot>` for the bot that [`bot`](bot) names, `GAMES_BUCKET` and `GAMES_KEY` (see [Its games](#its-games)), and `GOOGLE_CLIENT_ID`, `OWNER_EMAIL` and `SESSION_SECRET` (see [The owner's sign-in](#the-owners-sign-in)) |
 | Function URL | auth `NONE`; the bot's URL is the function URL followed by `/turn` |
 | Role | `island-battles-league-bot`: writes its own logs, and reads and writes `games/` in the games bucket |
 | Games | `s3://island-battles-league-games-<account>/games/`, private |
 | Code | `s3://island-battles-league-bot-<account>/bot.zip` |
 | Logs | `/aws/lambda/island-battles-league-bot`, 14 days |
 
-A cold start takes about 0.9 s and a warm turn about 60 ms. A game is a few hundred requests, well inside Lambda's free tier, which the account shares with the game's own functions.
+With the Python bot, a cold start took about 0.9 s and a warm turn about 60 ms; the Go bot adds its worker's start to a cold start and takes less on a warm turn, not measured on Lambda yet. A game is a few hundred requests, well inside Lambda's free tier, which the account shares with the game's own functions.
 
 ## Its games
 
@@ -71,11 +71,11 @@ Once, by hand:
 
 [`bot`](bot) names the bot that is deployed: the ledger's champion, which an iteration that crowns a new one changes. Only a bot that a tournament measured is deployed.
 
-**On main, by itself.** [`deploy-bot.yml`](../../.github/workflows/deploy-bot.yml) runs on every push to main that changes `bots/`, `hosting/lambda/` or `uv.lock`, and from the Actions tab. It runs `scripts/check.sh`, builds the zip, uploads it, updates the function's code and its `BOT` (keeping its other variables), and checks that `GET <url>/health` names the bot. It signs in with GitHub's OIDC as the role `island-battles-league-bot-deploy`, which only main of this repository may assume, and which may only upload `bot.zip` and update this one function. The repository variables `AWS_DEPLOY_ROLE_ARN`, `BOT_BUCKET` and `BOT_FUNCTION` say where.
+**On main, by itself.** [`deploy-bot.yml`](../../.github/workflows/deploy-bot.yml) runs on every push to main that changes `bots/`, `go.mod`, `go.sum`, `hosting/lambda/` or `uv.lock`, and from the Actions tab. It runs `scripts/check.sh`, builds the zip, uploads it, updates the function's code and its `BOT` (keeping its other variables), and checks that `GET <url>/health` names the bot. It signs in with GitHub's OIDC as the role `island-battles-league-bot-deploy`, which only main of this repository may assume, and which may only upload `bot.zip` and update this one function. The repository variables `AWS_DEPLOY_ROLE_ARN`, `BOT_BUCKET` and `BOT_FUNCTION` say where.
 
 **By hand,** the same steps:
 
-1. `hosting/lambda/build.sh [bot]` builds `dist/lambda/bot.zip` with `bots/<bot>/` (the one `bot` names by default).
+1. `hosting/lambda/build.sh [bot]` builds `dist/lambda/bot.zip` with `bots/<bot>/` built for linux/arm64 as `bin/<bot>` (the one `bot` names by default). It needs Go.
 2. Upload it to `s3://island-battles-league-bot-<account>/bot.zip`, then call `UpdateFunctionCode` with that S3 object.
-3. When the bot changed, set `BOT=bots.<bot>.bot:play` with `UpdateFunctionConfiguration`, keeping the other variables.
+3. When the bot changed, set `BOT=<bot>` with `UpdateFunctionConfiguration`, keeping the other variables. (A `BOT` of the older form `bots.<bot>.bot:play` names the same bot.)
 4. Check the deployment: `GET <url>/health` should name the bot.

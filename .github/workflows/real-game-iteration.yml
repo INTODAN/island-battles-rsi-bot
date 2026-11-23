@@ -292,7 +292,7 @@ jobs:
           settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
           claude_args: |
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Run the first half of a league iteration, by the bot-league-iteration skill, as its section "Split
@@ -364,7 +364,7 @@ jobs:
           claude_args: |
             --resume ${{ steps.first.outputs.session_id }}
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Your last turn ended before the first half was done: there is no hand-over in ledger/iterations.md and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
@@ -413,7 +413,7 @@ jobs:
           claude_args: |
             --resume ${{ steps.first2.outputs.session_id }}
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Your last turn ended before the first half was done: there is no hand-over in ledger/iterations.md and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
@@ -634,7 +634,7 @@ jobs:
           settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
           claude_args: |
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Finish league iteration ${{ needs.claim.outputs.n }}, by the bot-league-iteration skill, as its section
@@ -706,7 +706,7 @@ jobs:
           claude_args: |
             --resume ${{ steps.second.outputs.session_id }}
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Your last turn ended before the iteration was done: there is no runs/rsi/commit-message.txt and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
@@ -754,7 +754,7 @@ jobs:
           claude_args: |
             --resume ${{ steps.second2.outputs.session_id }}
             --model ${{ vars.RSI_MODEL || 'opus' }}
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(gofmt:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
             --disallowedTools "WebFetch,WebSearch"
           prompt: |
             Your last turn ended before the iteration was done: there is no runs/rsi/commit-message.txt and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything

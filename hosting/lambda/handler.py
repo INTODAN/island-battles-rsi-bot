@@ -4,13 +4,21 @@ The game POSTs a ``TurnDelivery`` to the bot's URL and waits up to 5 seconds for
 any 2xx; the bot submits its answer itself, with the delivery's submit token,
 to the game's ``POST /generation/commands``. That is the protocol of
 ``island-battles-bot serve``, and this handler plays and submits a turn with the
-SDK's own code for it (``BotServer.play`` and ``BotServer.submit``): the same
-time budget, the same pass when the bot fails or is slow, and the same retries.
+Python SDK's own code for it (``BotServer.play`` and ``BotServer.submit``): the
+same time budget, the same pass when the bot fails or is slow, and the same
+retries.
+
+The bot is a league bot, a Go program: the handler plays each turn through the
+program's ``worker`` subcommand, the Go SDK's JSON Lines protocol that the
+headless runner plays it with, in one process that the Lambda instance keeps
+between turns. ``build.sh`` builds the program for Lambda (``bin/<bot>``); run
+from the repository, as the tests do, the handler builds it with the league's
+tools.
 
 Unlike ``serve``, it submits before it answers rather than after, since Lambda
 freezes the instance once the handler returns. ``GET /health`` answers like
-``serve``'s. ``BOT`` names the bot; by default it is the one that the file
-``bot`` names, which ``build.sh`` packages next to this one.
+``serve``'s, with the bot's name. ``BOT`` names the bot; by default it is the
+one that the file ``bot`` names, which ``build.sh`` packages next to this one.
 
 With ``GAMES_BUCKET`` set, it also keeps every turn it plays in that bucket.
 When a game ends, the game POSTs its end to ``/game-ended``, the bot's URL with
@@ -32,6 +40,8 @@ import json
 import logging
 import os
 import re
+import subprocess
+import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,12 +51,19 @@ import games
 import httpx
 import owner
 import page
-from island_battles_client._generated import BotTurnResult, TurnDelivery
-from island_battles_client.cli import MAX_BODY_BYTES, BotServer, load_play, submit_refusal
+from island_battles_client._generated import BotTurn, BotTurnResult, TurnDelivery
+from island_battles_client.cli import MAX_BODY_BYTES, BotServer, submit_refusal
 from island_battles_client.game_log import ClientLogging
 from pydantic import ValidationError
 
-BOT = os.environ.get("BOT") or f"bots.{Path(__file__).with_name('bot').read_text().strip()}.bot:play"
+# The bot's name under bots/. A deploy before the bots were Go set BOT to "bots.<name>.bot:play", which names it too.
+BOT = (
+    (os.environ.get("BOT") or Path(__file__).with_name("bot").read_text())
+    .strip()
+    .split(":")[0]
+    .removeprefix("bots.")
+    .removesuffix(".bot")
+)
 # The longest a turn may play; the turn's deadline cuts it shorter, as in serve.
 TURN_TIMEOUT_SECONDS = float(os.environ.get("TURN_TIMEOUT_SECONDS", "8"))
 # The bucket that keeps the real games; without it nothing is kept.
@@ -72,15 +89,83 @@ DEMO_TIMEOUT_SECONDS = 10.0
 _log = logging.getLogger("island_battles.hosting")
 
 
+def bot_binary(name: str) -> Path:
+    """The bot's program: packaged by build.sh, or built from the repository's code."""
+    packaged = _HERE / "bin" / name
+    if packaged.is_file():
+        return packaged
+    from league_tools import gobots  # noqa: PLC0415 - only in the repository, not in the package
+
+    return gobots.build([name])[name]
+
+
+class WorkerPlay:
+    """A Go bot's play function: each call is one turn through the bot's worker process.
+
+    The process is started on the first turn and kept for the next; one that
+    stopped is started again. A turn that the worker answers with an error, a
+    failed or invalid turn, raises, so the turn passes as serve passes it.
+    """
+
+    def __init__(self, binary: Path) -> None:
+        """Remember the program; the process starts with the first turn."""
+        self.binary = binary
+        self._process: subprocess.Popen[str] | None = None
+        # One turn at a time: a turn that ran out of time still owns the process until it answers.
+        self._lock = threading.Lock()
+
+    def _worker(self) -> subprocess.Popen[str]:
+        if self._process is not None and self._process.poll() is None:
+            return self._process
+        process = subprocess.Popen(
+            [str(self.binary), "worker"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+        assert process.stdout is not None
+        if json.loads(process.stdout.readline() or "{}") != {"ready": True}:
+            process.kill()
+            raise RuntimeError(f"{self.binary.name}'s worker didn't start")
+        self._process = process
+        return process
+
+    def __call__(self, turn: BotTurn) -> dict[str, Any]:
+        """Play one turn, and return the result as the worker wrote it."""
+        if not self._lock.acquire(blocking=False):
+            # A turn that ran out of time still waits for this worker: end it, so that this turn and the next
+            # ones get a new worker instead of each waiting behind it until it too runs out of time.
+            stuck = self._process
+            if stuck is not None:
+                stuck.kill()
+            self._lock.acquire()
+        try:
+            process = self._worker()
+            assert process.stdin is not None and process.stdout is not None
+            process.stdin.write(json.dumps({"turn": turn.model_dump(mode="json", by_alias=True)}) + "\n")
+            process.stdin.flush()
+            line = process.stdout.readline()
+            if not line:
+                self._process = None
+                raise RuntimeError(f"{self.binary.name}'s worker stopped")
+            answer = json.loads(line)
+        finally:
+            self._lock.release()
+        if "error" in answer:
+            raise RuntimeError(answer["error"])
+        return answer["result"]
+
+
 class _Bot:
-    """The loaded bot, in the shape of ``serve``'s ``ReloadingPlay``."""
+    """The bot, in the shape of ``serve``'s ``ReloadingPlay``."""
 
-    def __init__(self, spec: str) -> None:
-        """Load the bot's play function from ``module:function``."""
-        self.spec = spec
-        self._play = load_play(spec)
+    def __init__(self, name: str) -> None:
+        """Find the bot's program; its worker starts with the first turn."""
+        self.name = name
+        self._play = WorkerPlay(bot_binary(name))
 
-    def get(self) -> Any:  # noqa: ANN401 - the SDK's Play
+    def get(self) -> WorkerPlay:
         """The bot's play function."""
         return self._play
 
@@ -91,9 +176,9 @@ class LambdaBot:
     play = BotServer.play
     submit = BotServer.submit
 
-    def __init__(self, spec: str, turn_timeout: float) -> None:
-        """Load the bot and attach the logging that ``run_turn`` reads."""
-        self.bot = _Bot(spec)
+    def __init__(self, name: str, turn_timeout: float) -> None:
+        """Find the bot and attach the logging that ``run_turn`` reads."""
+        self.bot = _Bot(name)
         self.turn_timeout = turn_timeout
         self.client_logging = ClientLogging(self, logging.INFO, True, None)
         self.client_logging.attach()
@@ -103,7 +188,7 @@ class LambdaBot:
     @property
     def name(self) -> str:
         """The bot's name: its directory under bots/."""
-        return self.bot.spec.split(":")[0].removeprefix("bots.").removesuffix(".bot")
+        return self.bot.name
 
     def _post(self, delivery: TurnDelivery, result: BotTurnResult) -> tuple[int | None, str, str | None]:
         """POST one batch as serve does, remembering what was sent and the answer."""
@@ -313,7 +398,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     method = http.get("method", "")
     path = event.get("rawPath", "/")
     if method == "GET" and path == "/health":
-        return _answer(200, {"name": _bot.bot.spec, "ok": True, "games": _store is not None})
+        return _answer(200, {"name": _bot.name, "ok": True, "games": _store is not None})
     if method == "POST" and path == "/sign-in":
         return _sign_in(event)
     if method == "POST" and path == "/sign-out":

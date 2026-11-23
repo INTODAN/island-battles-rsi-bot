@@ -14,15 +14,10 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-import island_battles_client
-
-from . import engine, ratings
+from . import engine, gobots, ratings
 from .opponents import load_opponents
 from .paths import BOTS, CACHE, LEAGUE, MAPS, RUNS
-from .roster import ANCHOR, fingerprint, load_bot
-
-# The installed SDK's code: a new release of it can change how a bot plays.
-SDK = Path(island_battles_client.__file__).resolve().parent
+from .roster import ANCHOR, load_bot
 
 
 @dataclass
@@ -102,32 +97,32 @@ def has_holdout(maps: list[Path]) -> bool:
     return any(file.parent.name == "holdout" for file in maps)
 
 
-def player_specification(name: str) -> dict[str, Any]:
-    """The runner's description of a player: a default bot, an outside opponent or a league bot."""
+def player_specification(name: str, binary: Path | None = None) -> dict[str, Any]:
+    """The runner's description of a player: a default bot, an outside opponent or a league bot.
+
+    Args:
+        name: The player.
+        binary: A league bot's program, from ``gobots.build``; its current code's by default.
+    """
     anchor = ANCHOR.fullmatch(name)
     if anchor:
         return {"default_level": int(anchor.group(1))}
     outside = load_opponents().get(name)
     if outside is not None:
         return outside.specification()
-    return {
-        "worker": [sys.executable, "-m", "island_battles_client.worker", load_bot(name).entry],
-        "directory": str(LEAGUE),
-        # The same hash seed in every process, so that a bot which walks a
-        # set plays the same game whichever process plays it.
-        "environment": {"PYTHONHASHSEED": "0"},
-    }
+    load_bot(name)
+    return {"worker": [str(binary or gobots.binary_path(name)), "worker"], "directory": str(LEAGUE)}
 
 
 @functools.cache
-def player_fingerprint(name: str, sdk: str) -> str:
-    """What decides how a player plays: its code, and for a league bot the SDK."""
+def player_fingerprint(name: str) -> str:
+    """What decides how a player plays: its code, and for a league bot the Go SDK's version."""
     if ANCHOR.fullmatch(name):
         return name
     outside = load_opponents().get(name)
     if outside is not None:
         return outside.fingerprint()
-    return fingerprint(BOTS / name) + sdk
+    return gobots.fingerprint(BOTS / name)
 
 
 def match_key(build: str, map_hash: str, seats: list[str], fingerprints: list[str], settings: list[int]) -> str:
@@ -202,7 +197,6 @@ def play_matches(
     key falls in it are played and returned.
     """
     build = engine.build()
-    sdk = fingerprint(SDK)
     # A bot's code is read once per tournament, not once per match.
     player_fingerprint.cache_clear()
     settings = [max_generations, turn_timeout_milliseconds]
@@ -211,7 +205,7 @@ def play_matches(
     for map_file, seats in matches:
         if map_file not in map_hashes:
             map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
-        fingerprints = [player_fingerprint(name, sdk) for name in seats]
+        fingerprints = [player_fingerprint(name) for name in seats]
         key = match_key(build.hash, map_hashes[map_file], seats, fingerprints, settings)
         if not in_shard(key, shard):
             continue
@@ -248,8 +242,11 @@ def play_matches(
             print(f"{before - len(to_play)} of them were played meanwhile; {len(to_play)} to play", file=sys.stderr)
         if to_play:
             names = sorted({name for match in to_play for name in match["seats"]})
+            # Each league bot is built once per tournament, and not again while its code is the same.
+            outside = load_opponents()
+            binaries = gobots.build(name for name in names if not ANCHOR.fullmatch(name) and name not in outside)
             schedule = {
-                "players": {name: player_specification(name) for name in names},
+                "players": {name: player_specification(name, binaries.get(name)) for name in names},
                 "maps": {map_file.stem: str(map_file) for map_file in map_hashes},
                 "matches": to_play,
                 "max_generations": max_generations,

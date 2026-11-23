@@ -2,6 +2,7 @@ import gzip
 import io
 import json
 import sys
+import threading
 import time
 import zipfile
 from copy import deepcopy
@@ -414,3 +415,41 @@ def test_google_refusing_a_token_differs_from_google_failing(monkeypatch: pytest
         answering(status, {})
         with pytest.raises(httpx.HTTPStatusError):
             handler.tokeninfo("token")
+
+
+def test_a_worker_stuck_on_a_turn_is_replaced_for_the_next(tmp_path: Path) -> None:
+    """A turn that ran out of time doesn't make every later turn wait behind it."""
+    import handler  # noqa: PLC0415 - loads the bot
+    from island_battles_client._generated import BotTurn  # noqa: PLC0415
+
+    hung = tmp_path / "hung"
+    worker = tmp_path / "bot"
+    worker.write_text(
+        "#!/bin/sh\n"
+        "echo '{\"ready\": true}'\n"
+        "while read line; do\n"
+        f"  if [ ! -e {hung} ]; then touch {hung}; exec sleep 60; fi\n"
+        '  echo \'{"result": {"commands": [], "logs": [], "memory": null}}\'\n'
+        "done\n"
+    )
+    worker.chmod(0o755)
+    play = handler.WorkerPlay(worker)
+    turn = BotTurn.model_validate(fixture_turn_data())
+    failures: list[Exception] = []
+
+    def first() -> None:
+        try:
+            play(turn)
+        except RuntimeError as error:
+            failures.append(error)
+
+    stuck = threading.Thread(target=first, daemon=True)
+    stuck.start()
+    deadline = time.monotonic() + 10
+    while not hung.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    started = time.monotonic()
+    assert play(turn) == {"commands": [], "logs": [], "memory": None}
+    assert time.monotonic() - started < 5
+    stuck.join(5)
+    assert failures and "stopped" in str(failures[0])

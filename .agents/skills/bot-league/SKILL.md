@@ -1,17 +1,17 @@
 ---
 name: bot-league
-description: "The bot league, which is this repository: Python bots that only AI agents write and improve, the league command (tournament, digest, rematch, replay, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
+description: "The bot league, which is this repository: Go bots that only AI agents write and improve, the league command (tournament, digest, rematch, replay, roster, new, status, new-map), how to read standings and study a game from its demo and logs, and the rules every league bot keeps. Load it before changing a bot, a tool or a map, playing the bots, or reading their results."
 ---
 
 # The bot league
 
-This repository holds a population of Python bots that play each other in the game's headless runner, and the tools around them. [README.md](../../../README.md) is the design; read it once. To improve the bots, follow the `bot-league-iteration` skill. The runner itself belongs to the game's repository, [INTODAN/island-battles-go](https://github.com/INTODAN/island-battles-go), and is built from the commit that `runner.toml` names; its [Headless matches](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#headless-matches) section describes it.
+This repository holds a population of Go bots, on the game's Go SDK, that play each other in the game's headless runner, and the tools around them, which are Python. [README.md](../../../README.md) is the design; read it once. To improve the bots, follow the `bot-league-iteration` skill. The runner itself belongs to the game's repository, [INTODAN/island-battles-go](https://github.com/INTODAN/island-battles-go), and is built from the commit that `runner.toml` names; its [Headless matches](https://github.com/INTODAN/island-battles-go/blob/main/backend/README.md#headless-matches) section describes it.
 
 **Only agents change `bots/`**, and only through the loop: a change to a bot that no tournament measured doesn't belong in a pull request. Tools, maps and tests are ordinary code.
 
 ## Commands
 
-From the repository root. The first run installs the Python project, fetches the game's source at the pinned commit into `.runner/` and builds the runner with Go.
+From the repository root. The first run installs the Python project, fetches the game's source at the pinned commit into `.runner/` and builds the runner with Go. A tournament builds each bot it plays once (`runs/bin/`), and again only when its code changed.
 
 | Command | Use it to |
 |---|---|
@@ -33,10 +33,11 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league rematch DEMO... --bot NAME [--replaces P]` | Play league games again (demos a tournament listed) with candidate NAME in its parent's seat (or P's): the result before and after, and the first turn it commanded something else, with both bots' commands and logs. Seconds, to check that a change acts as its idea says before the gate; it can't say a bot is better. Training maps only. |
 | `uv run league status NAME active` | Change a bot's status: `candidate`, `active` or `retired`. |
 | `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. |
-| `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to `bots/NAME/bot.py` and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
+| `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to bot NAME, through its worker, and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
+| `gofmt -w bots/NAME` | Format a bot's Go code; the checks refuse code that isn't. |
 | `uv run league clock reset` / `start STEP` / `stop STEP` / `report` | Time the steps of any work (`runs/clock.jsonl`); the report gives each step's minutes, its share and the slowest. The [`measuring-time`](../measuring-time/SKILL.md) skill says what to time and how to review it. |
-| `scripts/check.sh` | Format, lint, types and tests of the tools and every bot. Run it before a tournament counts. |
+| `scripts/check.sh` | Format, lint, types and tests of the tools (Python) and every bot (`gofmt`, `go vet`, `go test ./...`). Run it before a tournament counts. |
 
 Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory. The demos the lists point to are in the cache, the main checkout's `runs/cache/` even in a worktree.
 
@@ -66,13 +67,15 @@ Read games on the **training maps only**. The holdout maps exist to give numbers
 
 ## Rules for a league bot
 
-The game's rules and the SDK are in three skills copied from the game's Python bot template: [island-battles-rules](../island-battles-rules/SKILL.md), [writing-a-bot](../writing-a-bot/SKILL.md) and [bot-logging](../bot-logging/SKILL.md). Read the first two before writing bot code. On top of them:
+The game's rules and the SDK are in three skills copied from the game's Python bot template: [island-battles-rules](../island-battles-rules/SKILL.md), [writing-a-bot](../writing-a-bot/SKILL.md) and [bot-logging](../bot-logging/SKILL.md). Read the first two before writing bot code. Their examples are Python; the league's bots are Go, on the Go SDK at the version `go.mod` pins, whose names mean the same: its README (`.runner/source/clients/island-battles-go/README.md` in the main checkout, at the pinned commit) has the turn, the helpers and a table of Python names and Go names, and `go doc github.com/INTODAN/island-battles-go/clients/island-battles-go` lists them. On top of them:
 
-- A bot is `bots/<name>/`: `__init__.py`, `bot.py` with `play(turn)`, `bot.toml`, and any other modules of its own. **It imports nothing from another bot.** To use another bot's idea, copy the code in.
-- It imports only the SDK and the pure standard modules that `tests/test_bots.py` allows, and its own modules with one dot (`from .plan import ...`). No globals, no dict, list or set at module or class level, no clocks, randomness, files or network: the same turn always gives the same result, in a process that plays many games. Everything it remembers is in `memory`.
+- A bot is `bots/<name>/`: `main.go` (`package main`, with `func play(ctx context.Context, turn islandbattles.Turn) (islandbattles.Result, error)` and `func main() { islandbattles.Main(play) }`), `bot.toml`, and any other `.go` files of the same package. **It imports nothing from another bot.** To use another bot's idea, copy the code in.
+- It imports only the SDK and the pure standard packages that `tests/bots/bots_test.go` allows. No package-level `var`, no `init`, no goroutines, no clocks, randomness, files or network: the same turn always gives the same result, in a process that plays many games. Everything it remembers is in `Result.Memory`. **Never let a Go map's order choose anything**: Go walks a map in a new order every time, so collect the keys and sort them first; ties in a sort or a minimum are broken by castle id.
+- The league's bots were Python until the setup after iteration 37 and play exactly as their Python versions did. They keep plain `int`s for soldiers (the SDK's are `uint`, which a subtraction wraps), `floorDiv` where Python's `//` floored a negative number, and `hypot`, a copy of CPython's `math.hypot`, for distances (Go's `math.Hypot` and the SDK's `Distance` round differently on about a third of them). Keep them in a descendant unless the change is the idea.
 - It counts what its commands spend. One rejected command rejects the whole turn.
-- **It logs one or two lines every turn**: what it saw that mattered and what it decided, with the numbers (`logger.info`). The next agent studies its games from those lines. Not more: the game log keeps 100 lines a turn, and long logs make demos slow to read.
-- Its strategy constants sit at the top of `bot.py`, each with a comment that says what it does.
+- **It logs one or two lines every turn**: what it saw that mattered and what it decided, with the numbers (an `islandbattles.Logf` line in `Result.Logs`, as the league's bots do, or `islandbattles.Logger(ctx)`). The next agent studies its games from those lines. Not more: the game log keeps 100 lines a turn, and long logs make demos slow to read.
+- Its strategy constants sit at the top of `main.go`, each with a comment that says what it does. The file's first comment says what the bot is and what it tries, with its parent's comment after it.
+- `gofmt -w bots/<name>` before the checks; `go vet ./bots/<name>` finds the usual mistakes.
 - Names are lower-case with digits and `_`. `levelN` names a default bot. A descendant's name says what it tries (`economist_guard`), not a version number.
 
 ## Statuses
