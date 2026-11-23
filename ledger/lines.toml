@@ -10,7 +10,7 @@ state = "side"
 head = "pounce_reach"
 strategy = "A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers."
 bots = ["pounce", "pounce_reach"]
-without_promotion = 0
+without_promotion = 1
 note = "a side line since iteration 45, when `burstguard` passed it"
 
 [[line]]
