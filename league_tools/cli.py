@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 
 from . import clock as clock_module
+from . import decide as decide_module
 from . import digest as digest_module
 from . import ledger, maps, opponents, roster, tournament
 from . import mistakes as mistakes_module
@@ -188,6 +189,31 @@ def _delete(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _decide(arguments: argparse.Namespace) -> int:
+    iteration = arguments.iteration
+    if iteration is None:
+        text = (LEDGER / "iterations.md").read_text(encoding="utf-8")
+        found = [ledger.ITERATION.match(line) for line in text.splitlines()]
+        iteration = max((int(match.group(1)) for match in found if match), default=0) + 1
+    prefix = arguments.run_id or f"iteration-{iteration}-decide"
+    names = [name.strip() for name in arguments.candidates.split(",")] if arguments.candidates else None
+    selection = decide_module.play_selection(names, prefix)
+    result = decide_module.upkeep(
+        selection.decisions,
+        selection.lines,
+        list(selection.roster.values()),
+        decide_module.measurer(selection.outside, prefix),
+        iteration,
+        train=selection.evidence.train,
+        outside=selection.outside,
+    )
+    print(decide_module.as_json(selection, result) if arguments.json else decide_module.report(selection, result))
+    if arguments.apply:
+        decide_module.apply(result)
+        print(f"league: applied {len(result.actions)} actions and wrote the lines", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the ``league`` command."""
     parser = argparse.ArgumentParser(prog="league", description=__doc__)
@@ -343,6 +369,22 @@ def main(argv: list[str] | None = None) -> int:
     clock.add_argument("step", nargs="?", help="the step's name, such as '2 study' (start and stop)")
     clock.add_argument("--file", help="the clock's file; default: runs/clock.jsonl")
     clock.set_defaults(handler=_clock)
+
+    decide = commands.add_parser(
+        "decide",
+        help="apply the selection's and the population's rules: play the runs the candidates need (from the cache "
+        "where played), print each decision and the population's upkeep, and with --apply make them",
+    )
+    decide.add_argument("--candidates", help="the candidates, by name; default: every candidate of the roster")
+    decide.add_argument("--iteration", type=int, help="the iteration; default: the ledger's last plus one")
+    decide.add_argument("--run-id", help="the runs' prefix under runs/; default: iteration-N-decide")
+    decide.add_argument(
+        "--apply",
+        action="store_true",
+        help="make the changes: statuses, deletions, the champion's name and ledger/lines.toml",
+    )
+    decide.add_argument("--json", action="store_true", help="print the decisions and actions as JSON")
+    decide.set_defaults(handler=_decide)
 
     arguments = parser.parse_args(argv)
     try:
