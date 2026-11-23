@@ -18,7 +18,7 @@ from island_battles_client import (
     upgrade_castle,
 )
 
-from league_tools import cli, digest, engine, maps, ratings, rematch, replay, roster, tournament
+from league_tools import cli, clock, digest, engine, maps, ratings, rematch, replay, roster, tournament
 
 
 def test_ratings_put_the_winner_above_and_level3_at_1000() -> None:
@@ -734,3 +734,30 @@ def test_the_ledger_brief_keeps_the_lessons_every_idea_and_the_last_entries() ->
     assert "A long standings table" not in brief
     assert "- Iteration 1: first" in brief and "- Setup after iteration 1: a new map" in brief
     assert brief.rstrip().endswith("| `new_idea` | old | Hold. | 12/18 | **promoted** |")
+
+
+def test_the_clock_times_steps_counts_a_step_started_again_and_reports_the_open_ones(tmp_path: Path) -> None:
+    import datetime
+
+    path = tmp_path / "clock.jsonl"
+    at = datetime.datetime(2026, 11, 23, 8, 0, tzinfo=datetime.UTC)
+    minutes = lambda n: at + datetime.timedelta(minutes=n)  # noqa: E731
+    clock.mark("start", "0 ledger", path, minutes(0))
+    clock.mark("stop", "0 ledger", path, minutes(2))
+    clock.mark("start", "2 study", path, minutes(2))
+    clock.mark("stop", "2 study", path, minutes(8))
+    clock.mark("start", "2 study", path, minutes(9))
+    path.write_text(path.read_text() + "not an event\n")
+    text = clock.report(clock.load(path), now=minutes(10))
+    assert "| 0 ledger | 08:00:00 | 08:02:00 | 2.0 | 20% |" in text
+    assert "| 2 study | 08:02:00 | 08:08:00 | 6.0 | 60% |" in text
+    assert "| 2 study #2 | 08:09:00 | open | 1.0 | 10% |" in text
+    assert "Total: 10.0 minutes" in text
+    assert "Slowest: 2 study (6.0)" in text
+    assert "Still open (counted to now): 2 study #2." in text
+    assert clock.reset(path) == 5
+    assert clock.load(path) == []
+    with pytest.raises(ValueError):
+        clock.mark("start", "", path)
+    with pytest.raises(ValueError):
+        clock.mark("pause", "0 ledger", path)

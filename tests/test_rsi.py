@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "hosting" / "rsi"))
 
 import notifier  # noqa: E402
 import real_games  # noqa: E402
+import run_times  # noqa: E402
 import scope  # noqa: E402
 
 
@@ -157,3 +158,36 @@ def test_a_name_the_repository_already_holds_as_a_word_is_not_checked() -> None:
     # it is put together here, so that HEAD holding this test doesn't hold the name.
     names = {"castle", "zq-" + "nobody-7731"}
     assert scope.already_public(names, "HEAD") == {"castle"}
+
+
+def test_a_runs_times_show_its_jobs_its_rounds_by_their_slowest_runner_and_its_slow_steps() -> None:
+    def job(
+        name: str, start: str, end: str, steps: list[dict[str, Any]] | None = None, result: str = "success"
+    ) -> dict[str, Any]:
+        return {
+            "name": name,
+            "conclusion": result,
+            "created_at": "2026-11-23T08:00:00Z",
+            "started_at": f"2026-11-23T08:{start}Z",
+            "completed_at": f"2026-11-23T08:{end}Z",
+            "steps": steps or [],
+        }
+
+    jobs = [
+        job("Claim", "00:00", "01:00"),
+        job("Warm 1/2", "01:00", "04:00"),
+        job(
+            "Warm 2/2",
+            "01:00",
+            "08:00",
+            [{"name": "Play the shard", "started_at": "2026-11-23T08:01:30Z", "completed_at": "2026-11-23T08:07:30Z"}],
+        ),
+        job("Gate ${{ matrix.shard }}/8", "08:00", "08:00", result="skipped"),
+        job("Study (first half)", "08:00", "20:00"),
+    ]
+    text = run_times.report({"created_at": "2026-11-23T08:00:00Z"}, jobs)
+    assert "| Claim | success | 0.0 | 1.0 |" in text
+    assert "| Warm | 2 | 7.0 | 5.0 | 3.0 | 2 |" in text
+    assert "- 6.0 min: Warm 2/2: Play the shard" in text
+    assert "Gate" not in text
+    assert "The run: 20.0 minutes, from 08:00 to 08:20 UTC." in text
