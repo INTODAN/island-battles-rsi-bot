@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from island_battles_client.fixture import fixture_turn_data
 
@@ -279,6 +280,7 @@ def test_the_games_are_listed_without_reading_their_turns() -> None:
 
 OWNER = owner.Owner.from_settings("client.apps.googleusercontent.com", "Owner@example.com", "s" * 32)
 NOW = 1_800_000_000.0
+NONCE = "n" * 32
 
 
 def _claims(**changes: str) -> dict[str, Any]:
@@ -288,12 +290,13 @@ def _claims(**changes: str) -> dict[str, Any]:
         "exp": str(int(NOW) + 600),
         "email": "owner@example.com",
         "email_verified": "true",
+        "nonce": NONCE,
     }
     return {**claims, **changes}
 
 
 def test_only_the_owners_google_account_signs_in() -> None:
-    session = OWNER.sign_in("token", lambda credential: _claims(), NOW)
+    session = OWNER.sign_in("token", NONCE, lambda credential: _claims(), NOW)
     assert OWNER.signed_in(session, NOW) and not OWNER.signed_in(session, NOW + owner.SESSION_SECONDS + 1)
     refused = [
         _claims(email="someone@example.com"),
@@ -301,16 +304,26 @@ def test_only_the_owners_google_account_signs_in() -> None:
         _claims(iss="https://evil.example.com"),
         _claims(exp=str(int(NOW) - 1)),
         _claims(email_verified="false"),
+        _claims(nonce="m" * 32),
+        _claims(nonce=""),
+        _claims(exp="soon"),
+        ["not", "claims"],
     ]
     for claims in refused:
         with pytest.raises(owner.Refused):
-            OWNER.sign_in("token", lambda credential, claims=claims: claims, NOW)
+            OWNER.sign_in("token", NONCE, lambda credential, claims=claims: claims, NOW)
+    # A token made for another page with the same client ID carries no nonce of this browser's.
+    for nonce in ("", "short", "m" * 32):
+        with pytest.raises(owner.Refused):
+            OWNER.sign_in("token", nonce, lambda credential: _claims(), NOW)
     expires = session.split(".")[0]
     assert not OWNER.signed_in(f"{int(expires) + 100}.{session.split('.')[1]}", NOW)
     assert not owner.Owner.from_settings(OWNER.client_id, "owner@example.com", "t" * 32).signed_in(session, NOW)
+    for forged in ("\u00b2.x", "9" * 5000 + ".x", ".", "x"):
+        assert not OWNER.signed_in(forged, NOW)
     closed = owner.Owner.from_settings("", "owner@example.com", "s" * 32)
     with pytest.raises(owner.Refused):
-        closed.sign_in("token", lambda credential: _claims(), NOW)
+        closed.sign_in("token", NONCE, lambda credential: _claims(), NOW)
 
 
 def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -324,11 +337,19 @@ def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pyte
     monkeypatch.setattr(handler, "GAMES_KEY", "")
     monkeypatch.setattr(handler, "tokeninfo", lambda credential: _claims(exp=str(int(time.time()) + 600)))
 
+    def cookies(answer: dict[str, Any]) -> dict[str, str]:
+        return dict(cookie.split(";")[0].split("=", 1) for cookie in answer.get("cookies", []))
+
     def get(path: str, **extra: object) -> dict[str, Any]:
         return handler.handler({"requestContext": {"http": {"method": "GET"}}, "rawPath": path, **extra}, None)
 
     closed = get("/")
     assert closed["statusCode"] == 401 and "accounts.google.com/gsi/client" in closed["body"]
+    nonce = cookies(closed)[owner.NONCE_COOKIE]
+    assert owner.valid_nonce(nonce) and f'data-nonce="{nonce}"' in closed["body"]
+    assert cookies(get("/", cookies=[f"{owner.NONCE_COOKIE}={nonce}"]))[owner.NONCE_COOKIE] == nonce
+    assert 'data-signed-out=""' in closed["body"]
+    assert get("/", cookies=[f"{owner.COOKIE}=\u00b2.x"])["statusCode"] == 401
     assert "Game 7" not in closed["body"]
     for hidden in (handler._bot.name, "github.com", "champion", "league"):
         assert hidden not in closed["body"]
@@ -336,9 +357,19 @@ def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pyte
     assert get("/games/7.zip")["statusCode"] == 403
     assert get("/health")["statusCode"] == 200
 
-    sign_in = {"requestContext": {"http": {"method": "POST"}}, "rawPath": "/sign-in"}
+    sign_in = {
+        "requestContext": {"http": {"method": "POST"}},
+        "rawPath": "/sign-in",
+        "cookies": [f"owner_nonce={NONCE}"],
+    }
+    for body in ("{", "[" * 8000, json.dumps(["token"])):
+        assert handler.handler({**sign_in, "body": body}, None)["statusCode"] == 403
+    assert handler.handler({**sign_in, "body": "%%%", "isBase64Encoded": True}, None)["statusCode"] == 403
+    no_nonce = {**sign_in, "cookies": [], "body": json.dumps({"credential": "token"})}
+    assert handler.handler(no_nonce, None)["statusCode"] == 403
     answer = handler.handler({**sign_in, "body": json.dumps({"credential": "token"})}, None)
     assert answer["statusCode"] == 200
+    assert cookies(answer)[owner.NONCE_COOKIE] == "" and cookies(answer)[owner.SIGNED_OUT_COOKIE] == ""
     cookie = answer["cookies"][0].split(";")[0]
     assert "HttpOnly" in answer["cookies"][0] and "Secure" in answer["cookies"][0]
     home = get("/", cookies=[cookie])
@@ -347,9 +378,39 @@ def test_the_home_page_the_games_and_their_zips_are_the_owners(monkeypatch: pyte
     assert get("/api/games", cookies=[cookie])["statusCode"] == 200
     assert get("/games/7.zip", cookies=[cookie])["statusCode"] == 302
 
+    signed_out = handler.handler({"requestContext": {"http": {"method": "POST"}}, "rawPath": "/sign-out"}, None)
+    assert cookies(signed_out) == {owner.COOKIE: "", owner.SIGNED_OUT_COOKIE: "1"}
+    assert 'data-signed-out="1"' in get("/", cookies=[f"{owner.SIGNED_OUT_COOKIE}=1"])["body"]
+
+    def unreachable(credential: str) -> object:
+        raise httpx.ConnectError("Google is down")
+
+    monkeypatch.setattr(handler, "tokeninfo", unreachable)
+    assert handler.handler({**sign_in, "body": json.dumps({"credential": "token"})}, None)["statusCode"] == 502
+
     monkeypatch.setattr(handler, "tokeninfo", lambda credential: _claims(email="someone@example.com"))
     refused = handler.handler({**sign_in, "body": json.dumps({"credential": "token"})}, None)
     assert refused["statusCode"] == 403 and "cookies" not in refused
     monkeypatch.setattr(handler, "GAMES_KEY", "the-key")
     assert get("/games/7.zip", queryStringParameters={"key": "the-key"})["statusCode"] == 302
     assert get("/games/7.zip", queryStringParameters={"key": "wrong"})["statusCode"] == 403
+
+
+def test_google_refusing_a_token_differs_from_google_failing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import handler  # noqa: PLC0415 - loads the bot
+
+    real_client = httpx.Client
+
+    def answering(status: int, body: object) -> None:
+        transport = httpx.MockTransport(lambda request: httpx.Response(status, json=body))
+        monkeypatch.setattr(httpx, "Client", lambda **options: real_client(transport=transport, **options))
+
+    answering(200, _claims())
+    assert handler.tokeninfo("token") == _claims()
+    answering(400, {"error": "invalid_token"})
+    with pytest.raises(owner.Refused):
+        handler.tokeninfo("token")
+    for status in (429, 500, 503):
+        answering(status, {})
+        with pytest.raises(httpx.HTTPStatusError):
+            handler.tokeninfo("token")
