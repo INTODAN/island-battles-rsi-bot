@@ -93,7 +93,15 @@ def report(run: dict[str, Any], jobs: list[dict[str, Any]], slow_step: float = 6
             seen.add(key)
             lines.append(f"- {_minutes(seconds)} min: {job}: {step}")
     created = _at(run.get("created_at"))
-    if created and ends:
+    running = [job["name"] for job in jobs if job.get("started_at") and not job.get("completed_at")]
+    if created and running:
+        now = datetime.datetime.now(datetime.UTC)
+        lines += [
+            "",
+            f"The run so far: {_minutes((now - created).total_seconds())} minutes, from {created:%H:%M} UTC; "
+            f"still running: {', '.join(running)}.",
+        ]
+    elif created and ends:
         last = max(ends)
         lines += [
             "",
