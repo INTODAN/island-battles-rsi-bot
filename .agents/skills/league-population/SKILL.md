@@ -38,16 +38,16 @@ Take the table of the training maps (its heading says which maps it is of), in i
 
 Then **measure again** (from the cache), since a bot that left changes what the others have in common, and repeat until the table lists no pair but pairs of bots that never leave.
 
-Do this twice an iteration: after the first measurement, so that the candidates are measured against a field without copies, and after the promotions, on the population as it then is.
+The integrator does this (`league_tools/decide.py`, `upkeep`), after each proposal's promotions, on the population as it then is. A run deletes no bot: it notes the pairs it found.
 
 When a line's last active bot leaves this way, the line is closed, and its row says why.
 
 ## Side lines
 
 - **A founder that is admitted** ([`league-evidence`](../league-evidence/SKILL.md)) starts a side line: `league status NAME active`, and a row in **The lines**.
-- **A side line gets a candidate every iteration** ([`league-ideas`](../league-ideas/SKILL.md), the slate): a fix from its head's own lost games, or a graft from the main line. Its candidates are selected like any fix or graft, against their own parent. They never have to beat the champion.
-- **It is closed after two iterations of work in a row without a promotion.** An iteration of work, for a line, is one in which the line had a candidate, whatever became of it. The iteration that admitted its founder is not one, and an iteration in which the slate had no place for the line neither counts nor breaks the row. Its row in **The lines** keeps the count. Closed: its head becomes `retired`, its other bots are deleted, and its row says **closed**, with what the line showed. A line that still improves stays, however far below the champion.
-- **At most two side lines.** A free place is filled by the next founder; a founder is never written while both are taken.
+- **A side line has a place open at all times** ([`league-ideas`](../league-ideas/SKILL.md), the slate), held by one run at a time: a fix from its head's own lost games, or a graft from the main line. Its candidates are selected like any fix or graft, against their own parent. They never have to beat the champion.
+- **It is closed after two iterations of work in a row without a promotion.** An iteration of work, for a line, is an integrated proposal in which the line had a candidate, whatever became of it. The iteration that admitted its founder is not one, and an iteration in which the slate had no place for the line neither counts nor breaks the row. Its row in **The lines** keeps the count. Closed: its head becomes `retired`, its other bots are deleted, and its row says **closed**, with what the line showed. A line that still improves stays, however far below the champion.
+- **At most four side lines** (two until the setup after iteration 39, when runs began to work in parallel: [docs/parallel-iterations.md](../../../docs/parallel-iterations.md), Four side lines). A free place is filled by the next founder; a founder is never written while all four are taken, and a founder that finds them taken at its integration is left for review.
 - **When the main line changes** ([`league-evidence`](../league-evidence/SKILL.md), The champion), the old main line is a side line under the same rule, its count at 0.
 - **A closed line may be founded again**, from its head's code, when a game shows what it lacked. Say in the new row what is different.
 
@@ -60,7 +60,7 @@ When a line's last active bot leaves this way, the line is closed, and its row s
 ## Caps
 
 - **At most three active bots in a line.** Over that, retire the line's lowest-rated active bot that is not its head.
-- **At most two side lines and eight fixed opponents**, as above.
+- **At most four side lines and eight fixed opponents**, as above. The integrator applies them; the constants are in `league_tools/decide.py`.
 
 ## Reading the variety
 

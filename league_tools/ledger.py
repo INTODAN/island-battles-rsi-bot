@@ -5,6 +5,14 @@ entry (its standings, its pair tables) is history that the next iteration
 doesn't need. What it does need from all of them is in the lessons and in the
 candidate tables: which ideas were tried, on which parent, and why each was
 promoted or rejected. This prints those, and the last entries in full.
+
+Since runs work in parallel (docs/parallel-iterations.md), an iteration's entry
+is written by the integrator, and the run's own account (its findings, its
+slate, its review of the league) is ``ledger/runs/<run id>.md``, which the entry
+names on a line ``Run: ledger/runs/<id>.md``. A run proposes lessons in
+``ledger/lessons/<run id>.md`` instead of editing the ledger's top; the curator
+folds them into **Lessons so far** and deletes the files. The brief prints the
+recent entries' run files and every lesson not folded yet.
 """
 
 from __future__ import annotations
@@ -15,6 +23,7 @@ from pathlib import Path
 LESSONS = "## Lessons so far"
 ITERATION = re.compile(r"^## Iteration (\d+)\b")
 CANDIDATE_TABLE = re.compile(r"^\| Candidate \|")
+RUN_LINE = re.compile(r"^Run: (ledger/runs/[A-Za-z0-9_.-]+\.md)\s*$", re.MULTILINE)
 
 
 def _cells(row: str) -> list[str]:
@@ -75,6 +84,38 @@ def brief(text: str, recent: int = 3) -> str:
     return "\n".join(out) + "\n"
 
 
+def run_files(text: str, recent: int = 3) -> list[str]:
+    """The run files that the last ``recent`` iterations' entries name, oldest first."""
+    lines = text.splitlines()
+    starts = [index for index, line in enumerate(lines) if ITERATION.match(line)]
+    if not starts:
+        return []
+    tail = "\n".join(lines[starts[-recent] if len(starts) >= recent else starts[0] :])
+    return list(dict.fromkeys(RUN_LINE.findall(tail)))
+
+
+def proposed_lessons(directory: Path) -> list[tuple[str, str]]:
+    """The lessons runs proposed and the curator hasn't folded yet, as (run id, text), by run id."""
+    folder = directory / "lessons"
+    if not folder.is_dir():
+        return []
+    return [(path.stem, path.read_text(encoding="utf-8").strip()) for path in sorted(folder.glob("*.md"))]
+
+
 def load(path: Path, recent: int = 3) -> str:
-    """``brief`` of the ledger file."""
-    return brief(path.read_text(encoding="utf-8"), recent)
+    """``brief`` of the ledger file, with the recent entries' run files and the lessons not folded yet."""
+    text = path.read_text(encoding="utf-8")
+    out = brief(text, recent)
+    root = path.parent.parent
+    runs = [(name, root / name) for name in run_files(text, recent)]
+    if runs:
+        out += "\n## The runs of the last entries\n"
+        for name, run in runs:
+            body = run.read_text(encoding="utf-8").strip() if run.is_file() else "(missing)"
+            out += f"\n### {name}\n\n{body}\n"
+    lessons = proposed_lessons(path.parent)
+    if lessons:
+        out += "\n## Lessons proposed by runs, not folded into Lessons so far yet\n"
+        for run_id, body in lessons:
+            out += f"\n### Run {run_id}\n\n{body}\n"
+    return out

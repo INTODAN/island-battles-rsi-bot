@@ -1,0 +1,114 @@
+# The dispatcher: keeps up to RSI_MAX_RUNS automated runs working at once
+# (docs/parallel-iterations.md, How many runs at once).
+#
+# Every half hour it counts the runs that hold a lease (league lease list run/)
+# and the league's open places (league ideas --free), and starts one run for
+# each free slot while places are left, with a repository_dispatch of type
+# league-run that real-game-iteration.yml answers. Each run then leases its own
+# places; two runs never fill the same one.
+#
+# Without LEAGUE_STORE it starts one run at a time: only the store shares
+# games between machines. Set RSI_MAX_RUNS to 0 to stop starting runs. Usage: each run uses the Claude
+# subscription of CLAUDE_CODE_OAUTH_TOKEN, so the cap is also a budget.
+#
+# Repository variables: RSI_APP_ID, RSI_MAX_RUNS (optional, default 10),
+# LEAGUE_STORE (optional), LEAGUE_STORE_ROLE_ARN (optional: read access to the
+# store's leases). Secret: RSI_APP_PRIVATE_KEY.
+name: Dispatch runs
+
+on:
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: dispatch
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  dispatch:
+    name: Start runs while there is room
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Without the store, machines don't share their games, and a Claude step
+      # can't lease its places: runs on several machines would play games
+      # twice and could write the same idea. One run at a time, then.
+      - name: The room left
+        id: room
+        env:
+          MAX: ${{ vars.RSI_MAX_RUNS || '10' }}
+          STORE: ${{ vars.LEAGUE_STORE }}
+        run: |
+          [[ "$MAX" =~ ^[0-9]+$ ]] || { echo "::error::RSI_MAX_RUNS must be a number"; exit 1; }
+          if [ -z "$STORE" ] && [ "$MAX" -gt 1 ]; then
+            echo "::notice::LEAGUE_STORE is not set: one run at a time, so that no game is played twice"
+            MAX=1
+          fi
+          echo "max=$MAX" >> "$GITHUB_OUTPUT"
+
+      - name: The cache's key
+        if: steps.room.outputs.max != '0'
+        id: key
+        run: echo "cache=league-$(sha256sum runner.toml | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/league-cache
+        if: steps.room.outputs.max != '0'
+        with:
+          key-prefix: ${{ steps.key.outputs.cache }}
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: steps.room.outputs.max != '0' && vars.LEAGUE_STORE_ROLE_ARN != ''
+        with:
+          role-to-assume: ${{ vars.LEAGUE_STORE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The idea queue plays the champion's games on the training maps, from the
+      # cache or the store, to score its mistakes.
+      - name: Count the runs and the open places
+        if: steps.room.outputs.max != '0'
+        id: count
+        env:
+          LEAGUE_STORE: ${{ vars.LEAGUE_STORE }}
+          MAX: ${{ steps.room.outputs.max }}
+        run: |
+          running=$(uv run --locked league lease list run/ | grep -c . || true)
+          places=$(uv run --locked league ideas --free --json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')
+          start=$(( MAX - running ))
+          [ "$start" -lt 0 ] && start=0
+          [ "$start" -gt "$places" ] && start=$places
+          echo "Runs holding a lease: $running of $MAX; open places: $places; starting $start" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "start=$start" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/create-github-app-token@v2
+        if: steps.count.outputs.start != '' && steps.count.outputs.start != '0'
+        id: app
+        with:
+          app-id: ${{ vars.RSI_APP_ID }}
+          private-key: ${{ secrets.RSI_APP_PRIVATE_KEY }}
+
+      # A dispatch sent with the App's token starts a workflow; one sent with
+      # GITHUB_TOKEN wouldn't. Each started run leases its own places.
+      - name: Start the runs
+        if: steps.count.outputs.start != '' && steps.count.outputs.start != '0'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          START: ${{ steps.count.outputs.start }}
+        run: |
+          for _ in $(seq "$START"); do
+            gh api "repos/$GITHUB_REPOSITORY/dispatches" -f event_type=league-run
+            sleep 20
+          done

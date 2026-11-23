@@ -11,8 +11,15 @@ import time
 from pathlib import Path
 
 from . import clock as clock_module
+from . import decide as decide_module
 from . import digest as digest_module
+from . import ideas as ideas_module
+from . import integrate as integrate_module
+from . import leases as leases_module
 from . import ledger, maps, opponents, roster, tournament
+from . import lines as lines_module
+from . import mistakes as mistakes_module
+from . import player as player_module
 from . import rematch as rematch_module
 from . import replay as replay_module
 from .paths import LEDGER, MAPS, RUNS
@@ -71,6 +78,23 @@ def _tournament(arguments: argparse.Namespace) -> int:
         )
         return 1
     return 0
+
+
+def _mistakes(arguments: argparse.Namespace) -> int:
+    names, focus = mistakes_module.players(arguments.bots, arguments.focus, arguments.anchors, arguments.no_opponents)
+    plan = tournament.Tournament(players=names, maps=tournament.map_files(arguments.maps), focus=focus, listed=focus)
+    found, results = mistakes_module.run(plan, arguments.run_id or "mistakes", arguments.examples)
+    if arguments.json:
+        print(json.dumps(mistakes_module.as_json(found), indent=1))
+    else:
+        print(mistakes_module.markdown(found, mistakes_module.games_played(results)))
+    return 0
+
+
+def _player(arguments: argparse.Namespace) -> int:
+    if arguments.batch < 1:
+        raise ValueError("--batch is a number of matches, 1 or more")
+    return player_module.run(arguments.drain, arguments.batch, arguments.max_seconds, arguments.parallel)
 
 
 def _digest(arguments: argparse.Namespace) -> int:
@@ -176,6 +200,110 @@ def _delete(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _decide(arguments: argparse.Namespace) -> int:
+    iteration = arguments.iteration
+    if iteration is None:
+        text = (LEDGER / "iterations.md").read_text(encoding="utf-8")
+        found = [ledger.ITERATION.match(line) for line in text.splitlines()]
+        iteration = max((int(match.group(1)) for match in found if match), default=0) + 1
+    prefix = arguments.run_id or f"iteration-{iteration}-decide"
+    names = [name.strip() for name in arguments.candidates.split(",")] if arguments.candidates else None
+    selection = decide_module.play_selection(names, prefix)
+    result = decide_module.upkeep(
+        selection.decisions,
+        selection.lines,
+        list(selection.roster.values()),
+        decide_module.measurer(selection.outside, prefix),
+        iteration,
+        train=selection.evidence.train,
+        outside=selection.outside,
+    )
+    print(decide_module.as_json(selection, result) if arguments.json else decide_module.report(selection, result))
+    if arguments.apply:
+        decide_module.apply(result)
+        print(f"league: applied {len(result.actions)} actions and wrote the lines", file=sys.stderr)
+    return 0
+
+
+def _ideas(arguments: argparse.Namespace) -> int:
+    lines = lines_module.load_lines()
+    league = roster.load_roster()
+    statuses = {bot.name: bot.status for bot in league}
+    names, _ = mistakes_module.players(None, lines.champion, "1,2,3", False)
+    plan = tournament.Tournament(
+        players=names, maps=tournament.map_files("train"), focus=[lines.champion], listed=[lines.champion]
+    )
+    found, results = mistakes_module.run(plan, arguments.run_id or "ideas", 1)
+    summary = tournament.summarize(results)
+    held = [lease.key for lease in leases_module.held(leases_module.backend())] if arguments.free else []
+    places = ideas_module.queue(
+        lines,
+        statuses,
+        summary,
+        found.get(lines.champion, []),
+        (LEDGER / "iterations.md").read_text(encoding="utf-8"),
+        LEDGER.parent,
+        decide_module.MAX_SIDE_LINES,
+        held,
+    )
+    print(
+        json.dumps(ideas_module.as_json(places), indent=1) if arguments.json else ideas_module.markdown(places), end=""
+    )
+    return 0
+
+
+def _lease(arguments: argparse.Namespace) -> int:
+    backend = leases_module.backend()
+    action = arguments.action
+    if action == "run":
+        run = leases_module.new_run_id()
+        lease = leases_module.take(backend, f"run/{run}", run)
+        if lease.run != run:
+            print(f"league: the run id {run} is taken; try again", file=sys.stderr)
+            return 2
+        print(run)
+        return 0
+    if action == "list":
+        for lease in leases_module.held(backend, arguments.key or ""):
+            print(f"{lease.key}\t{lease.run}\t{lease.expires}")
+        return 0
+    if not arguments.run:
+        raise ValueError(f"league lease {action} needs --run ID")
+    if action == "renew":
+        print("\n".join(leases_module.renew(backend, arguments.run)))
+        return 0
+    if action == "drop":
+        print("\n".join(leases_module.drop(backend, arguments.run)))
+        return 0
+    if not arguments.key:
+        raise ValueError(f"league lease {action} needs a key")
+    if action == "take":
+        lease = leases_module.take(backend, arguments.key, arguments.run)
+        if lease.run != arguments.run:
+            print(f"{arguments.key} is held by run {lease.run} until {lease.expires}", file=sys.stderr)
+            return 2
+        print(f"{arguments.key} is yours until {lease.expires}")
+        return 0
+    if not leases_module.release(backend, arguments.key, arguments.run):
+        print(f"{arguments.key} is not held by run {arguments.run}", file=sys.stderr)
+        return 2
+    print(f"released {arguments.key}")
+    return 0
+
+
+def _integrate(arguments: argparse.Namespace) -> int:
+    branches = list(arguments.branches)
+    if arguments.waiting:
+        branches += integrate_module.waiting_branches()
+    if not branches:
+        print("No run is waiting.")
+        return 0
+    outcomes = integrate_module.integrate(branches, commit=arguments.commit, date=arguments.date)
+    for outcome in outcomes:
+        print(outcome.summary)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the ``league`` command."""
     parser = argparse.ArgumentParser(prog="league", description=__doc__)
@@ -223,6 +351,39 @@ def main(argv: list[str] | None = None) -> int:
         help="exit with status 1 when a match was not played, a player failed a turn or there was no match",
     )
     play.set_defaults(handler=_tournament)
+
+    mistakes = commands.add_parser(
+        "mistakes",
+        help="the detectors' flags over a tournament's games: for each bot and each kind of mistake, in how many "
+        "games and on how many maps, the points lost in them, and the shortest such games with their turns",
+    )
+    mistakes.add_argument("--bots", help="the bots, by name; default: every bot that is not a candidate")
+    mistakes.add_argument("--focus", help="only the pairs with these bots (added to the bots), and only their tables")
+    mistakes.add_argument("--anchors", default="1,2,3", help="default bot levels to add; '' for none")
+    mistakes.add_argument(
+        "--no-opponents", action="store_true", help="leave out the outside opponents of opponents.local.toml"
+    )
+    mistakes.add_argument("--maps", default="train", help="train, or training maps' names; never holdout")
+    mistakes.add_argument("--examples", type=int, default=3, help="the shortest games listed for each kind")
+    mistakes.add_argument("--run-id", help="the directory under runs/ for the bots' stderr; default: mistakes")
+    mistakes.add_argument("--json", action="store_true", help="print the tables as JSON")
+    mistakes.set_defaults(handler=_mistakes)
+    player_command = commands.add_parser(
+        "player",
+        help="play the matches that others asked the match store (LEAGUE_STORE) for, built from the store's code "
+        "alone, and write their results there",
+    )
+    player_command.add_argument(
+        "--drain", action="store_true", help="stop once no queued match is left that this player could lease"
+    )
+    player_command.add_argument(
+        "--batch", type=int, default=50, help="matches leased and played in one run of the runner; default 50"
+    )
+    player_command.add_argument(
+        "--max-seconds", type=float, help="take no new batch after this many seconds; default: no limit"
+    )
+    player_command.add_argument("--parallel", type=int, default=0, help="matches at once; default: the CPUs")
+    player_command.set_defaults(handler=_player)
 
     study = commands.add_parser("digest", help="print a demo as a timeline, events and logs")
     study.add_argument("demo")
@@ -314,6 +475,51 @@ def main(argv: list[str] | None = None) -> int:
     clock.add_argument("step", nargs="?", help="the step's name, such as '2 study' (start and stop)")
     clock.add_argument("--file", help="the clock's file; default: runs/clock.jsonl")
     clock.set_defaults(handler=_clock)
+
+    decide = commands.add_parser(
+        "decide",
+        help="apply the selection's and the population's rules: play the runs the candidates need (from the cache "
+        "where played), print each decision and the population's upkeep, and with --apply make them",
+    )
+    decide.add_argument("--candidates", help="the candidates, by name; default: every candidate of the roster")
+    decide.add_argument("--iteration", type=int, help="the iteration; default: the ledger's last plus one")
+    decide.add_argument("--run-id", help="the runs' prefix under runs/; default: iteration-N-decide")
+    decide.add_argument(
+        "--apply",
+        action="store_true",
+        help="make the changes: statuses, deletions, the champion's name and ledger/lines.toml",
+    )
+    decide.add_argument("--json", action="store_true", help="print the decisions and actions as JSON")
+    decide.set_defaults(handler=_decide)
+
+    queue = commands.add_parser(
+        "ideas", help="the league's open places, the most points first: what the next run should work on"
+    )
+    queue.add_argument("--free", action="store_true", help="only the places no run holds (league lease)")
+    queue.add_argument("--json", action="store_true")
+    queue.add_argument("--run-id", help="the directory under runs/; default: ideas")
+    queue.set_defaults(handler=_ideas)
+
+    lease = commands.add_parser(
+        "lease",
+        help="hold work that should happen once (a run, a real game, a game to study, a place, an idea, a name)",
+    )
+    lease.add_argument("action", choices=("run", "take", "release", "renew", "drop", "list"))
+    lease.add_argument(
+        "key", nargs="?", help="such as slot/CHAMPION/side-NAME, idea/HASH, study/KEY; a prefix for list"
+    )
+    lease.add_argument("--run", help="the run's id, from league lease run")
+    lease.set_defaults(handler=_lease)
+
+    merge = commands.add_parser(
+        "integrate",
+        help="decide runs' proposals on main as it is now, each as one iteration: the integrator",
+    )
+    merge.add_argument("branches", nargs="*", help="runs' branches, such as origin/claude/league-run-<id>")
+    merge.add_argument("--waiting", action="store_true", help="every run's branch on origin as well")
+    merge.add_argument("--commit", action="store_true", help="commit each iteration")
+    merge.add_argument("--date", help="the iterations' date; default: today (UTC)")
+    merge.set_defaults(handler=_integrate)
 
     arguments = parser.parse_args(argv)
     try:

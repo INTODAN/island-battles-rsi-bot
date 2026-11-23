@@ -1,0 +1,11 @@
+# What the Lambda player's image is built from: the league's tools, the Go module and the pin.
+# No bot, no ledger, no runs/ (BuildKit reads this file for hosting/players/Dockerfile).
+*
+!pyproject.toml
+!uv.lock
+!go.mod
+!go.sum
+!runner.toml
+!league_tools/
+!hosting/players/lambda_player.py
+**/__pycache__

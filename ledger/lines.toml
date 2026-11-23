@@ -1,0 +1,32 @@
+# The league's lines: what the ledger's table "The lines" says, as data for `league decide`
+# (league_tools/lines.py). A line is a founder and the bots descended from it. state is main,
+# side or closed; without_promotion counts the line's iterations of work in a row without a
+# promotion (a side line is closed at two); bots are the bots of the league in the line.
+champion = "speedhelp_landlate"
+
+[[line]]
+name = "ori"
+state = "main"
+head = "speedhelp_landlate"
+strategy = "The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code."
+bots = ["speedhelp_landlate", "speedhelp_fullfeed", "harrier_feedkeep", "harrier_attackers", "growtrickle_feedkeep", "sameturn_endreserve"]
+without_promotion = 1
+note = "nothing promoted in iteration 39 (once); retired by the cap in iteration 39: `harrier_attackers`, `growtrickle_feedkeep`, `sameturn_endreserve`"
+
+[[line]]
+name = "frontline"
+state = "closed"
+head = ""
+strategy = "Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24."
+bots = []
+without_promotion = 0
+note = "closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. Head: none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots"
+
+[[line]]
+name = "batchfront"
+state = "side"
+head = "batchfront"
+strategy = "Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment."
+bots = ["batchfront"]
+without_promotion = 0
+note = "admitted in iteration 39"
