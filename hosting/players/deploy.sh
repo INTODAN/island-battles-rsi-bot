@@ -17,7 +17,7 @@ cd "$(dirname "$0")/../.."
 region="${AWS_REGION:-eu-central-1}"
 repository="${REPOSITORY:-island-battles-league-player}"
 function="${FUNCTION:-island-battles-league-player}"
-arch="${ARCH:-arm64}"
+arch="${ARCH:-x86_64}"
 go_version="${GO_VERSION:-1.25.0}"
 case "$arch" in
   arm64) platform=linux/arm64 ;;

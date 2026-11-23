@@ -3,13 +3,13 @@
 # league's tools, Go, the bots' Go modules and the headless runner built from
 # runner.toml's commit. Build it from the repository's root with deploy.sh:
 #
-#   docker buildx build --platform linux/arm64 -f hosting/players/Dockerfile .
+#   docker buildx build --platform linux/amd64 -f hosting/players/Dockerfile .
 #
 # A match's key covers the runner's build, and Go builds another runner for
 # another architecture or Go version: the players serve requests from machines
 # whose runner has the same hash. ARCH (Lambda's: arm64 or x86_64) and
 # GO_VERSION say which.
-ARG ARCH=arm64
+ARG ARCH=x86_64
 FROM public.ecr.aws/lambda/python:3.14-${ARCH}
 
 ARG ARCH
