@@ -66,7 +66,7 @@ One **iteration** is one pass, and ends as one commit. The [bot-league-iteration
 3. **Vary.** One candidate per idea: `league new` copies a parent, and the agent changes only that directory. Three kinds of ideas: a **fix** of something a game showed, a **graft** of a mechanism another bot has, and, when two iterations promoted nothing, a new **founder** with a different strategy.
 4. **Gate.** `scripts/check.sh` passes, no failed turn, no turn slower than 200 ms.
 5. **Select.** In a round robin of the whole population with the candidates added, a candidate is promoted when it beats its parent head to head, rates higher than it on the training maps, and doesn't rate lower than it on the holdout maps. A rejected candidate is deleted; the ledger keeps what it tried and its numbers.
-6. **Record.** The standings, the ideas, the decisions and what was learned about the game go in `ledger/iterations.md`.
+6. **Record.** The standings, the ideas, the decisions and what was learned about the game go in `ledger/iterations.md`, with a review of the league itself: whether its field, maps and rules can still tell a strong bot, and what would fix them when they can't.
 
 What keeps the loop honest:
 

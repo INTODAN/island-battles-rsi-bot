@@ -229,10 +229,31 @@ Append an entry to `ledger/iterations.md`, in the shape of the entries before it
 - the champion, and its rating next to last iteration's;
 - where the champion still loses, as the next iteration's starting point.
 - the time: each step's, the total and last iteration's total, the slowest steps and what was or will be done about them.
+- the review of the league itself, under **The league itself** (below).
 
 When the champion changed, write its name in `hosting/lambda/bot`: the hosted bot deploys it once the iteration is on main.
 
 Then update **Lessons so far** at the top: add what this iteration showed about the game in general, and correct a lesson that a game contradicted. A lesson is about the game ("a group that lands one turn after a burst loses to it"), not about a bot.
+
+### The league itself
+
+Steps 1 to 5 ask how to make the champion better. Before the report, ask whether the league can still tell. The champion is meant to be a strong bot in general, against opponents unlike itself, and the league's numbers mean that only while its field, its maps and its rules measure it. No rule above checks this: a league can drift for many iterations while every candidate passes every rule, and its ratings keep rising.
+
+Look at the league as someone from outside would, from what the iteration already has: the roster with each bot's `parent` chain, this iteration's tables, and the last entries of the ledger. No new tournament is needed. Some of the questions that review asks:
+
+- **Who the field is.** Which strategies the active, retired and sparring bots stand for, and how many of them descend from one founder. A rating earned mostly against the champion's own relatives says how it plays its family, not how it plays the game.
+- **Who teaches nothing.** A player that wins no game, or loses none, adds nothing to the ratings and no pressure to the selection.
+- **What the rules removed.** What recent retirements and deletions took out of the field. A strategy that left with its last bot is a test the next champion no longer takes.
+- **What the numbers can still separate.** Head-to-heads decided by a few games, draws that end with identical boards, ratings that moved for a reason other than play (an anchor that stopped winning, a map set that grew).
+- **What went missing.** An opponent, a kind of map or a check that earlier entries had and this one doesn't, and whether anyone decided to drop it.
+- **Where the champion's edge comes from.** Whether it wins by playing well, or through one habit that the field shares and an opponent without it wouldn't pay for.
+
+These are examples, not the list. Report anything that would make the league's verdict wrong, each with what shows it (the numbers, the bots, the entries) and what would answer it. An iteration doesn't change the league's setup, so sort each answer by who can act on it:
+
+- **What an iteration can do** goes in the entry as the next iteration's starting point, and the next iteration does it before its other ideas. For a field that has lost its variety, that is a founder written from the rules and the Lessons, not from the code of the family that leads.
+- **What only a person can do** (a sparring bot, an outside opponent, a selection or population rule, a tool, the map sets) is a proposed change of the league's setup in the report, with its evidence, the kind of change the ledger's **Setup after iteration N** entries record.
+
+Write the review in the ledger entry even when it finds nothing: "Three strategies in the field, every player wins and loses games; no problem found" is a review. Read the reviews of the last entries first. A problem raised before and still open is raised again, with the number of iterations it has stood, first in the report.
 
 Run `scripts/check.sh` once more. The iteration is done when the checks pass, the roster has no candidate left, and the ledger entry is written.
 
@@ -245,6 +266,7 @@ End with a report to whoever asked, short enough to read in a minute:
 - the standings on the training maps and on the holdout maps, as tables;
 - the champion and its rating, before and after;
 - the iteration's total time, its slowest steps, and the speed-up proposed for the next one;
+- the review of the league itself: each problem with its evidence, and each proposed change of the setup; a problem that has stood since an earlier iteration goes first in the report, not here;
 - what you didn't do or couldn't verify, and anything that looked wrong on the way.
 
 Say what the numbers say. "No candidate was promoted; the champion is unchanged at 1093" is a complete report.
