@@ -169,6 +169,12 @@ def _status(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _delete(arguments: argparse.Namespace) -> int:
+    bot = roster.delete_bot(arguments.name)
+    print(f"deleted {bot.directory} ({bot.status}); git keeps what was committed")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the ``league`` command."""
     parser = argparse.ArgumentParser(prog="league", description=__doc__)
@@ -285,6 +291,12 @@ def main(argv: list[str] | None = None) -> int:
     status.add_argument("name")
     status.add_argument("status", choices=roster.STATUSES)
     status.set_defaults(handler=_status)
+
+    delete = commands.add_parser(
+        "delete", help="delete a bot's directory: a rejected candidate, or a bot the population's rules remove"
+    )
+    delete.add_argument("name")
+    delete.set_defaults(handler=_delete)
 
     new_map = commands.add_parser("new-map", help="make a fair two-team map from a seed")
     new_map.add_argument("name")

@@ -77,6 +77,49 @@ def test_summary_counts_points_from_both_seats() -> None:
     assert tournament.has_holdout([train, holdout]) and not tournament.has_holdout([train])
 
 
+def test_a_bot_is_compared_with_its_parent_game_by_game_against_the_others() -> None:
+    # Against `x` the child wins a game its parent lost and loses one its parent drew; against `y` both win.
+    results = [
+        result("child", "x", "child"),
+        result("parent", "x", "x"),
+        result("x", "child", "x"),
+        result("x", "parent", None),
+        result("child", "y", "child"),
+        result("parent", "y", "parent"),
+        # Not compared: the two against each other, and a game only one of them played.
+        result("child", "parent", "parent"),
+        result("child", "z", "z"),
+    ]
+    assert tournament.paired(results, "child", "parent") == {"better": 1, "worse": 1, "same": 1, "net": 0.5}
+    summary = tournament.summarize(results) | {"paired": {"child": tournament.paired(results, "child", "parent")}}
+    table = "\n".join(tournament.against_parents(summary, {"child": "parent"}, whole=True))
+    # The margin is better minus worse, the noise the root of their sum; the table judges nothing.
+    assert "| 1 better, 1 worse, 1 the same | +0, 1.4 | +0.5 |" in table
+    assert "yes" not in table and "no |" not in table
+    # A focused run compares nothing: its bots didn't meet the same opponents.
+    focused = "\n".join(tournament.against_parents(summary, {"child": "parent"}, whole=False))
+    assert "better" not in focused
+
+
+def test_bots_whose_games_end_the_same_are_listed_as_alike() -> None:
+    def game(first: str, second: str, winner: str, soldiers: int, map_name: str) -> dict:
+        played = result(first, second, winner, map_name)
+        played["seats"][0] |= {"castles": 3, "soldiers": soldiers}
+        return played
+
+    results = []
+    for map_name in ("strait", "circle"):
+        # `copy` ends every game as `bot` does; `other` wins the same games, with other soldiers.
+        results += [game(name, "x", name, 40, map_name) for name in ("bot", "copy")]
+        results.append(game("other", "x", "other", 55, map_name))
+        results += [game(name, "level1", name, 40, map_name) for name in ("bot", "copy")]
+    pairs = tournament.alike(results)
+    assert pairs == [{"bots": ["bot", "copy"], "games": 4, "same_game": 1.0, "same_result": 1.0}]
+    table = "\n".join(tournament.alike_table(pairs))
+    assert "| `bot`, `copy` | 100% | 100% | 4 |" in table
+    assert tournament.alike_table([]) == []
+
+
 def test_ratings_settle_for_a_player_that_wins_everything() -> None:
     games = [("best", "level3", 1.0)] * 40 + [("level3", "worst", 1.0)] * 40 + [("best", "worst", 1.0)] * 40
     fitted = ratings.fit(games)
@@ -205,7 +248,7 @@ def test_parents_plays_each_focused_bot_against_its_parent_alone(
     )
     summary, table = tournament.run(plan, "h2h")
     assert sorted(played) == [["child", "parent"], ["parent", "child"]]
-    assert "| `child` | `parent` | 1/2 | no |" in table
+    assert "| `child` | `parent` | 1/2 |" in table
     # The whole round robin then plays only what the head-to-head run didn't, and says where the rules stand.
     played.clear()
     whole = tournament.Tournament(
@@ -216,7 +259,7 @@ def test_parents_plays_each_focused_bot_against_its_parent_alone(
     )
     summary, table = tournament.run(whole, "whole")
     assert len(played) == 10 and ["child", "parent"] not in played
-    assert "Rating (parent's)" in table and "Rated above the parent" not in table  # the map is in no set
+    assert "Rating (parent's)" in table and "Margin, noise" in table
 
 
 def test_a_tournament_that_waited_takes_what_the_other_played(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -465,6 +508,21 @@ def test_digest_shows_a_group_destroyed_the_turn_it_left() -> None:
         (1, "send: red 6 soldiers as group 7, which a clash destroyed in the same turn"),
         (1, "clash: blue group 3 10->4, red group 7 6->0"),
     ]
+
+
+def test_delete_removes_a_bot_but_never_a_sparring_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(roster, "BOTS", tmp_path)
+    for name, status in (("spare", "retired"), ("mimic", "sparring")):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "main.go").write_text("package main\n")
+        roster.write_bot(roster.Bot(name=name, status=status, parent="", iteration=1, idea="an idea"))
+    assert cli.main(["delete", "spare"]) == 0
+    assert not (tmp_path / "spare").exists()
+    with pytest.raises(ValueError, match="never deleted"):
+        roster.delete_bot("mimic")
+    with pytest.raises(ValueError, match="there is no bot"):
+        roster.delete_bot("spare")
+    assert (tmp_path / "mimic" / "main.go").is_file()
 
 
 @pytest.mark.parametrize("seed", range(20))

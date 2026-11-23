@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -355,6 +356,107 @@ def longest_wins(results: list[dict[str, Any]], player: str) -> list[dict[str, A
     return sorted(won, key=lambda result: -result["generations"])
 
 
+# Two bots are listed as alike from this share of games that ended the same to
+# the soldier. In the population of iteration 36 a bot and its copy with one
+# rare mechanism shared 61% to 88% of their games, two branches of one line 16%
+# to 48%, and two bots with code of their own none.
+ALIKE = 0.5
+
+# A game as its player saw it end: its points, the game's length, and the
+# castles and soldiers it held.
+Ending = tuple[float, Any, Any, Any]
+
+
+def _endings(results: list[dict[str, Any]]) -> dict[str, dict[tuple[str, str, int], Ending]]:
+    """Every player's games, each under its opponent, map and seat."""
+    endings: dict[str, dict[tuple[str, str, int], Ending]] = defaultdict(dict)
+    for result in results:
+        if "error" in result:
+            continue
+        for seat, name in enumerate(result["players"]):
+            end = result["seats"][seat]
+            endings[name][(result["players"][1 - seat], result["map"], seat)] = (
+                points(result, name),
+                result.get("generations"),
+                end.get("castles"),
+                end.get("soldiers"),
+            )
+    return endings
+
+
+def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, float]:
+    """A bot's games next to its parent's against the same opponent, on the same map, from the same seat.
+
+    Bots are deterministic, so a game the bot's change never touched ends as
+    its parent's did and says nothing about the change. The games that ended
+    otherwise are the evidence: how many the bot did better in, how many worse,
+    and the points it gained in all of them. The games of the two against each
+    other are left out: the head-to-head counts those.
+    """
+    endings = _endings(results)
+    mine, theirs = endings.get(name, {}), endings.get(parent, {})
+    count = {"better": 0, "worse": 0, "same": 0, "net": 0.0}
+    for case, ending in mine.items():
+        if case[0] in (name, parent) or case not in theirs:
+            continue
+        gain = ending[0] - theirs[case][0]
+        count["better" if gain > 0 else "worse" if gain < 0 else "same"] += 1
+        count["net"] += gain
+    return count
+
+
+def alike(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The pairs of bots that play alike, the most alike first.
+
+    Two bots met the same opponent on the same map from the same seat. When
+    those games ended the same to the soldier (the result, the length, the
+    castles and soldiers held) in ``ALIKE`` of the cases or more, the two make
+    the same commands nearly everywhere: as opponents they are one bot counted
+    twice, and as members of the population one of them adds nothing. The
+    default bots are left out: nobody chooses between them.
+    """
+    endings = _endings(results)
+    names = sorted(name for name in endings if not ANCHOR.fullmatch(name))
+    pairs = []
+    for first, second in combinations(names, 2):
+        cases = [case for case in endings[first] if case[0] not in (first, second) and case in endings[second]]
+        if not cases:
+            continue
+        same_game = sum(endings[first][case] == endings[second][case] for case in cases)
+        if same_game < ALIKE * len(cases):
+            continue
+        same_result = sum(endings[first][case][0] == endings[second][case][0] for case in cases)
+        pairs.append(
+            {
+                "bots": [first, second],
+                "games": len(cases),
+                "same_game": round(same_game / len(cases), 3),
+                "same_result": round(same_result / len(cases), 3),
+            }
+        )
+    return sorted(pairs, key=lambda pair: (-pair["same_game"], pair["bots"]))
+
+
+def alike_table(pairs: list[dict[str, Any]]) -> list[str]:
+    """The lines of the table of ``alike``'s pairs, or none without a pair."""
+    if not pairs:
+        return []
+    lines = [
+        "",
+        f"Bots that play alike (from {ALIKE:.0%} of their games against the same opponent, on the same map and from "
+        "the same seat ending the same to the soldier):",
+        "",
+        "| Bots | The same game | The same result | Games |",
+        "|---|---|---|---|",
+    ]
+    lines += [
+        f"| `{pair['bots'][0]}`, `{pair['bots'][1]}` | {pair['same_game']:.0%} | {pair['same_result']:.0%} "
+        f"| {pair['games']} |"
+        for pair in pairs
+    ]
+    return lines
+
+
 def game_line(result: dict[str, Any]) -> str:
     """One game of a list: its map, seats, outcome, length and demo."""
     return (
@@ -363,43 +465,43 @@ def game_line(result: dict[str, Any]) -> str:
     )
 
 
-def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: bool, maps: str) -> list[str]:
-    """A table of each listed bot next to its parent, with the selection rules its numbers meet.
+def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: bool) -> list[str]:
+    """A table of each listed bot next to its parent: the numbers the selection reads.
+
+    The head-to-head points, and from a whole round robin the two ratings and
+    the bot's games against the others next to its parent's, with their margin
+    (better minus worse) and noise (the root of better plus worse). The table
+    judges nothing: the ``league-evidence`` skill says what each number may
+    decide for each kind of candidate.
 
     Args:
-        summary: What ``summarize`` returned.
+        summary: What ``summarize`` returned, with ``paired`` when the round robin was whole.
         parents: Each listed bot's parent.
         whole: Whether every pair played, so that the ratings count.
-        maps: ``train``, ``holdout`` or anything else: which rules apply.
     """
     rating = {row["player"]: row["rating"] for row in summary["standings"]}
+    changed = summary.get("paired", {}) if whole else {}
     rows = []
     for name, parent in parents.items():
         points = summary["pairs"].get(name, {}).get(parent)
         if points is None:
             continue
         cells = [f"`{name}`", f"`{parent}`", f"{points[0]:g}/{points[1]:g}"]
-        if maps != "holdout":
-            cells.append("yes" if points[0] > points[1] / 2 else "no")
         if whole:
-            above = rating[name] > rating[parent]
             cells.append(f"{rating[name]} ({rating[parent]})")
-            if maps == "holdout":
-                cells.append("yes" if rating[name] >= rating[parent] else "no")
-            elif maps == "train":
-                cells.append("yes" if above else "no")
+        if name in changed:
+            better, worse, same = changed[name]["better"], changed[name]["worse"], changed[name]["same"]
+            cells.append(f"{better} better, {worse} worse, {same} the same")
+            cells.append(f"{better - worse:+d}, {math.sqrt(better + worse):.1f}")
+            cells.append(f"{changed[name]['net']:+g}")
         rows.append("| " + " | ".join(cells) + " |")
     if not rows:
         return []
     header = ["Bot", "Parent", "Points against the parent"]
-    if maps != "holdout":
-        header.append("More than half")
     if whole:
         header.append("Rating (parent's)")
-        if maps == "holdout":
-            header.append("Holdout rating not below the parent's")
-        elif maps == "train":
-            header.append("Rated above the parent")
+    if changed:
+        header += ["Its games against the others, next to the parent's", "Margin, noise", "Points gained in them"]
     lines = ["", "Each listed bot against its parent" + ("" if whole else " (ratings don't count here)") + ":", ""]
     lines += ["| " + " | ".join(header) + " |", "|---" * len(header) + "|", *rows]
     return lines
@@ -532,13 +634,16 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
         table = shard_report(summary)
     else:
         summary = summarize(results) | {"matches": len(results), "failed_players": failed_players(results)}
-        sets = {file.parent.name for file in tournament.maps}
-        parent_table = against_parents(
-            summary,
-            {name: parent for name, parent in tournament.parents.items() if name in tournament.listed},
-            whole=not tournament.focus,
-            maps=sets.pop() if len(sets) == 1 else "",
-        )
+        parents = {name: parent for name, parent in tournament.parents.items() if name in tournament.listed}
+        whole = not tournament.focus
+        # Only a whole round robin has every bot's games against the same
+        # opponents: a focused run's would compare a bot with nothing.
+        pairs = alike(results) if whole else []
+        if whole:
+            summary["paired"] = {name: paired(results, name, parent) for name, parent in parents.items()}
+            summary["alike"] = pairs
+        parent_table = against_parents(summary, parents, whole=whole)
+        parent_table += alike_table(pairs)
         table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps), parent_table)
     with (run_directory / "results.jsonl").open("w", encoding="utf-8") as file:
         for result in results:

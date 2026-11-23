@@ -6,9 +6,10 @@ The game is a separate project, [INTODAN/island-battles-go](https://github.com/I
 
 ## What to do when asked
 
-- **"Run a league iteration"**, "improve the bots", "do RSI": follow the [`bot-league-iteration`](.agents/skills/bot-league-iteration/SKILL.md) skill from start to end. The request needs to say nothing more.
+- **"Run a league iteration"**, "improve the bots", "do RSI": follow the [`bot-league-iteration`](.agents/skills/bot-league-iteration/SKILL.md) skill from start to end. The request needs to say nothing more. It decides by [`league-population`](.agents/skills/league-population/SKILL.md), [`league-ideas`](.agents/skills/league-ideas/SKILL.md) and [`league-evidence`](.agents/skills/league-evidence/SKILL.md).
 - **Anything else here** (a tool, a map, a test, reading results): read the [`bot-league`](.agents/skills/bot-league/SKILL.md) skill first.
 - **Any work that takes a while** (an iteration, a tournament, a tool change, an Actions run): the [`measuring-time`](.agents/skills/measuring-time/SKILL.md) skill. Time it, and end it with a review of how to make the next one faster.
+- **Changing how the league breeds** (the rules of the loop, the population or the selection), or asking why the league has stopped improving: read [`league-breeding`](.agents/skills/league-breeding/SKILL.md) first, which has the reasons and the sources, and make the change as a change of the league's setup, with a ledger entry.
 - **Writing or changing a bot's code**: also [`island-battles-rules`](.agents/skills/island-battles-rules/SKILL.md), [`writing-a-bot`](.agents/skills/writing-a-bot/SKILL.md) and [`bot-logging`](.agents/skills/bot-logging/SKILL.md).
 
 ## Rules
