@@ -35,6 +35,7 @@ From the repository root. The first run installs the Python project, fetches the
 | `uv run league new-map NAME --seed N --set train` | Make a fair two-team map. |
 | `uv run league replay DEMO... --bot NAME [--team 2] [--examples N]` | For building and re-checking a sparring bot: give every turn of one team in the demos (`.json` or `.json.gz`; lobby games against the opponent) to `bots/NAME/bot.py` and count how often it makes that team's commands, by category (upgrades, neutral sends, attacks, defence, feeds, idle), with the most common disagreements. |
 | `uv run league unpack DEMO` | Write the demo as plain JSON for the demo viewer, and print its path. |
+| `uv run league clock start STEP` / `stop STEP` / `report` | Time the steps of any work (`runs/clock.jsonl`); the report gives each step's minutes, its share and the slowest. The [`measuring-time`](../measuring-time/SKILL.md) skill says what to time and how to review it. |
 | `scripts/check.sh` | Format, lint, types and tests of the tools and every bot. Run it before a tournament counts. |
 
 Results go to `runs/<run id>/` (`results.jsonl`, `summary.json`, `summary.md`, `workers.log` with the bots' stderr), which git ignores. `--run-id` names the directory. The demos the lists point to are in the cache, the main checkout's `runs/cache/` even in a worktree.

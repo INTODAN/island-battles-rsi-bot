@@ -22,7 +22,7 @@ People change the tools, the maps and the rules of the loop. **Only agents chang
 | `runs/` (not in git) | Results, the result cache and the demos of every match played here. A git worktree's tournaments use the main checkout's `runs/cache/` and `.runner/`. |
 | `runner.toml` | The commit of the game that the league plays. |
 | `.runner/` (not in git) | The game's source at that commit, and the runner built from it. |
-| `.agents/skills/` | The procedures an agent follows here: the league's two, and the game's rules. |
+| `.agents/skills/` | The procedures an agent follows here: the league's three (the league, an iteration, measuring time), and the game's rules. |
 
 ## How a game is played
 

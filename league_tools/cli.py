@@ -10,6 +10,7 @@ import sys
 import time
 from pathlib import Path
 
+from . import clock as clock_module
 from . import digest as digest_module
 from . import ledger, maps, opponents, roster, tournament
 from . import rematch as rematch_module
@@ -147,6 +148,18 @@ def _new_map(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _clock(arguments: argparse.Namespace) -> int:
+    path = Path(arguments.file) if arguments.file else clock_module.CLOCK
+    if arguments.action == "report":
+        print(clock_module.report(clock_module.load(path)))
+        return 0
+    if not arguments.step:
+        raise ValueError(f"league clock {arguments.action} needs the step's name")
+    when = clock_module.mark(arguments.action, arguments.step, path)
+    print(f"{arguments.step}: {arguments.action} at {when:%H:%M:%S} UTC")
+    return 0
+
+
 def _status(arguments: argparse.Namespace) -> int:
     bot = roster.set_status(arguments.name, arguments.status)
     print(f"{bot.name} is now {bot.status}")
@@ -275,6 +288,15 @@ def main(argv: list[str] | None = None) -> int:
     new_map.add_argument("--seed", type=int, required=True)
     new_map.add_argument("--set", choices=("train", "holdout"), required=True)
     new_map.set_defaults(handler=_new_map)
+
+    clock = commands.add_parser(
+        "clock",
+        help="time the steps of an iteration, or of any work: start or stop a step, or report every step's minutes",
+    )
+    clock.add_argument("action", choices=("start", "stop", "report"))
+    clock.add_argument("step", nargs="?", help="the step's name, such as '2 study' (start and stop)")
+    clock.add_argument("--file", help="the clock's file; default: runs/clock.jsonl")
+    clock.set_defaults(handler=_clock)
 
     arguments = parser.parse_args(argv)
     try:
