@@ -831,6 +831,12 @@ jobs:
             echo "::error::the ledger's last entry is iteration $n, but this run claimed iteration $CLAIMED"
             exit 1
           fi
+          # The progress test excuses a hand-over's missing row (the first half's
+          # check needs that), so the finished iteration's row is checked here.
+          if ! grep -q "^$CLAIMED," ledger/progress.csv; then
+            echo "::error::ledger/progress.csv has no row for iteration $CLAIMED"
+            exit 1
+          fi
           today=$(date -u +%Y-%m-%d)
           for id in ${IDS//,/ }; do echo "$id $today" >> ledger/real-games.txt; done
           git config user.name "island-battles-rsi[bot]"
