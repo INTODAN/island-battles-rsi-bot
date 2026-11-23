@@ -13,6 +13,7 @@ from pathlib import Path
 from . import clock as clock_module
 from . import digest as digest_module
 from . import ledger, maps, opponents, roster, tournament
+from . import mistakes as mistakes_module
 from . import rematch as rematch_module
 from . import replay as replay_module
 from .paths import LEDGER, MAPS, RUNS
@@ -70,6 +71,17 @@ def _tournament(arguments: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
+    return 0
+
+
+def _mistakes(arguments: argparse.Namespace) -> int:
+    names, focus = mistakes_module.players(arguments.bots, arguments.focus, arguments.anchors, arguments.no_opponents)
+    plan = tournament.Tournament(players=names, maps=tournament.map_files(arguments.maps), focus=focus, listed=focus)
+    found, results = mistakes_module.run(plan, arguments.run_id or "mistakes", arguments.examples)
+    if arguments.json:
+        print(json.dumps(mistakes_module.as_json(found), indent=1))
+    else:
+        print(mistakes_module.markdown(found, mistakes_module.games_played(results)))
     return 0
 
 
@@ -223,6 +235,23 @@ def main(argv: list[str] | None = None) -> int:
         help="exit with status 1 when a match was not played, a player failed a turn or there was no match",
     )
     play.set_defaults(handler=_tournament)
+
+    mistakes = commands.add_parser(
+        "mistakes",
+        help="the detectors' flags over a tournament's games: for each bot and each kind of mistake, in how many "
+        "games and on how many maps, the points lost in them, and the shortest such games with their turns",
+    )
+    mistakes.add_argument("--bots", help="the bots, by name; default: every bot that is not a candidate")
+    mistakes.add_argument("--focus", help="only the pairs with these bots (added to the bots), and only their tables")
+    mistakes.add_argument("--anchors", default="1,2,3", help="default bot levels to add; '' for none")
+    mistakes.add_argument(
+        "--no-opponents", action="store_true", help="leave out the outside opponents of opponents.local.toml"
+    )
+    mistakes.add_argument("--maps", default="train", help="train, or training maps' names; never holdout")
+    mistakes.add_argument("--examples", type=int, default=3, help="the shortest games listed for each kind")
+    mistakes.add_argument("--run-id", help="the directory under runs/ for the bots' stderr; default: mistakes")
+    mistakes.add_argument("--json", action="store_true", help="print the tables as JSON")
+    mistakes.set_defaults(handler=_mistakes)
 
     study = commands.add_parser("digest", help="print a demo as a timeline, events and logs")
     study.add_argument("demo")
