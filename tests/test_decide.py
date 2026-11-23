@@ -225,7 +225,7 @@ def test_founders_take_the_free_side_places_in_order() -> None:
         champion=summary({"one": 0, "two": 0, "champ": 0}, {("one", "champ"): (30, 60), ("two", "champ"): (30, 60)}),
         train=summary({"one": 1900, "two": 1900, "champ": 2100}),
     )
-    decisions = decide.decide([first, second], found, LINES, [*BOTS, "one", "two"], REFERENCES, {})
+    decisions = decide.decide([first, second], found, LINES, [*BOTS, "one", "two"], REFERENCES, {}, max_side_lines=2)
     assert [decision.decision for decision in decisions] == ["admitted", "needs_review"]
     assert "no side place is free" in decisions[1].rule
 
@@ -446,11 +446,11 @@ def test_a_tie_the_rules_cant_break_is_left_for_review() -> None:
 
 
 def test_the_side_lines_cap_is_one_constant() -> None:
-    assert decide.MAX_SIDE_LINES == 2
+    assert decide.MAX_SIDE_LINES == 4
     three = Lines(champion="champ", lines=[*LINES.lines, Line("b", "b", "side", "b", ["b"]), Line("c", "c", "side")])
-    result = decide.upkeep([], three, ROSTER, Field(RATINGS), 40)
+    result = decide.upkeep([], three, ROSTER, Field(RATINGS), 40, max_side_lines=2)
     assert result.reviews and "over the cap of 2" in result.reviews[0].reason
-    assert not decide.upkeep([], three, ROSTER, Field(RATINGS), 40, max_side_lines=4).reviews
+    assert not decide.upkeep([], three, ROSTER, Field(RATINGS), 40).reviews
 
 
 # --- The lines file -----------------------------------------------------------------------

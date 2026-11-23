@@ -13,8 +13,11 @@ from pathlib import Path
 from . import clock as clock_module
 from . import decide as decide_module
 from . import digest as digest_module
+from . import ideas as ideas_module
 from . import integrate as integrate_module
+from . import leases as leases_module
 from . import ledger, maps, opponents, roster, tournament
+from . import lines as lines_module
 from . import mistakes as mistakes_module
 from . import rematch as rematch_module
 from . import replay as replay_module
@@ -215,6 +218,69 @@ def _decide(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _ideas(arguments: argparse.Namespace) -> int:
+    lines = lines_module.load_lines()
+    league = roster.load_roster()
+    statuses = {bot.name: bot.status for bot in league}
+    names, _ = mistakes_module.players(None, lines.champion, "1,2,3", False)
+    plan = tournament.Tournament(
+        players=names, maps=tournament.map_files("train"), focus=[lines.champion], listed=[lines.champion]
+    )
+    found, results = mistakes_module.run(plan, arguments.run_id or "ideas", 1)
+    summary = tournament.summarize(results)
+    held = [lease.key for lease in leases_module.held(leases_module.backend())] if arguments.free else []
+    places = ideas_module.queue(
+        lines,
+        statuses,
+        summary,
+        found.get(lines.champion, []),
+        (LEDGER / "iterations.md").read_text(encoding="utf-8"),
+        LEDGER.parent,
+        decide_module.MAX_SIDE_LINES,
+        held,
+    )
+    print(
+        json.dumps(ideas_module.as_json(places), indent=1) if arguments.json else ideas_module.markdown(places), end=""
+    )
+    return 0
+
+
+def _lease(arguments: argparse.Namespace) -> int:
+    backend = leases_module.backend()
+    action = arguments.action
+    if action == "run":
+        run = leases_module.new_run_id()
+        lease = leases_module.take(backend, f"run/{run}", run)
+        if lease.run != run:
+            print(f"league: the run id {run} is taken; try again", file=sys.stderr)
+            return 2
+        print(run)
+        return 0
+    if action == "list":
+        for lease in leases_module.held(backend, arguments.key or ""):
+            print(f"{lease.key}\t{lease.run}\t{lease.expires}")
+        return 0
+    if not arguments.run:
+        raise ValueError(f"league lease {action} needs --run ID")
+    if action == "renew":
+        print("\n".join(leases_module.renew(backend, arguments.run)))
+        return 0
+    if not arguments.key:
+        raise ValueError(f"league lease {action} needs a key")
+    if action == "take":
+        lease = leases_module.take(backend, arguments.key, arguments.run)
+        if lease.run != arguments.run:
+            print(f"{arguments.key} is held by run {lease.run} until {lease.expires}", file=sys.stderr)
+            return 2
+        print(f"{arguments.key} is yours until {lease.expires}")
+        return 0
+    if not leases_module.release(backend, arguments.key, arguments.run):
+        print(f"{arguments.key} is not held by run {arguments.run}", file=sys.stderr)
+        return 2
+    print(f"released {arguments.key}")
+    return 0
+
+
 def _integrate(arguments: argparse.Namespace) -> int:
     branches = list(arguments.branches)
     if arguments.waiting:
@@ -399,6 +465,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     decide.add_argument("--json", action="store_true", help="print the decisions and actions as JSON")
     decide.set_defaults(handler=_decide)
+
+    queue = commands.add_parser(
+        "ideas", help="the league's open places, the most points first: what the next run should work on"
+    )
+    queue.add_argument("--free", action="store_true", help="only the places no run holds (league lease)")
+    queue.add_argument("--json", action="store_true")
+    queue.add_argument("--run-id", help="the directory under runs/; default: ideas")
+    queue.set_defaults(handler=_ideas)
+
+    lease = commands.add_parser(
+        "lease",
+        help="hold work that should happen once (a run, a real game, a game to study, a place, an idea, a name)",
+    )
+    lease.add_argument("action", choices=("run", "take", "release", "renew", "list"))
+    lease.add_argument(
+        "key", nargs="?", help="such as slot/CHAMPION/side-NAME, idea/HASH, study/KEY; a prefix for list"
+    )
+    lease.add_argument("--run", help="the run's id, from league lease run")
+    lease.set_defaults(handler=_lease)
 
     merge = commands.add_parser(
         "integrate",

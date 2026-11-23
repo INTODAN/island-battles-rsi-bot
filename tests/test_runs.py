@@ -104,6 +104,7 @@ def test_the_curator_folds_lessons_and_nothing_else() -> None:
 
 # --- The integrator's own parts: collecting a run's branch, and what it writes --------------
 
+import re  # noqa: E402
 import subprocess  # noqa: E402
 
 from league_tools import integrate  # noqa: E402
@@ -200,3 +201,98 @@ def test_the_iterations_number_progress_row_minutes_and_real_games(tmp_path: Pat
     games.write_text("# header\n471 2026-11-23\n")
     integrate.add_real_games(games, ["471", "481"], "2026-11-24")
     assert games.read_text() == "# header\n471 2026-11-23\n481 2026-11-24\n"
+
+
+# --- The idea queue ---------------------------------------------------------------------------
+
+from league_tools import ideas  # noqa: E402
+from league_tools.lines import Line, Lines  # noqa: E402
+from league_tools.mistakes import Row  # noqa: E402
+
+
+def _lines() -> Lines:
+    return Lines(
+        champion="champ",
+        lines=[
+            Line(name="main", strategy="s", state="main", head="champ", bots=["champ", "other"]),
+            Line(name="side", strategy="s", state="side", head="sidehead", bots=["sidehead"], without_promotion=1),
+        ],
+    )
+
+
+def test_the_queue_puts_side_lines_then_the_exploiter_then_founders_then_grafts_mistakes_and_ideas(
+    tmp_path: Path,
+) -> None:
+    summary = {"pairs": {"sidehead": {"champ": [5, 60]}, "other": {"champ": [30, 60]}}}
+    rows = [
+        Row("thin_border", games=21, maps={"a", "b", "c"}, points_lost=6.5),
+        Row("home_emptied", games=7, maps={"a", "b"}, points_lost=7.0),
+        Row("never", games=0),
+    ]
+    text = LEDGER + "\n**Ideas not tried:**\n- Keep one shared reserve.\n- Rank nearer neutrals first.\n\nAfter.\n"
+    text += (
+        "| Candidate | Parent | Idea | Decision |\n|---|---|---|---|\n| `x` | champ | Fix: y. | **superseded**: z |\n"
+    )
+    places = ideas.queue(_lines(), {"sidehead": "active"}, summary, rows, text, tmp_path, max_side_lines=4)
+
+    kinds = [place.kind for place in places]
+    assert kinds == ["side line", "exploiter", "founder", "founder", "founder", "graft", "fix", "fix", "idea", "idea"]
+    assert places[0].key == "slot/champ/side-side"
+    assert places[6].key.endswith("home_emptied")  # 2 maps x 7/7 lost beats 3 maps x 6.5/21
+    assert places[8].what == "Rank nearer neutrals first."
+
+
+def test_a_held_place_is_left_out_and_no_exploiter_while_someone_outside_tests_the_champion(tmp_path: Path) -> None:
+    summary = {"pairs": {"sidehead": {"champ": [20, 60]}}}
+    places = ideas.queue(
+        _lines(), {"sidehead": "active"}, summary, [], "", tmp_path, max_side_lines=2, held={"slot/champ/side-side"}
+    )
+    assert [place.kind for place in places] == ["founder"]
+
+
+# --- Leases on git refs -----------------------------------------------------------------------
+
+from league_tools import leases  # noqa: E402
+
+
+def _remote(tmp_path: Path) -> tuple[leases.GitRefs, leases.GitRefs]:
+    """Two clones' lease backends on one bare remote."""
+    remote = tmp_path / "remote.git"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    clones = []
+    for name in ("a", "b"):
+        clone = tmp_path / name
+        _git(tmp_path, "init", "-q", str(clone))
+        _git(clone, "remote", "add", "origin", str(remote))
+        clones.append(leases.GitRefs(cwd=clone))
+    return clones[0], clones[1]
+
+
+def test_of_two_runs_one_takes_a_key_and_the_other_is_told_who_holds_it(tmp_path: Path) -> None:
+    a, b = _remote(tmp_path)
+    assert leases.take(a, "slot/champ/side-x", "run-a").run == "run-a"
+    held = leases.take(b, "slot/champ/side-x", "run-b")
+    assert held.run == "run-a"
+    assert [lease.key for lease in leases.held(b, "slot/")] == ["slot/champ/side-x"]
+    assert not leases.release(b, "slot/champ/side-x", "run-b")
+    assert leases.release(a, "slot/champ/side-x", "run-a")
+    assert leases.take(b, "slot/champ/side-x", "run-b").run == "run-b"
+
+
+def test_an_expired_lease_is_taken_over_and_a_held_one_renewed(tmp_path: Path) -> None:
+    a, b = _remote(tmp_path)
+    leases.take(a, "idea/abc", "run-a", hours=-1)
+    assert leases.held(b) == []
+    assert leases.take(b, "idea/abc", "run-b").run == "run-b"
+    assert leases.renew(b, "run-b") == ["idea/abc"]
+
+
+def test_a_key_is_checked() -> None:
+    assert leases.check_key("study/0123abcd") == "study/0123abcd"
+    for bad in ("other/x", "slot/../x", "idea/", "idea/a b"):
+        try:
+            leases.check_key(bad)
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+    assert re.match(r"^\d{8}-[0-9a-f]{6}$", leases.new_run_id())

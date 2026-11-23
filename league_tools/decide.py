@@ -41,7 +41,7 @@ from .roster import HOSTED, Bot
 
 # The caps of the population (the ``league-population`` skill). The cap of
 # side lines rises to four once runs are parallel (docs/parallel-iterations.md).
-MAX_SIDE_LINES = 2
+MAX_SIDE_LINES = 4
 MAX_ACTIVE_IN_LINE = 3
 MAX_FIXED_OPPONENTS = 8
 # The gate: a candidate's slowest turn must stay under this.
