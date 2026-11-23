@@ -275,11 +275,21 @@ jobs:
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
+      # Background tasks off: a headless session ends when Claude's turn ends,
+      # and a subagent left running in the background is lost with its work
+      # (run 45081731812's first half ended after 37 turns with nothing written).
       - name: Claude runs the first half
+        id: first
         uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
           github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
           claude_args: |
             --model ${{ vars.RSI_MODEL || 'opus' }}
             --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
@@ -306,11 +316,130 @@ jobs:
             Don't commit, push or open a pull request: this workflow passes the working tree on.
             Candidates may be written by subagents on the sonnet model, as the skill allows.
 
+            This session ends the moment you end your turn, and nothing left running survives it. Run every
+            subagent and command in the foreground and wait for it. Don't end your turn until the hand-over is
+            in ledger/iterations.md (ending with the line "Second half: the rest of step 4, then steps 5 to 7.")
+            or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did
+        if: always() && steps.first.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.first.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
+
+      - name: The first half wrote its hand-over
+        id: check1
+        env:
+          N: ${{ needs.claim.outputs.n }}
+        run: |
+          if [ -f runs/rsi/stopped.txt ] || { grep -qE "^## Iteration $N\b" ledger/iterations.md && grep -q '^Second half:' ledger/iterations.md; }; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Claude ended before the hand-over was written"
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A session that ended early is resumed, with what it knew.
+      - name: Claude finishes the first half (first2)
+        id: first2
+        if: steps.check1.outputs.done == 'false' && steps.first.outputs.session_id != ''
+        uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+        with:
+          claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
+          github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
+          claude_args: |
+            --resume ${{ steps.first.outputs.session_id }}
+            --model ${{ vars.RSI_MODEL || 'opus' }}
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --disallowedTools "WebFetch,WebSearch"
+          prompt: |
+            Your last turn ended before the first half was done: there is no hand-over in ledger/iterations.md and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
+            left running in the background (a subagent, a command) was lost with it: run it again in the
+            foreground. Check what is already in the working tree (git status, git diff), then carry on from
+            where you were, by the same skill and the same instructions, until the hand-over is written, or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did (2)
+        if: always() && steps.first2.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.first2.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
+
+      - name: The first half wrote its hand-over (2)
+        id: check2
+        if: steps.check1.outputs.done == 'false'
+        env:
+          N: ${{ needs.claim.outputs.n }}
+        run: |
+          if [ -f runs/rsi/stopped.txt ] || { grep -qE "^## Iteration $N\b" ledger/iterations.md && grep -q '^Second half:' ledger/iterations.md; }; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Claude ended before the hand-over was written"
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A session that ended early is resumed, with what it knew.
+      - name: Claude finishes the first half (first3)
+        id: first3
+        if: steps.check2.outputs.done == 'false' && steps.first2.outputs.session_id != ''
+        uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+        with:
+          claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
+          github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
+          claude_args: |
+            --resume ${{ steps.first2.outputs.session_id }}
+            --model ${{ vars.RSI_MODEL || 'opus' }}
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --disallowedTools "WebFetch,WebSearch"
+          prompt: |
+            Your last turn ended before the first half was done: there is no hand-over in ledger/iterations.md and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
+            left running in the background (a subagent, a command) was lost with it: run it again in the
+            foreground. Check what is already in the working tree (git status, git diff), then carry on from
+            where you were, by the same skill and the same instructions, until the hand-over is written, or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did (3)
+        if: always() && steps.first3.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.first3.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
+
       - name: The first half finished
+        env:
+          N: ${{ needs.claim.outputs.n }}
         run: |
           if [ -f runs/rsi/stopped.txt ]; then
             echo "::error::the iteration stopped"
             cat runs/rsi/stopped.txt
+            exit 1
+          fi
+          if ! grep -qE "^## Iteration $N\b" ledger/iterations.md || ! grep -q '^Second half:' ledger/iterations.md; then
+            echo "::error::Claude ended three times without writing the hand-over"
             exit 1
           fi
 
@@ -488,10 +617,17 @@ jobs:
       # The real games are not on this runner while Claude runs: what they
       # showed is in the hand-over.
       - name: Claude runs the second half
+        id: second
         uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
           github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
           claude_args: |
             --model ${{ vars.RSI_MODEL || 'opus' }}
             --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
@@ -521,6 +657,116 @@ jobs:
               a blank line, then which candidates were promoted and rejected, and why.
             - runs/rsi/pr-body.md: the skill's report (step 7).
             Finish each studied game's study in ledger/studies/<id>.md, as the skill's "Started by real games" says.
+
+            This session ends the moment you end your turn, and nothing left running survives it. Run every
+            subagent and command in the foreground and wait for it. Don't end your turn until
+            runs/rsi/commit-message.txt is written, or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did
+        if: always() && steps.second.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.second.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
+
+      - name: The second half is done
+        id: scheck1
+        run: |
+          if [ -f runs/rsi/stopped.txt ] || [ -s runs/rsi/commit-message.txt ]; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Claude ended before the iteration was done"
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A session that ended early is resumed, with what it knew.
+      - name: Claude finishes the second half (second2)
+        id: second2
+        if: steps.scheck1.outputs.done == 'false' && steps.second.outputs.session_id != ''
+        uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+        with:
+          claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
+          github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
+          claude_args: |
+            --resume ${{ steps.second.outputs.session_id }}
+            --model ${{ vars.RSI_MODEL || 'opus' }}
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --disallowedTools "WebFetch,WebSearch"
+          prompt: |
+            Your last turn ended before the iteration was done: there is no runs/rsi/commit-message.txt and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
+            left running in the background (a subagent, a command) was lost with it: run it again in the
+            foreground. Check what is already in the working tree (git status, git diff), then carry on from
+            where you were, by the same skill and the same instructions, until the iteration is done, with runs/rsi/commit-message.txt and runs/rsi/pr-body.md written,
+            or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did (2)
+        if: always() && steps.second2.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.second2.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
+
+      - name: The second half is done (2)
+        id: scheck2
+        if: steps.scheck1.outputs.done == 'false'
+        run: |
+          if [ -f runs/rsi/stopped.txt ] || [ -s runs/rsi/commit-message.txt ]; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Claude ended before the iteration was done"
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A session that ended early is resumed, with what it knew.
+      - name: Claude finishes the second half (second3)
+        id: second3
+        if: steps.scheck2.outputs.done == 'false' && steps.second2.outputs.session_id != ''
+        uses: anthropics/claude-code-action@v1
+        # An error ends the session like an early end does: the check after it
+        # decides, and resumes the session.
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+        with:
+          claude_code_oauth_token: ${{ steps.claude_token.outputs.token }}
+          github_token: ${{ github.token }}
+          settings: '{"env": {"CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"}}'
+          claude_args: |
+            --resume ${{ steps.second2.outputs.session_id }}
+            --model ${{ vars.RSI_MODEL || 'opus' }}
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,TodoWrite,Bash(uv run league:*),Bash(uv run --locked league:*),Bash(scripts/check.sh),Bash(uv run ruff format:*),Bash(uv run --locked ruff format:*),Bash(git status:*),Bash(git diff:*),Bash(mkdir:*)"
+            --disallowedTools "WebFetch,WebSearch"
+          prompt: |
+            Your last turn ended before the iteration was done: there is no runs/rsi/commit-message.txt and no runs/rsi/stopped.txt. This session ends the moment you end your turn, and anything
+            left running in the background (a subagent, a command) was lost with it: run it again in the
+            foreground. Check what is already in the working tree (git status, git diff), then carry on from
+            where you were, by the same skill and the same instructions, until the iteration is done, with runs/rsi/commit-message.txt and runs/rsi/pr-body.md written,
+            or runs/rsi/stopped.txt says why you stopped.
+
+      # Which tools Claude called, by name only: the log is public, and the
+      # calls' inputs and outputs may quote a real game.
+      - name: What Claude did (3)
+        if: always() && steps.second3.outputs.execution_file != ''
+        env:
+          FILE: ${{ steps.second3.outputs.execution_file }}
+        run: |
+          jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name]
+                 | group_by(.) | map("\(.[0]): \(length)") | .[]' "$FILE" || true
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), \(.duration_ms / 60000 | floor) min, \(.subtype)"' "$FILE" || true
 
       - name: The iteration finished
         run: |
