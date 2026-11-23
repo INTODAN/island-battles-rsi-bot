@@ -180,11 +180,18 @@ def _progress(rows: list[dict[str, Any]]) -> str:
         f"<td>{r['rating']}</td><td>{escape(SCALES.get(r['scale'], r['scale']))}</td></tr>"
         for r in reversed(rows)
     )
+    anchors = sum(row["scale"] != before["scale"] for before, row in zip(rows, rows[1:], strict=False))
+    timed_from = next((r["iteration"] for r in rows if r["minutes"] is not None), None)
+    untimed = (
+        f" Iterations before {timed_from} recorded no time." if timed_from and timed_from > rows[0]["iteration"] else ""
+    )
+    times = {1: "once", 2: "twice"}.get(anchors, f"{anchors} times")
+    moved = f"the league re-anchored them {times}, and " if anchors else ""
     return (
         f'<section class="card progress"><h2>The league</h2>'
         f'<p class="sub">Each iteration writes candidates, measures them and keeps the better ones. Ratings compare '
-        f"only within one anchor: the league re-anchored them twice, and a rating also moves when the population "
-        f"or the maps change. Iterations before 26 recorded no time.</p>{timed}{rated}"
+        f"only within one anchor: {moved}a rating also moves when the population or the maps change.{untimed}</p>"
+        f"{timed}{rated}"
         f"<details><summary>Every iteration</summary><table><thead><tr><th>Iteration</th><th>Date</th>"
         f"<th>Minutes</th><th>Champion</th><th>Rating</th><th>Anchor</th></tr></thead><tbody>{table}</tbody></table>"
         f"</details></section>"

@@ -1,7 +1,6 @@
 import gzip
 import io
 import json
-import re
 import sys
 import threading
 import time
@@ -16,6 +15,7 @@ import pytest
 from island_battles_client.fixture import fixture_turn_data
 
 from league_tools import digest
+from league_tools.ledger import ITERATION
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "hosting" / "lambda"))
@@ -129,13 +129,14 @@ def test_the_home_page_charts_the_leagues_progress(tmp_path: Path) -> None:
     assert "&lt;b&gt;bold&lt;/b&gt;" in html and "<b>bold" not in html
     # Two runs of one scale each, and a break between them, on the rating chart.
     assert html.count('class="break"') == 1
+    assert "re-anchored them once" in html and "Iterations before 1 recorded no time." in html
     assert "Time per iteration" not in page.render("finish_speed", overview, listed)
 
 
 def test_every_iteration_of_the_ledger_has_its_progress() -> None:
     root = Path(__file__).parent.parent
     ledger = (root / "ledger" / "iterations.md").read_text()
-    iterations = {int(n) for n in re.findall(r"^## Iteration (\d+):", ledger, flags=re.MULTILINE)}
+    iterations = {int(match.group(1)) for line in ledger.splitlines() if (match := ITERATION.match(line))}
     rows = page.load_progress(root / "ledger" / "progress.csv")
     assert [row["iteration"] for row in rows] == sorted(iterations)
     assert {row["scale"] for row in rows} <= set(page.SCALES)
