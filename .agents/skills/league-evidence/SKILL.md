@@ -25,6 +25,7 @@ Every round robin of the whole population that lists a bot with its parent (`tou
 - **Of them, draws told apart by production**: a draw is not the end of what a game says. When both drew, the bot did better if it out-produced its opponent over the game and its parent didn't, or its parent was out-produced and it wasn't. In the drawn games in which one side led, that side was the higher-rated bot 85% of the time, more often than the winner of a game decided at the turn limit. The soldiers held at the end say nothing: the bot that never strikes ends with the most.
 - **Margin**: better minus worse.
 - **Maps**: on how many maps its margin was above 0, and on how many below.
+- **On these maps**: what the margin comes to on the run's maps, in the words below. The rule for each kind of candidate says which word it needs on which maps.
 - **By luck**: the chance that a change which does nothing gives a margin this far from 0, **a map's games counted as one**. A map's games move together (the same castles, the same race for them), so what was drawn is the map, not the game. Had the change done nothing, each map's margin could as well have come out with the other sign; the column is the share of all those ways that reach the margin played. It is exact, and it can't be small on few maps: six maps all one way give one in 64.
 
 A result is:
@@ -54,21 +55,21 @@ From iteration 37's field, on the 29 training maps:
 Three steps, each cheaper than the next, and each drops only what it can judge. The fractions are the rule; the numbers in brackets are for 30 training maps, two games a map.
 
 1. **Head to head against its parent** (`--focus CANDIDATES --parents`): **rejected with a third of the points or fewer** (20 of 60 or fewer). Above that the head-to-head decides nothing.
-2. **The training maps** (`--add CANDIDATES`): **rejected when it is worse** (a margin below 0), or when its points against the **references** (the sparring bots and the outside opponents, added up from the pair table, the parent itself left out when it is one of them) are **more than three below its parent's**. A fix that doesn't come out ahead on the maps it was read from has nothing going for it, and a bot that gains against its own line and loses to the references has learned its line.
-3. **The holdout maps, and all maps** (`--maps holdout --add CANDIDATES`, then `--maps all --add CANDIDATES`, for the candidates that passed step 2): **promoted when it is confirmed on the holdout maps and clear on all maps together.**
+2. **The training maps** (`--add CANDIDATES`): **rejected when it is clearly worse**, or when its points against the **references** (the sparring bots and the outside opponents, added up from the pair table, the parent itself left out when it is one of them) are **more than three below its parent's**. A bot that gains against its own line and loses to the references has learned its line. A margin a game or two below 0 says nothing, and rejects nothing.
+3. **The holdout maps, and all maps** (`--maps holdout --add CANDIDATES`, then `--maps all --add CANDIDATES`, for the candidates that passed step 2): **promoted when it is confirmed on the holdout maps and clear on all maps together**: the column **On these maps** of the two runs.
 
 The past promotions, as iteration 37's field has them on 29 training and 25 holdout maps:
 
 - `harrier_front`: 39 of 58 against its parent; +140 on training, 102.5 points against the references to its parent's 97; +82 on holdout at 0.8%, so confirmed; +222 on all maps at under 0.1%, so clear. **Promoted.**
 - `feedkeep_speedhelp`, promoted by the old rule on 22 of 38 and one rating point: +14 on training; +39 on holdout at 10.8%, confirmed; +53 on all maps at 10.6%, not clear. **Unresolved.**
 - `harrier_feedkeep`: +14 on training, +15 on holdout at 38%, not confirmed. **Unresolved.**
-- `ori_hold_exact`: -2 on training. **Rejected** there.
+- `ori_hold_exact`: -2 on training, which is worse and not clearly; -10 on holdout, -12 on all maps. **Rejected.**
 
 Of the thirteen promotions still in the league, four pass, each at under 0.1% on all maps; none of the other nine is below 7%.
 
 A candidate that fails is rejected and deleted (`uv run league delete NAME`). **Never promote on a chance that falls short by a little**, and never change a candidate after its holdout run.
 
-**Unresolved is not refuted.** A candidate whose margin was above 0 on both sets and short of the rule is recorded in the ledger as **unresolved**, with its numbers. Its idea may be written again once the two sets together hold five more maps than they did, and that try is not counted among the idea's three (below).
+**Unresolved is not refuted.** A candidate whose margin on all maps was above 0 and that fell short of the rule is recorded in the ledger as **unresolved**, with its numbers. Its idea may be written again once the two sets together hold five more maps than they did, and that try is not counted among the idea's three (below).
 
 ## A simplification
 

@@ -30,9 +30,9 @@ Replacing a bot only by a better copy of itself climbs the hill it stands on and
 
 A whole round robin prints **Bots that play alike**: pairs that ended at least half of their games against the same opponent, on the same map and from the same seat, the same to the soldier. Such a pair is one bot counted twice: it doubles its weight in every rating, doubles the games that say the same thing, and adds no parent worth choosing.
 
-Take the table of the training maps, in its order, the most alike first. Of each pair in which both bots are still there, one **leaves**: `uv run league delete NAME`. Which one:
+Take the table of the training maps (its heading says which maps it is of), in its order, the most alike first. Of each pair in which both bots are still there, one **leaves**: `uv run league delete NAME`. Which one:
 
-- **The champion, the sparring bots and the outside opponents never leave.** When one of the pair is one of them, the other leaves; a pair of two such is left as it is.
+- **The champion, the sparring bots and the outside opponents never leave** (`league delete` refuses the first two). When one of the pair is one of them, the other leaves; a pair of two such is left as it is.
 - **A bot promoted in this iteration that plays alike its parent replaces it:** the parent leaves, whichever rates higher. If the parent was its line's head or the champion, the promoted bot now is.
 - **Otherwise the bot that takes fewer points from the champion head to head leaves**, the lower-rated when they take the same. Its status and its line don't matter: a retired bot can stay and an active one leave, and two bots promoted from one parent that play alike end as one.
 

@@ -81,7 +81,7 @@ For an exploiter, the games are the champion's wins: what it does every time is 
 
 - **A finding that got no place** goes in the ledger entry under **Ideas not tried**, with its game and turns. The next iteration reads them before it studies anything.
 - **Before writing a candidate, search the ledger's candidate lines for its mechanism.** Rejected once: say what is different now. Rejected three times in the line: closed, until a real game shows something new.
-- **An unresolved candidate** (better on both sets of maps, and short of the rule) is not one of the three. Its idea may be written again when the map sets hold five more maps ([`league-evidence`](../league-evidence/SKILL.md)).
+- **An unresolved candidate** (a margin above 0 on all maps, and short of the rule) is not one of the three. Its idea may be written again when the map sets hold five more maps ([`league-evidence`](../league-evidence/SKILL.md)).
 - **A candidate that changes fewer than ten games** of its parent's in the whole field (the paired table) was a rare mechanism. Say so in the ledger, so that nobody tunes it.
 
 ## When nothing is promoted

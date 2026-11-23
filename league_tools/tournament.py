@@ -416,12 +416,29 @@ def by_luck(margins: Iterable[int]) -> float:
 
 
 @functools.cache
-def _draw_lead(demo: str, color: int, other: int) -> int | None:
-    """The production lead of ``color`` over ``other`` in a game's demo, or None when the demo can't be read."""
+def _demo_lead(demo: str, written: int, size: int, color: int, other: int) -> int | None:
+    """``_draw_lead`` of one writing of a demo file: a match played again gets a new answer."""
     try:
         return digest.production_lead(digest.load_demo(Path(demo)), color, other)
-    except OSError, ValueError, KeyError:
+    except OSError, ValueError, KeyError, TypeError:
         return None
+
+
+def _draw_lead(result: dict[str, Any], seat: int) -> int | None:
+    """Whether the player in ``seat`` out-produced its opponent in a game (1, -1 or 0), or None when that can't be read.
+
+    It can't when the result names no team colours or no demo, or the demo is
+    missing or broken.
+    """
+    colors = [end.get("team_color") for end in result["seats"]]
+    demo = result.get("demo")
+    if demo is None or None in colors:
+        return None
+    try:
+        file = Path(demo).stat()
+    except OSError:
+        return None
+    return _demo_lead(str(demo), file.st_mtime_ns, file.st_size, colors[seat], colors[1 - seat])
 
 
 def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, Any]:
@@ -439,8 +456,9 @@ def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, A
     when the bot had the production lead over the game and its parent didn't,
     or the parent was behind and the bot wasn't (``digest.production_lead``):
     a draw is not the end of what a game says. ``drawn_better`` and
-    ``drawn_worse`` count those among ``better`` and ``worse``; ``unread``
-    counts the drawn games whose demo couldn't be read, which count as level.
+    ``drawn_worse`` count those among ``better`` and ``worse``. ``unread``
+    counts the pairs of drawn games of which one couldn't be read: such a pair
+    counts as the same, since half a comparison is none.
     """
     games: dict[str, dict[tuple[str, str, int], tuple[dict[str, Any], int]]] = {name: {}, parent: {}}
     for result in results:
@@ -453,12 +471,6 @@ def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, A
     count |= {"drawn_better": 0, "drawn_worse": 0, "unread": 0}
     maps: dict[str, int] = defaultdict(int)
 
-    def lead(result: dict[str, Any], seat: int) -> int:
-        colors = [end.get("team_color") for end in result["seats"]]
-        found = _draw_lead(str(result.get("demo")), colors[seat], colors[1 - seat])
-        count["unread"] += found is None
-        return found or 0
-
     for case, (mine, seat) in games[name].items():
         if case[0] in (name, parent) or case not in games[parent]:
             continue
@@ -467,7 +479,11 @@ def paired(results: list[dict[str, Any]], name: str, parent: str) -> dict[str, A
         count["net"] += gain
         drawn = gain == 0 and mine["winner"] is None
         if drawn:
-            gain = lead(mine, seat) - lead(theirs, their_seat)
+            leads = (_draw_lead(mine, seat), _draw_lead(theirs, their_seat))
+            if leads[0] is None or leads[1] is None:
+                count["unread"] += 1
+            else:
+                gain = leads[0] - leads[1]
         count["better" if gain > 0 else "worse" if gain < 0 else "same"] += 1
         if drawn and gain:
             count["drawn_better" if gain > 0 else "drawn_worse"] += 1
@@ -507,14 +523,30 @@ def alike(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(pairs, key=lambda pair: (-pair["same_game"], pair["bots"]))
 
 
-def alike_table(pairs: list[dict[str, Any]]) -> list[str]:
-    """The lines of the table of ``alike``'s pairs, or none without a pair."""
+def _where(maps: list[Path]) -> str:
+    """A run's maps in words: a whole set, both sets, or how many of them."""
+    for directory, name in ((MAPS / "train", "training"), (MAPS / "holdout", "holdout")):
+        if sorted(maps) == sorted(directory.glob("*.json")):
+            return f"the {len(maps)} {name} maps"
+    if sorted(maps) == sorted(MAPS.glob("*/*.json")):
+        return f"all {len(maps)} maps, training and holdout"
+    return f"{len(maps)} of the maps: not the table the rule for bots that play alike reads"
+
+
+def alike_table(pairs: list[dict[str, Any]], where: str) -> list[str]:
+    """The lines of the table of ``alike``'s pairs, or none without a pair.
+
+    Args:
+        pairs: What ``alike`` returned.
+        where: The maps the games were played on, in words: the rule that one of two bots leaves reads the
+            training maps' table only.
+    """
     if not pairs:
         return []
     lines = [
         "",
-        f"Bots that play alike (from {ALIKE:.0%} of their games against the same opponent, on the same map and from "
-        "the same seat ending the same to the soldier):",
+        f"Bots that play alike on {where} (from {ALIKE:.0%} of their games against the same opponent, on the same "
+        "map and from the same seat ending the same to the soldier):",
         "",
         "| Bots | The same game | The same result | Games |",
         "|---|---|---|---|",
@@ -535,6 +567,20 @@ def game_line(result: dict[str, Any]) -> str:
     )
 
 
+# What a margin comes to, by the chance of it by luck (the ``league-evidence``
+# skill, which also says what each kind of candidate needs on which maps).
+CONFIRMED, CLEAR = 0.20, 0.05
+
+
+def reading(margin: int, luck: float) -> str:
+    """A run's margin in the selection's words: clear, confirmed, nothing, worse or clearly worse."""
+    if margin > 0:
+        return "clear" if luck <= CLEAR else "confirmed" if luck <= CONFIRMED else "nothing"
+    if margin < 0:
+        return "clearly worse" if luck <= CONFIRMED else "worse"
+    return "nothing"
+
+
 def chance(share: float) -> str:
     """A chance as the tables print it: a percentage, and never a 0 that isn't one."""
     return "under 0.1%" if share < 0.001 else f"{share:.1%}"
@@ -546,9 +592,10 @@ def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: boo
     The head-to-head points, and from a whole round robin the two ratings and
     the bot's games against the others next to its parent's (``paired``):
     their margin (better minus worse), the maps the bot did better and worse
-    on, and the chance of such a margin by luck, a map's games counted as one
-    (``by_luck``). The table judges nothing: the ``league-evidence`` skill
-    says what each number may decide for each kind of candidate.
+    on, the chance of such a margin by luck, a map's games counted as one
+    (``by_luck``), and what that comes to on this run's maps (``reading``).
+    It promotes nothing: the ``league-evidence`` skill says which reading each
+    kind of candidate needs on which maps.
 
     Args:
         summary: What ``summarize`` returned, with ``paired`` when the round robin was whole.
@@ -575,6 +622,7 @@ def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: boo
                 f"{sum(margin > 0 for margin in margins)} better, {sum(margin < 0 for margin in margins)} worse"
             )
             cells.append(chance(changed[name]["luck"]))
+            cells.append(reading(better - worse, changed[name]["luck"]))
         rows.append("| " + " | ".join(cells) + " |")
     if not rows:
         return []
@@ -588,6 +636,7 @@ def against_parents(summary: dict[str, Any], parents: dict[str, str], whole: boo
             "Margin",
             "Maps",
             "By luck",
+            "On these maps",
         ]
     lines = ["", "Each listed bot against its parent" + ("" if whole else " (ratings don't count here)") + ":", ""]
     lines += ["| " + " | ".join(header) + " |", "|---" * len(header) + "|", *rows]
@@ -731,12 +780,12 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
             unread = sum(compared["unread"] for compared in summary["paired"].values())
             if unread:
                 print(
-                    f"league: {unread} drawn games had no demo to read: next to the parent's they count as level",
+                    f"league: {unread} pairs of drawn games had a demo that couldn't be read: they count as the same",
                     file=sys.stderr,
                 )
             summary["alike"] = pairs
         parent_table = against_parents(summary, parents, whole=whole)
-        parent_table += alike_table(pairs)
+        parent_table += alike_table(pairs, _where(tournament.maps))
         table = markdown(summary, results, tournament.listed, not has_holdout(tournament.maps), parent_table)
     with (run_directory / "results.jsonl").open("w", encoding="utf-8") as file:
         for result in results:

@@ -57,7 +57,13 @@ def production_lead(demo: dict[str, Any], color: int, other: int) -> int:
     holds at the end say the opposite, if anything (46%): the bot that never
     strikes ends with the most.
     """
-    total = sum(_totals(frame, color)[3] - _totals(frame, other)[3] for frame in demo["frames"])
+    total = 0
+    for frame in demo["frames"]:
+        for castle in frame["castles"]:
+            if castle["team_color"] == color:
+                total += castle["upgrades"].get("generation_amount", 1)
+            elif castle["team_color"] == other:
+                total -= castle["upgrades"].get("generation_amount", 1)
     return (total > 0) - (total < 0)
 
 

@@ -94,7 +94,7 @@ uv run league tournament --run-id iteration-N-before
 
 It plays the active and retired bots and default levels 1 to 3 on the training maps; most of it comes from the cache. The **champion** is the bot the ledger's last entry names: the main line's head ([`league-evidence`](../league-evidence/SKILL.md), The champion). Note its rating, its row of the pair table and its row of the map table.
 
-**Clear the population of copies.** The run's table **Bots that play alike** lists them. Of each pair one leaves, as [`league-population`](../league-population/SKILL.md) says which:
+**Clear the population of copies.** The run's table **Bots that play alike**, whose heading says it is of the training maps, lists them. Of each pair one leaves, as [`league-population`](../league-population/SKILL.md) says which:
 
 ```sh
 uv run league delete NAME
@@ -214,9 +214,9 @@ Select from a round robin of **the whole population with the candidates that pas
 uv run league tournament --add CANDIDATES --run-id iteration-N-select
 ```
 
-The cache already holds every pair without a candidate, so it plays little more than the gate did. Its table **Each listed bot against its parent** has each candidate's games against the others next to its parent's: how many it did **better** in, how many **worse**, how many **the same** (a drawn game is better than its parent's drawn game when the candidate led in production over the game and its parent didn't). Read it as [`league-evidence`](../league-evidence/SKILL.md) says: **Margin** is better minus worse, and **By luck** the chance that a change which does nothing gives such a margin, a map's games counted as one. **Confirmed** is a margin above 0 with by luck at 20% or less, **clear** with by luck at 5% or less, **clearly worse** a margin below 0 with by luck at 20% or less. The table judges nothing itself. Each kind has its rule there. In short:
+The cache already holds every pair without a candidate, so it plays little more than the gate did. Its table **Each listed bot against its parent** has each candidate's games against the others next to its parent's: how many it did **better** in, how many **worse**, how many **the same** (a drawn game is better than its parent's drawn game when the candidate led in production over the game and its parent didn't). Read it as [`league-evidence`](../league-evidence/SKILL.md) says: **Margin** is better minus worse, and **By luck** the chance that a change which does nothing gives such a margin, a map's games counted as one. The last column, **On these maps**, says what that comes to on the run's maps: **confirmed** is a margin above 0 with by luck at 20% or less, **clear** with by luck at 5% or less, **clearly worse** a margin below 0 with by luck at 20% or less. The table promotes nothing: each kind's rule says which word it needs on which maps. Each kind has its rule there. In short:
 
-- **A fix or a graft** goes on to the holdout maps unless it is worse than its parent on the training maps (a margin below 0), or has over three points fewer than its parent against the references (the sparring bots and the outside opponents, from the pair table).
+- **A fix or a graft** goes on to the holdout maps unless it is clearly worse than its parent on the training maps, or has over three points fewer than its parent against the references (the sparring bots and the outside opponents, from the pair table).
 - **A simplification** goes on unless it is clearly worse, or its `main.go` is not shorter than its parent's.
 - **A founder** is **admitted** when it plays alike no bot of the league (the run's table **Bots that play alike**; another candidate doesn't count): `league status NAME active`, and it is a side line. **An exploiter** is **admitted** as it stands: `league status NAME retired`. Neither plays the holdout maps to be admitted.
 
@@ -228,7 +228,7 @@ uv run league tournament --maps holdout --add CANDIDATES --run-id iteration-N-se
 
 - **A fix or a graft is promoted** when it is confirmed on the holdout maps and clear on all maps together, which is one more run from the cache: `uv run league tournament --maps all --add CANDIDATES --run-id iteration-N-select-all`. Its table is over both sets, and it lists no games.
 - **A simplification is promoted** when it is not clearly worse on all maps together either.
-- **A fix or a graft that was better on both sets** (a margin above 0) **and short of the rule** is rejected as **unresolved**: the ledger says so with its numbers, and its idea may be written again when the map sets hold five more maps.
+- **A fix or a graft with a margin above 0 on all maps that fell short of the rule** is rejected as **unresolved**: the ledger says so with its numbers, and its idea may be written again when the map sets hold five more maps.
 
 Read only the standings and the tables of that run; it lists no games. **Never digest a holdout game, and never change a candidate after seeing its holdout numbers:** a candidate that fails the holdout is rejected, and its idea may come back next iteration in another form, measured again from the start.
 
