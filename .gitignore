@@ -1,6 +1,6 @@
 # Everything a tournament writes: match results, demos and the result cache.
 # The ledger keeps what matters from them.
-runs/
+/runs/
 # The game's source at the pinned commit, and the runner built from it.
 .runner/
 
