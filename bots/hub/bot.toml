@@ -1,0 +1,11 @@
+# candidate: new and unproven. active: in the population. retired: no longer
+# developed, kept as an opponent. sparring: a fixed opponent built to play like a
+# real one; never changed, never counted with the retired bots, never deleted.
+status = "candidate"
+# The bot this one's code was copied from. A founder keeps it too: the ledger's
+# table of the lines says which line a bot belongs to.
+parent = "pounce"
+# The league iteration that created it (ledger/iterations.md).
+iteration = 42
+# What this bot tries that its parent doesn't, in a sentence.
+idea = "Founder: one fed hub. The own castle nearest the enemy is the hub: it buys production 4 then speed up to 3, and every other castle buys production only and then sends everything above its reserve to the hub in batches, so the stock stands where it strikes fastest; pounce's reserves, neutrals and exact strikes otherwise. Real games 478, 480 and 481: the side that fed one stack castle and struck from it won."
