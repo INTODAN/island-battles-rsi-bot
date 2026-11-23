@@ -736,6 +736,8 @@ def test_the_clock_times_steps_counts_a_step_started_again_and_reports_the_open_
     assert "Total: 10.0 minutes" in text
     assert "Slowest: 2 study (6.0)" in text
     assert "Still open (counted to now): 2 study #2." in text
+    assert clock.reset(path) == 5
+    assert clock.load(path) == []
     with pytest.raises(ValueError):
         clock.mark("start", "", path)
     with pytest.raises(ValueError):

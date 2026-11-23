@@ -553,7 +553,7 @@ def run(tournament: Tournament, run_id: str) -> tuple[dict[str, Any], str]:
     # cache's reading, the wait for another tournament, the games), then
     # everything after (ratings, tables, files).
     print(
-        f"Time: {playing + after:.0f} s in all: {playing:.0f} s to find and play {len(results)} matches, "
+        f"Time: {playing + after:.0f} s in all: {playing:.0f} s to read or play {len(results)} matches, "
         f"{after:.0f} s after (ratings, tables, files)",
         file=sys.stderr,
     )

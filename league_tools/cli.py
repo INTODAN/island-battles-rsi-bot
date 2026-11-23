@@ -153,6 +153,9 @@ def _clock(arguments: argparse.Namespace) -> int:
     if arguments.action == "report":
         print(clock_module.report(clock_module.load(path)))
         return 0
+    if arguments.action == "reset":
+        print(f"The clock is empty ({clock_module.reset(path)} events removed).")
+        return 0
     if not arguments.step:
         raise ValueError(f"league clock {arguments.action} needs the step's name")
     when = clock_module.mark(arguments.action, arguments.step, path)
@@ -291,9 +294,10 @@ def main(argv: list[str] | None = None) -> int:
 
     clock = commands.add_parser(
         "clock",
-        help="time the steps of an iteration, or of any work: start or stop a step, or report every step's minutes",
+        help="time the steps of an iteration, or of any work: start or stop a step, report every step's minutes, or "
+        "reset the clock for new work",
     )
-    clock.add_argument("action", choices=("start", "stop", "report"))
+    clock.add_argument("action", choices=("start", "stop", "report", "reset"))
     clock.add_argument("step", nargs="?", help="the step's name, such as '2 study' (start and stop)")
     clock.add_argument("--file", help="the clock's file; default: runs/clock.jsonl")
     clock.set_defaults(handler=_clock)

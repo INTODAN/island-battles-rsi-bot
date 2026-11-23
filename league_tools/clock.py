@@ -40,6 +40,13 @@ def mark(event: str, step: str, path: Path = CLOCK, now: datetime.datetime | Non
     return when
 
 
+def reset(path: Path = CLOCK) -> int:
+    """Empty the clock for new work; returns how many events it held."""
+    held = len(load(path))
+    path.unlink(missing_ok=True)
+    return held
+
+
 def load(path: Path = CLOCK) -> list[dict[str, Any]]:
     """The clock's events, oldest first; lines that aren't events are skipped."""
     if not path.is_file():

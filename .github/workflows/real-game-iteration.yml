@@ -603,7 +603,9 @@ jobs:
           git apply --binary runs/handover/first-half.patch
           git status --short
           mkdir -p runs/rsi
-          python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID" > runs/rsi/times.txt
+          # Best effort: an iteration never fails for its timing report.
+          python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID" > runs/rsi/times.txt \
+            || echo "The run's times were unavailable: see the run's own page." > runs/rsi/times.txt
           cat runs/rsi/times.txt
 
       - name: The Claude token without whitespace
@@ -913,7 +915,7 @@ jobs:
           {
             echo "## Where the time went"
             echo
-            python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID"
+            python3 hosting/rsi/run_times.py "$GITHUB_RUN_ID" || echo "The run's times were unavailable."
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
   # A run that failed or was cancelled before its pull request gives the number

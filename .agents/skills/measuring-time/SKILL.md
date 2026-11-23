@@ -14,12 +14,13 @@ Time everything that takes more than a few seconds, from its start to its end, a
 - **Your steps: `league clock`.** It is a `league` command, so the automated iteration's Claude, which may run nothing else, can use it too.
 
   ```sh
+  uv run league clock reset                 # once, before the work's first step
   uv run league clock start "2 study"       # at a step's start
   uv run league clock stop "2 study"        # at its end
   uv run league clock report                # every step: start, end, minutes, share, the slowest, the open ones
   ```
 
-  Name the steps as the work's own steps are named (an iteration's `0 ledger`, `1 measure`, ... `7 report`), and add the commands inside them that take longer than a minute (`3 vary: rematch feedkeep_x`, `4 gate: head-to-head`). A step can be started again after it stopped; the report counts it again. The clock is `runs/clock.jsonl`, outside the repository's files; `--file` names another. Start a fresh clock for each piece of work (delete or move the old file first).
+  Name the steps as the work's own steps are named (an iteration's `0 ledger`, `1 measure`, ... `7 report`), and add the commands inside them that take longer than a minute (`3 vary: rematch feedkeep_x`, `4 gate: head-to-head`). A step can be started again after it stopped; the report counts it again. The clock is `runs/clock.jsonl`, outside the repository's files; `--file` names another. Start each piece of work with `league clock reset`, or the report's total runs from the last one's first step.
 
 - **Tournaments time themselves.** Each prints, on its standard error, `Time:` lines: how long it waited for another tournament, how many matches it played and how fast, and its whole time split into finding and playing its matches and everything after (ratings, tables, files). Copy them; don't time a tournament by hand.
 
