@@ -1,3 +1,23 @@
+// juggernaut: one stack, fed by every rear castle, that walks from capture to capture.
+//
+// Iteration 42, a founder (its code started from pounce, whose board helpers it keeps). A real
+// game lost on claw (game 482) was won by a bot whose rear castles kept a few soldiers and fed
+// one front castle to 274, which bought speed and struck. No line of the league plays so:
+//
+//   - Economy: rear castles buy production only, up to topProduction, and send everything
+//     their landings don't need to the stack; the stack buys production, then speed up to
+//     stackSpeed (speed 4), so its strikes are short at any distance.
+//   - Defence: no reserve in the rear. The stack is the reserve: it keeps what the enemy
+//     castles' whole stock within guardWalk turns could land on it, less its growth.
+//   - Attack: only from the stack, at the target with the lowest price plus twice the walk,
+//     priced at its exact count at landing, its burst, and the whole stock of every other
+//     enemy castle that could land on it in time (no castle is assumed to keep a reserve).
+//     The capture is nearer the enemy, so it is the next stack, and the rear feeds it.
+//   - Expansion: pounce's: the neutrals on its own side, exactly plus a margin.
+//
+// The log names the stack (stack@C), its strike (smash>T in W need N), feeds (feed>S c:n)
+// and every upgrade. pounce's comment follows.
+//
 // pounce: a counter-puncher that keeps its soldiers home and strikes a castle the turn its garrison drops.
 //
 // Iteration 40, a founder (its code started from ori_like's scaffolding, with the
@@ -43,9 +63,17 @@ import (
 )
 
 const (
-	// Production and speed levels every castle buys up to, production first.
+	// Production and speed levels every castle buys up to, production first (rear castles buy no speed).
 	topProduction = 4
 	topSpeed      = 2
+	// The stack's speed level, bought after its production.
+	stackSpeed = 4
+	// A rear castle feeds the stack only with at least this many soldiers.
+	feedLeast = 8
+	// The stack keeps what the enemy castles within this many turns could land on it.
+	guardWalk = 4
+	// The stack strikes no further than this many turns, unless the game is finishing.
+	smashWalk = 12
 	// A strike lands within this many turns, so the target's owner has little time to answer it.
 	punishWalk = 6
 	// Soldiers a strike brings over the exact count of what it will meet.
@@ -796,14 +824,154 @@ func upgrade(b *board, c *castle) string {
 	return strings.Join(bought, " ")
 }
 
+// stackOf is the own castle nearest any enemy castle, by walk, ties by id; nil without enemies.
+func stackOf(b *board) *castle {
+	var stack *castle
+	best := math.MaxInt
+	for _, c := range b.own {
+		for _, enemy := range b.enemies {
+			if walk := walkTurns(c.distance(enemy), b.speedOf(1)); walk < best || (walk == best && c.id < stack.id) {
+				stack, best = c, walk
+			}
+		}
+	}
+	return stack
+}
+
+// guard is what the enemy castles' whole stock within guardWalk turns could land on the castle beyond its growth.
+func (b *board) guard(c *castle) int {
+	most := 0
+	for _, enemy := range b.enemies {
+		walk := b.travel(enemy, c)
+		if walk <= guardWalk && walk < b.turnsLeft() {
+			most += max(0, b.left(enemy)-b.rate(c)*walk)
+		}
+	}
+	return most
+}
+
+// smash sends the stack at the cheapest target it can take and still keep its guard. Returns the log note.
+func smash(b *board, stack *castle) string {
+	longest := smashWalk
+	if b.finishing() {
+		longest = b.turnsLeft() - 1
+	}
+	spare := b.safeOut(stack) - b.guard(stack)
+	var best *option
+	for _, target := range b.castles {
+		if target.team == b.team || target.id == stack.id {
+			continue
+		}
+		walk := b.travel(stack, target)
+		if walk > longest {
+			continue
+		}
+		owner, soldiers := b.atLanding(target, walk)
+		if owner == b.team {
+			continue
+		}
+		need := soldiers + strikeExtra
+		if owner != neutral {
+			need += b.burstPotential(target)
+			for _, enemy := range b.enemies {
+				if enemy.id != target.id && 1+b.travel(enemy, target) <= walk {
+					need += b.left(enemy)
+				}
+			}
+		} else if target.team == neutral && b.sooner(b.enemies, target) < walk {
+			continue
+		}
+		if need > spare {
+			continue
+		}
+		candidate := &option{target, walk, need, nil, need + 2*walk}
+		if candidate.better(best) {
+			best = candidate
+		}
+	}
+	if best == nil {
+		return ""
+	}
+	b.send(stack, best.target, best.need)
+	return fmt.Sprintf("smash>%d in %d need %d", best.target.id, best.walk, best.need)
+}
+
+// build buys the castle's next levels: production for every castle, then speed for the stack, each only while the
+// castle still holds through its landings (and the stack its guard). Returns the log note.
+func build(b *board, c *castle, isStack bool) string {
+	var bought []string
+	for {
+		upgradeType, level := production, b.level(c, production)+1
+		if level > topProduction {
+			if !isStack {
+				break
+			}
+			upgradeType, level = speed, b.level(c, speed)+1
+			if level > stackSpeed {
+				break
+			}
+		}
+		_, cost, found := b.table(upgradeType, level)
+		if !found {
+			break
+		}
+		keep := 0
+		if isStack {
+			keep = b.guard(c)
+		}
+		if b.safeOut(c)-cost < keep {
+			break
+		}
+		b.buy(c, upgradeType, cost)
+		name := "speed"
+		if upgradeType == production {
+			name = "production"
+		}
+		bought = append(bought, fmt.Sprintf("%s%d@%d", name, level, c.id))
+	}
+	return strings.Join(bought, " ")
+}
+
+// feedStack sends the stack what every rear castle's landings don't need, when no enemy group is bound for it.
+func feedStack(b *board, stack *castle) string {
+	var moves []string
+	for _, c := range b.own {
+		if c.id == stack.id || b.level(c, production) < topProduction {
+			continue
+		}
+		bound := false
+		for _, g := range b.groups {
+			if g.destination == c.id && g.team != b.team {
+				bound = true
+			}
+		}
+		if give := b.safeOut(c); !bound && give >= feedLeast {
+			b.send(c, stack, give)
+			moves = append(moves, fmt.Sprintf("%d:%d", c.id, give))
+		}
+	}
+	if len(moves) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("feed>%d %s", stack.id, strings.Join(moves, " "))
+}
+
 // play plays one turn: a pure function of the turn.
 func play(_ context.Context, turn islandbattles.Turn) (islandbattles.Result, error) {
 	b := newBoard(turn)
-	notes := []string{defend(b), strike(b)}
+	notes := []string{defend(b)}
+	stack := stackOf(b)
+	if stack != nil {
+		notes = append(notes, fmt.Sprintf("stack@%d", stack.id))
+		notes = append(notes, smash(b, stack))
+	}
 	for _, c := range b.own {
-		notes = append(notes, upgrade(b, c))
+		notes = append(notes, build(b, c, stack != nil && c.id == stack.id))
 	}
 	notes = append(notes, expand(b))
+	if stack != nil {
+		notes = append(notes, feedStack(b, stack))
+	}
 	producing, home := 0, 0
 	for _, c := range b.own {
 		producing += b.rate(c)

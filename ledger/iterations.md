@@ -8,12 +8,13 @@ A line is a founder and the bots descended from it: one strategy. The main line 
 
 | Line | Its strategy | Head | Other active bots | State |
 |---|---|---|---|---|
-| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce_reach` | `pounce` | side; 1 iteration of work without a promotion; a side line since iteration 45, when `burstguard` passed it |
+| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce_reach` | none | closed; closed in iteration 47: two iterations of work in a row without a promotion |
 | `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | none | closed; closed in iteration 43: two iterations of work in a row without a promotion |
 | `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none | none | closed; closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. Head: none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots |
 | `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | none | closed; closed in iteration 43: two iterations of work in a row without a promotion |
 | `landgrab` | land first: every castle takes the neutrals that pay back soonest before it buys any production level, the nearest two or three castles paying each together, and attacks only as one strike from every castle landing on one enemy castle on the same turn. | `landgrab` | none | side; 0 iterations of work without a promotion; admitted in iteration 43 |
-| `burstguard` | castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold. | `burstguard` | none | main; 0 iterations of work without a promotion; the main line since iteration 45 |
+| `burstguard` | castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold. | `burstguard` | none | side; 0 iterations of work without a promotion; a side line since iteration 47, when `juggernaut` passed it |
+| `juggernaut` | one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack. | `juggernaut` | none | main; 0 iterations of work without a promotion; the main line since iteration 47 |
 
 ## Lessons so far
 
@@ -3456,3 +3457,62 @@ The champion stays `burstguard`.
 | `level1` | 1318 | 0.028 | 0 | 42 | 696 |
 | `level3` | 1105 | 0.008 | 6 | 0 | 732 |
 | `level2` | 996 | 0.004 | 3 | 0 | 735 |
+
+## Iteration 47: run 20261123-c312b4, promoted juggernaut
+
+Run: ledger/runs/20261123-c312b4.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/marlb4, holdout/tarnb4, train/screeb4. Real games it studied: 482.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `juggernaut` | pounce | Founder: one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack. | against the champion: 66/78 | 2046 (2044) | — | 106 (122) | not played | not played | **admitted**: a third of the points or more from the champion (66/78), and plays alike no bot of the league |
+| `pounce_front` | pounce | Graft from batchfront_keep: rear castles feed the front (the own castle nearest an enemy castle) in batches of what they can spare above their own reserve, so the hoard stands where it can strike and help; real game 482 (claw) and wharf, bight and estuary showed pounce's soldiers waiting in rear castles 7 to 13 turns from the enemy while one fed enemy stack outgrew its nearest castle. | 46/78 | 2020 (1992) | 164, 129 (+35; 17 maps better, 13 worse; 10.1%): confirmed | 124 (131) | not played | not played | **rejected**: over 3 points fewer than pounce against the references (124 to 131) |
+| `pounce_together` | pounce | Graft from batchfront_keep: a strike's groups land on one turn: the senders nearer the target wait (the plan kept in memory, their soldiers held) and leave so that every group lands together; pounce sends every joining castle at once, so the nearer groups land first and alone (trickled_attack on 22 maps). | 36/78 | 1982 (1992) | 33, 42 (-9; 10 maps better, 12 worse; 25.2%): worse | 132 (131) | 21, 47 (-26; 9 maps better, 18 worse; 2.3%): clearly worse | 45, 82 (-37; 17 maps better, 31 worse; 1.3%): clearly worse | **rejected**: clearly worse on the holdout maps and clearly worse on all maps against pounce |
+
+### The population's upkeep
+
+- `juggernaut` becomes active: admitted: a third of the points or more from the champion (66/78), and plays alike no bot of the league; the first bot of a side line
+- delete `pounce_front`: rejected: over 3 points fewer than pounce against the references (124 to 131)
+- delete `pounce_together`: rejected: clearly worse on the holdout maps and clearly worse on all maps against pounce
+- `pounce_reach` becomes retired: `pounce` is closed: two iterations of work in a row without a promotion (iteration 47); its head becomes a fixed opponent
+- delete `pounce`: `pounce` is closed: two iterations of work in a row without a promotion (iteration 47)
+- `juggernaut` is the champion: the head of the side line `juggernaut` rates above burstguard on the training maps (1992 to 1979), not below it on the holdout maps, and takes at least half the points from it: the main line changes
+
+**The champion is now `juggernaut`**, was `burstguard`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `punisher` | 2006 | 0.724 | 604 | 34 | 220 |
+| `juggernaut` | 1992 | 0.709 | 589 | 38 | 231 |
+| `fullfeed_unfreeze` | 1980 | 0.696 | 577 | 41 | 240 |
+| `burstguard` | 1979 | 0.695 | 574 | 45 | 239 |
+| `pounce_reach` | 1974 | 0.689 | 569 | 45 | 244 |
+| `batchfront_keep` | 1957 | 0.670 | 559 | 32 | 267 |
+| `landgrab` | 1889 | 0.594 | 478 | 63 | 317 |
+| `ori_mimic` | 1800 | 0.498 | 388 | 78 | 392 |
+| `ori_like` | 1694 | 0.396 | 330 | 20 | 508 |
+| `level1` | 1310 | 0.034 | 0 | 48 | 654 |
+| `level3` | 1215 | 0.020 | 14 | 0 | 688 |
+| `level2` | 1157 | 0.014 | 10 | 0 | 692 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `juggernaut` | 2043 | 0.751 | 687 | 46 | 213 |
+| `batchfront_keep` | 2031 | 0.737 | 682 | 31 | 233 |
+| `burstguard` | 2007 | 0.712 | 641 | 66 | 239 |
+| `pounce_reach` | 1977 | 0.680 | 615 | 56 | 275 |
+| `punisher` | 1976 | 0.679 | 631 | 23 | 292 |
+| `fullfeed_unfreeze` | 1946 | 0.645 | 592 | 37 | 317 |
+| `landgrab` | 1889 | 0.582 | 514 | 74 | 358 |
+| `ori_mimic` | 1800 | 0.489 | 419 | 87 | 440 |
+| `ori_like` | 1718 | 0.412 | 390 | 0 | 556 |
+| `level1` | 1289 | 0.028 | 0 | 44 | 730 |
+| `level3` | 1152 | 0.013 | 10 | 0 | 764 |
+| `level2` | 1038 | 0.006 | 5 | 0 | 769 |

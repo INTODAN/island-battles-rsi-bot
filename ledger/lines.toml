@@ -2,16 +2,16 @@
 # (league_tools/lines.py). A line is a founder and the bots descended from it. state is main,
 # side or closed; without_promotion counts the line's iterations of work in a row without a
 # promotion (a side line is closed at two); bots are the bots of the league in the line.
-champion = "burstguard"
+champion = "juggernaut"
 
 [[line]]
 name = "pounce"
-state = "side"
+state = "closed"
 head = "pounce_reach"
 strategy = "A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers."
-bots = ["pounce", "pounce_reach"]
-without_promotion = 1
-note = "a side line since iteration 45, when `burstguard` passed it"
+bots = ["pounce_reach"]
+without_promotion = 2
+note = "closed in iteration 47: two iterations of work in a row without a promotion"
 
 [[line]]
 name = "ori"
@@ -51,9 +51,18 @@ note = "admitted in iteration 43"
 
 [[line]]
 name = "burstguard"
-state = "main"
+state = "side"
 head = "burstguard"
 strategy = "castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold."
 bots = ["burstguard"]
 without_promotion = 0
-note = "the main line since iteration 45"
+note = "a side line since iteration 47, when `juggernaut` passed it"
+
+[[line]]
+name = "juggernaut"
+state = "main"
+head = "juggernaut"
+strategy = "one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack."
+bots = ["juggernaut"]
+without_promotion = 0
+note = "the main line since iteration 47"
