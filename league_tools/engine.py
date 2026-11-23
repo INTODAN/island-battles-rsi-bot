@@ -25,6 +25,9 @@ from .paths import RUNNER, RUNNER_PIN, RUNNER_SOURCE
 # A checkout of the game's repository to build the runner from, instead of the
 # pinned commit: for trying a change of the runner or the rules before it is merged.
 LOCAL_SOURCE_VARIABLE = "ISLAND_BATTLES_GO"
+# A runner built beforehand, used as it is: the Lambda player's image builds
+# one from the pin, and its filesystem can't hold another build.
+PREBUILT_VARIABLE = "LEAGUE_RUNNER_BINARY"
 
 
 def pin() -> tuple[str, str]:
@@ -103,9 +106,15 @@ def build() -> Build:
     checkout that builds another commit meanwhile can't change what this
     tournament runs.
 
+    With ``LEAGUE_RUNNER_BINARY`` set, that binary is the build, and nothing is built.
+
     Raises:
         RuntimeError: The game's source couldn't be fetched, or the runner didn't build.
     """
+    prebuilt = os.environ.get(PREBUILT_VARIABLE)
+    if prebuilt:
+        binary = Path(prebuilt)
+        return Build(hash=hashlib.sha256(binary.read_bytes()).hexdigest(), binary=binary)
     with exclusive(RUNNER / "build.lock", "league: waiting for another checkout's build of the runner"):
         output = RUNNER / f"headless-match.{os.getpid()}"
         # Without the commit's stamp and the build's paths, the same sources give
@@ -124,13 +133,16 @@ def build() -> Build:
     return Build(hash=digest, binary=binary)
 
 
-def play(binary: Path, schedule: dict[str, Any], worker_log: Path) -> Iterator[dict[str, Any]]:
+def play(
+    binary: Path, schedule: dict[str, Any], worker_log: Path, environment: dict[str, str] | None = None
+) -> Iterator[dict[str, Any]]:
     """Play a schedule, and yield each match's line as it ends.
 
     Args:
         binary: The runner to play it with, from ``build``.
         schedule: The runner's schedule document.
         worker_log: Where the bots' own stderr goes.
+        environment: The runner's environment, which its bots' workers inherit; this process's by default.
 
     Raises:
         RuntimeError: The runner refused the schedule or stopped early.
@@ -144,6 +156,7 @@ def play(binary: Path, schedule: dict[str, Any], worker_log: Path) -> Iterator[d
             stderr=errors,
             text=True,
             encoding="utf-8",
+            env=environment,
         )
         assert process.stdin is not None and process.stdout is not None
         process.stdin.write(json.dumps(schedule))

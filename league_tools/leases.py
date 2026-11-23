@@ -251,10 +251,51 @@ class GitRefs:
         return sorted(line.split("\t")[1].removeprefix(REF_PREFIX) for line in listed if "\t" in line)
 
 
-def backend() -> Backend:
-    """The league's lease backend: the store's when ``LEAGUE_STORE`` is set, else git refs on origin."""
-    if os.environ.get("LEAGUE_STORE"):
+class StoreLeases:
+    """Leases as objects of the match store, ``work-leases/<key>`` with its slashes written ``~``.
+
+    One flat directory, since the store lists one level at a time; a key has no
+    ``~`` (``KEY``). Not under the store's runner build: a run's leases hold
+    whatever runner it plays.
+    """
+
+    DIRECTORY = "work-leases"
+
+    def __init__(self, location: str) -> None:
+        """Leases in the store at ``location`` (``LEAGUE_STORE``'s value)."""
         from . import store
 
-        return store.lease_backend()
+        self.store = store.backend_at(location)
+
+    def _path(self, key: str) -> str:
+        return f"{self.DIRECTORY}/{key.replace('/', '~')}"
+
+    def create(self, key: str, text: str) -> bool:
+        """Create the key's lease; False when one exists."""
+        return self.store.create(self._path(key), text.encode()) is not None
+
+    def read(self, key: str) -> tuple[str, str] | None:
+        """The key's lease text and its tag, or None."""
+        found = self.store.read(self._path(key))
+        return None if found is None else (found[0].decode(), found[1])
+
+    def replace(self, key: str, version: str, text: str) -> bool:
+        """Replace the key's lease if its tag is still this one."""
+        return self.store.replace(self._path(key), text.encode(), version) is not None
+
+    def delete(self, key: str, version: str) -> bool:
+        """Delete the key's lease if its tag is still this one."""
+        return self.store.delete(self._path(key), version)
+
+    def keys(self, prefix: str) -> list[str]:
+        """The keys under a prefix that have a lease."""
+        keys = (name.replace("~", "/") for name in self.store.names(self.DIRECTORY))
+        return sorted(key for key in keys if key.startswith(prefix))
+
+
+def backend() -> Backend:
+    """The league's lease backend: the store's when ``LEAGUE_STORE`` is set, else git refs on origin."""
+    location = os.environ.get("LEAGUE_STORE")
+    if location:
+        return StoreLeases(location)
     return GitRefs()

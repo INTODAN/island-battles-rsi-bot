@@ -9,13 +9,14 @@ import os
 import sys
 import time
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
 from typing import Any
 
 from . import digest, engine, gobots, ratings
+from . import store as match_store
 from .opponents import load_opponents
 from .paths import BOTS, CACHE, LEAGUE, MAPS, RUNS
 from .roster import ANCHOR, load_bot
@@ -179,6 +180,188 @@ def play(tournament: Tournament, run_directory: Path) -> list[dict[str, Any]]:
     )
 
 
+def kept(line: dict[str, Any]) -> bool:
+    """Whether a match's line is a result to keep: the match was played, and nobody failed a turn."""
+    return "error" not in line and not any(seat["failed_turns"] for seat in line["seats"])
+
+
+def keep_locally(line: dict[str, Any]) -> None:
+    """Keep a match's result in the local cache, or drop it there when it isn't one to keep."""
+    cached = CACHE / f"{line['id']}.json"
+    if kept(line):
+        _write_atomically(cached, json.dumps(line))
+    else:
+        # The runner has replaced the demo, so an earlier result of
+        # this match no longer belongs to it.
+        cached.unlink(missing_ok=True)
+
+
+def keep_in_store(store: match_store.Store, line: dict[str, Any]) -> bool:
+    """Keep a match's line in the store, and in the local cache when it is the match's result.
+
+    A line with a failed turn, or of a match the runner couldn't play, is an
+    attempt (the store's ``failed/``), not the result, and the match is played
+    again next time, until the ``MAX_FAILED_ATTEMPTS``-th attempt: that one is
+    the result, failed turns and all, and ``--strict`` fails on it.
+
+    Returns:
+        Whether the line is now the match's result.
+    """
+    key = line["id"]
+    cached, demo = CACHE / f"{key}.json", CACHE / f"{key}.json.gz"
+    final = kept(line)
+    if not final:
+        attempt = store.record_failure(key, line)
+        final = attempt >= match_store.MAX_FAILED_ATTEMPTS
+        if final:
+            print(
+                f"league: {line.get('map')} {' vs '.join(line.get('players') or [])}: attempt {attempt} failed too, "
+                "and is kept as the match's result",
+                file=sys.stderr,
+            )
+    with_demo = final and "error" not in line and demo.is_file()
+    if with_demo:
+        _write_atomically(cached, json.dumps(line))
+    else:
+        cached.unlink(missing_ok=True)
+    if final:
+        store.put_result(key, line, demo.read_bytes() if with_demo else None)
+    return final
+
+
+def run_schedule(
+    build: engine.Build,
+    players: dict[str, dict[str, Any]],
+    maps: dict[str, str],
+    matches: list[dict[str, Any]],
+    run_directory: Path,
+    keep: Callable[[dict[str, Any]], None],
+    *,
+    max_generations: int,
+    turn_timeout_milliseconds: int,
+    parallel: int,
+    environment: dict[str, str] | None = None,
+) -> None:
+    """Play matches in one run of the headless runner, and hand each match's line to ``keep`` as it ends.
+
+    Args:
+        build: The runner.
+        players: Each player's description for the runner (``player_specification``).
+        maps: Each map's file, by the map's name.
+        matches: The matches: their keys (``id``), maps and seats.
+        run_directory: Where the bots' stderr goes (``workers.log``).
+        keep: Called with each match's line.
+        max_generations: The matches' setting.
+        turn_timeout_milliseconds: The matches' setting.
+        parallel: Matches at once.
+        environment: The runner's environment; this process's by default.
+    """
+    schedule = {
+        "players": players,
+        "maps": maps,
+        "matches": matches,
+        "max_generations": max_generations,
+        "turn_timeout_milliseconds": turn_timeout_milliseconds,
+        "parallel": parallel,
+        "demo_directory": str(CACHE),
+        "compress_demos": True,
+    }
+    started = time.monotonic()
+    log = run_directory / "workers.log"
+    lines = (
+        engine.play(build.binary, schedule, log)
+        if environment is None
+        else engine.play(build.binary, schedule, log, environment=environment)
+    )
+    for line in lines:
+        keep(line)
+    seconds = time.monotonic() - started
+    print(
+        f"Time: played {len(matches)} matches in {seconds:.0f} s, {len(matches) / max(seconds, 0.001):.1f} "
+        f"a second on {parallel} at once",
+        file=sys.stderr,
+    )
+
+
+@dataclass
+class _Plan:
+    """A call of ``play_matches``: its matches, what decides each, and the results so far."""
+
+    build: engine.Build
+    settings: list[int]
+    parallel: int
+    run_directory: Path
+    # Each match by its key, as the runner's schedule names it.
+    planned: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Each match's map file and its players' fingerprints, by its key.
+    sources: dict[str, tuple[Path, list[str]]] = field(default_factory=dict)
+    map_hashes: dict[Path, str] = field(default_factory=dict)
+    # The outside opponents, whose matches no other machine can play.
+    outside: set[str] = field(default_factory=set)
+    results: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def shared(self, key: str) -> bool:
+        """Whether another machine can play a match: none of its players is an outside opponent."""
+        return not self.outside & set(self.planned[key]["seats"])
+
+    def from_cache(self) -> list[dict[str, Any]]:
+        """Take what the local cache has; returns the matches still without a result."""
+        for key in self.planned:
+            if key not in self.results:
+                cached = cached_result(key)
+                if cached is not None:
+                    self.results[key] = cached
+        return self.missing()
+
+    def missing(self) -> list[dict[str, Any]]:
+        """The matches without a result yet."""
+        return [match for key, match in self.planned.items() if key not in self.results]
+
+    def from_store(self, store: match_store.Store, matches: list[dict[str, Any]]) -> int:
+        """Take what the store has of these matches, into the local cache too; returns how many it had."""
+        keys = [match["id"] for match in matches if match["id"] not in self.results and self.shared(match["id"])]
+        found = match_store.each(lambda key: store.fetch(key, CACHE), keys)
+        for key, result in zip(keys, found, strict=True):
+            if result is not None:
+                self.results[key] = result
+        return sum(result is not None for result in found)
+
+    def play_here(self, matches: list[dict[str, Any]], keep: Callable[[dict[str, Any]], None]) -> None:
+        """Play matches on this machine, building the league bots that need it."""
+        names = sorted({name for match in matches for name in match["seats"]})
+        # Each league bot is built once per tournament, and not again while its code is the same.
+        binaries = gobots.build(name for name in names if not ANCHOR.fullmatch(name) and name not in self.outside)
+
+        def kept_here(line: dict[str, Any]) -> None:
+            self.results[line["id"]] = line
+            keep(line)
+
+        run_schedule(
+            self.build,
+            {name: player_specification(name, binaries.get(name)) for name in names},
+            {map_file.stem: str(map_file) for map_file in self.map_hashes},
+            matches,
+            self.run_directory,
+            kept_here,
+            max_generations=self.settings[0],
+            turn_timeout_milliseconds=self.settings[1],
+            parallel=self.parallel,
+        )
+
+    def request(self, key: str) -> dict[str, Any]:
+        """What the players need to play a match: the queue's entry."""
+        map_file, fingerprints = self.sources[key]
+        match = self.planned[key]
+        return {
+            "key": key,
+            "build": self.build.hash,
+            "map": {"name": match["map"], "sha256": self.map_hashes[map_file]},
+            "seats": match["seats"],
+            "fingerprints": fingerprints,
+            "settings": self.settings,
+        }
+
+
 def play_matches(
     matches: list[tuple[Path, list[str]]],
     run_directory: Path,
@@ -196,83 +379,242 @@ def play_matches(
     a turn can run out of time because the machine was busy, and the next
     tournament plays that match again. With a shard, only the matches whose
     key falls in it are played and returned.
+
+    With a match store (``LEAGUE_STORE``, ``league_tools/store.py``) the local
+    cache is a read-through copy of it: what the cache lacks is taken from the
+    store, and what neither has is played once for the whole league. In play
+    mode, the default, this machine leases what it can, plays it as without a
+    store and writes the results to the store; the matches other machines hold
+    are waited for, and taken over when their lease ends. In request mode,
+    for a step that read real games, it sends the bots' code and the maps,
+    queues the matches for the players (``league player``) and waits for
+    them: it never writes a result to the store. A result with a failed turn
+    is then played again at most ``MAX_FAILED_ATTEMPTS`` times, the last
+    attempt being the result. ``use_cache=False`` leaves the store alone.
+
+    Outside opponents (``opponents.local.toml``) can't be played on another
+    machine: their matches are always played here, kept in the local cache
+    alone, and never written to the store or asked for.
     """
     build = engine.build()
     # A bot's code is read once per tournament, not once per match.
     player_fingerprint.cache_clear()
     settings = [max_generations, turn_timeout_milliseconds]
-    planned: dict[str, dict[str, Any]] = {}
-    map_hashes: dict[Path, str] = {}
+    plan = _Plan(build, settings, parallel or os.cpu_count() or 1, run_directory, outside=set(load_opponents()))
     for map_file, seats in matches:
-        if map_file not in map_hashes:
-            map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
+        if map_file not in plan.map_hashes:
+            plan.map_hashes[map_file] = hashlib.sha256(map_file.read_bytes()).hexdigest()
         fingerprints = [player_fingerprint(name) for name in seats]
-        key = match_key(build.hash, map_hashes[map_file], seats, fingerprints, settings)
+        key = match_key(build.hash, plan.map_hashes[map_file], seats, fingerprints, settings)
         if not in_shard(key, shard):
             continue
-        planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
-    results: dict[str, dict[str, Any]] = {}
+        plan.planned[key] = {"id": key, "map": map_file.stem, "seats": seats}
+        plan.sources[key] = (map_file, fingerprints)
+    results = plan.results
+    store = match_store.open_store(build.hash) if use_cache else None
 
-    def from_cache() -> list[dict[str, Any]]:
-        if use_cache:
-            for key in planned:
-                if key not in results:
-                    cached = cached_result(key)
-                    if cached is not None:
-                        results[key] = cached
-        return [match for key, match in planned.items() if key not in results]
-
-    to_play = from_cache()
+    to_play = plan.from_cache() if use_cache else plan.missing()
+    from_store = plan.from_store(store, to_play) if store is not None else 0
+    to_play = plan.missing()
     part = f" in shard {shard[0]}/{shard[1]}" if shard else ""
-    print(f"{len(planned)} matches{part}: {len(results)} cached, {len(to_play)} to play", file=sys.stderr, flush=True)
+    stored = f" ({from_store} of them from the store)" if store is not None else ""
+    print(
+        f"{len(plan.planned)} matches{part}: {len(results)} cached{stored}, {len(to_play)} to play",
+        file=sys.stderr,
+        flush=True,
+    )
     if not to_play:
-        return [results[key] for key in planned if key in results]
+        return [results[key] for key in plan.planned if key in results]
     CACHE.mkdir(parents=True, exist_ok=True)
+    if store is not None and store.mode == "request":
+        _request(plan, store, to_play)
+        return [results[key] for key in plan.planned if key in results]
     # One tournament plays at a time on this machine, whichever checkout it
     # runs from: several at once only slow every turn down (and a turn that
     # runs out of time fails), and the one that waits finds in the cache
     # what the other played.
     waiting = time.monotonic()
+    others: list[dict[str, Any]] = []
     with engine.exclusive(CACHE / ".play.lock", "league: waiting for another tournament to finish playing"):
         waited = time.monotonic() - waiting
         if waited >= 1:
             print(f"Time: waited {waited:.0f} s for another tournament", file=sys.stderr)
         before = len(to_play)
-        to_play = from_cache()
+        to_play = plan.from_cache() if use_cache else to_play
+        if store is not None:
+            plan.from_store(store, to_play)
+            to_play = plan.missing()
         if len(to_play) < before:
             print(f"{before - len(to_play)} of them were played meanwhile; {len(to_play)} to play", file=sys.stderr)
-        if to_play:
-            names = sorted({name for match in to_play for name in match["seats"]})
-            # Each league bot is built once per tournament, and not again while its code is the same.
-            outside = load_opponents()
-            binaries = gobots.build(name for name in names if not ANCHOR.fullmatch(name) and name not in outside)
-            schedule = {
-                "players": {name: player_specification(name, binaries.get(name)) for name in names},
-                "maps": {map_file.stem: str(map_file) for map_file in map_hashes},
-                "matches": to_play,
-                "max_generations": max_generations,
-                "turn_timeout_milliseconds": turn_timeout_milliseconds,
-                "parallel": parallel or os.cpu_count() or 1,
-                "demo_directory": str(CACHE),
-                "compress_demos": True,
-            }
-            started = time.monotonic()
-            for line in engine.play(build.binary, schedule, run_directory / "workers.log"):
-                results[line["id"]] = line
-                cached = CACHE / f"{line['id']}.json"
-                if "error" not in line and not any(seat["failed_turns"] for seat in line["seats"]):
-                    _write_atomically(cached, json.dumps(line))
-                else:
-                    # The runner has replaced the demo, so an earlier result of
-                    # this match no longer belongs to it.
-                    cached.unlink(missing_ok=True)
-            seconds = time.monotonic() - started
-            print(
-                f"Time: played {len(to_play)} matches in {seconds:.0f} s, {len(to_play) / max(seconds, 0.001):.1f} "
-                f"a second on {schedule['parallel']} at once",
-                file=sys.stderr,
-            )
-    return [results[key] for key in planned if key in results]
+        if to_play and store is None:
+            plan.play_here(to_play, keep_locally)
+        elif to_play and store is not None:
+            others = _lease_and_play(plan, store, to_play)
+    if store is not None and others:
+        _wait_for(plan, store, others, take_over=True)
+    return [results[key] for key in plan.planned if key in results]
+
+
+def _lease(
+    plan: _Plan, store: match_store.Store, matches: list[dict[str, Any]]
+) -> tuple[dict[str, match_store.Lease], list[dict[str, Any]]]:
+    """Lease what can be leased of these matches; returns the leases, and the matches someone else holds.
+
+    A match whose result came in between the look in the store and the lease
+    is taken from the store, and its lease given back.
+    """
+    seconds = match_store.lease_seconds(len(matches), plan.parallel)
+    got = match_store.each(lambda match: store.lease(match["id"], seconds), matches)
+    leases = {lease.key: lease for lease in got if lease is not None}
+    held = [match for match, lease in zip(matches, got, strict=True) if lease is None]
+    keys = list(leases)
+    for key, result in zip(keys, match_store.each(lambda key: store.fetch(key, CACHE), keys), strict=True):
+        if result is not None:
+            plan.results[key] = result
+            store.release(leases.pop(key))
+    return leases, held
+
+
+def _play_leased(
+    plan: _Plan, store: match_store.Store, matches: list[dict[str, Any]], leases: dict[str, match_store.Lease]
+) -> None:
+    """Play matches here while holding their leases, writing each result to the store as it ends."""
+    if not matches:
+        return
+    with match_store.Heartbeat(store, leases.values()) as heartbeat:
+
+        def keep(line: dict[str, Any]) -> None:
+            key = line["id"]
+            if key not in plan.planned or not plan.shared(key):
+                keep_locally(line)
+                return
+            keep_in_store(store, line)
+            lease = heartbeat.pop(key)
+            if lease is not None:
+                store.release(lease)
+
+        plan.play_here(matches, keep)
+
+
+def _lease_and_play(plan: _Plan, store: match_store.Store, to_play: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Lease what this machine can of the matches and play it; returns the matches other players hold."""
+    alone = [match for match in to_play if not plan.shared(match["id"])]
+    shared = [match for match in to_play if plan.shared(match["id"])]
+    leases, others = _lease(plan, store, shared)
+    print(
+        f"Store: {len(leases)} of them leased here, {len(others)} held by other players"
+        + (f", {len(alone)} with an outside opponent, played here alone" if alone else ""),
+        file=sys.stderr,
+    )
+    _play_leased(plan, store, alone + [match for match in shared if match["id"] in leases], leases)
+    return others
+
+
+def _request(plan: _Plan, store: match_store.Store, to_play: list[dict[str, Any]]) -> None:
+    """Ask the players for the matches that neither the cache nor the store has, and wait for them.
+
+    Sends the league bots' code and the maps the store lacks, and queues the
+    matches. It writes no result, lease or failed attempt to the store: a
+    machine that never saw this step's inputs builds the code and plays it.
+    """
+    alone = [match for match in to_play if not plan.shared(match["id"])]
+    shared = [match for match in to_play if plan.shared(match["id"])]
+    if alone:
+        with engine.exclusive(CACHE / ".play.lock", "league: waiting for another tournament to finish playing"):
+            plan.play_here(alone, keep_locally)
+    sent: set[str] = set()
+    for match in shared:
+        map_file, fingerprints = plan.sources[match["id"]]
+        for name, fingerprint in zip(match["seats"], fingerprints, strict=True):
+            if ANCHOR.fullmatch(name) or fingerprint in sent:
+                continue
+            if gobots.fingerprint(BOTS / name) != fingerprint:
+                raise RuntimeError(f"bots/{name} changed while the tournament ran; play it again")
+            store.put_code(fingerprint, BOTS / name)
+            sent.add(fingerprint)
+        if str(map_file) not in sent:
+            if store.put_map(map_file.read_bytes()) != plan.map_hashes[map_file]:
+                raise RuntimeError(f"{map_file} changed while the tournament ran; play it again")
+            sent.add(str(map_file))
+    added = sum(match_store.each(lambda match: store.enqueue(plan.request(match["id"])), shared))
+    woken = store.wake_players(added)
+    print(
+        f"Store: requested {added} matches from the players"
+        + (f" ({len(shared) - added} were requested already)" if added < len(shared) else "")
+        + (f", and woke {woken} Lambda players" if woken else "")
+        + (f"; {len(alone)} with an outside opponent were played here" if alone else ""),
+        file=sys.stderr,
+        flush=True,
+    )
+    _wait_for(plan, store, shared, take_over=False)
+
+
+def _wait_for(plan: _Plan, store: match_store.Store, matches: list[dict[str, Any]], take_over: bool) -> None:
+    """Wait for matches that other players hold or were asked for, polling the store with a backoff.
+
+    With ``take_over``, a match whose lease ended without a result (its player
+    stopped, or its attempt failed a turn) is leased and played here. Without
+    it (request mode), a match off the queue without a result was refused by
+    the players. A match still missing after ``LEAGUE_STORE_WAIT_SECONDS`` is
+    returned as not played.
+    """
+    pending = {match["id"]: match for match in matches}
+    if not pending:
+        return
+    started = time.monotonic()
+    limit = match_store.wait_seconds()
+    delay = match_store.POLL_SECONDS
+    taken = refused = 0
+    while True:
+        keys = list(pending)
+        for key, result in zip(keys, match_store.each(lambda key: store.fetch(key, CACHE), keys), strict=True):
+            if result is not None:
+                plan.results[key] = result
+                del pending[key]
+        if not pending:
+            break
+        if take_over:
+            leases, _ = _lease(plan, store, list(pending.values()))
+            for key in [key for key in pending if key in plan.results]:
+                del pending[key]
+            if leases:
+                with engine.exclusive(CACHE / ".play.lock", "league: waiting for another tournament to finish playing"):
+                    _play_leased(plan, store, [pending.pop(key) for key in list(leases)], leases)
+                taken += len(leases)
+                delay = match_store.POLL_SECONDS
+                continue
+        else:
+            # Off the queue first, then no result: a player that played it wrote the result before it dequeued.
+            keys = list(pending)
+            gone = match_store.each(lambda key: not store.is_queued(key) and not store.has_result(key), keys)
+            for key in [key for key, off in zip(keys, gone, strict=True) if off]:
+                match = pending.pop(key)
+                plan.results[key] = {
+                    "id": key,
+                    "map": match["map"],
+                    "players": match["seats"],
+                    "error": "the store's players refused it: see their output",
+                }
+                refused += 1
+        if not pending or time.monotonic() - started >= limit:
+            break
+        time.sleep(delay)
+        delay = min(delay * 2, match_store.MAX_POLL_SECONDS)
+    for key, match in pending.items():
+        plan.results[key] = {
+            "id": key,
+            "map": match["map"],
+            "players": match["seats"],
+            "error": f"no player of the store played it within {limit:.0f} s",
+        }
+    print(
+        f"Time: waited {time.monotonic() - started:.0f} s for {len(matches)} matches "
+        + ("that other players held" if take_over else "from the store's players")
+        + (f"; took over {taken} whose lease ended" if taken else "")
+        + (f"; {refused} refused" if refused else "")
+        + (f"; {len(pending)} never came" if pending else ""),
+        file=sys.stderr,
+    )
 
 
 def points(result: dict[str, Any], player: str) -> float:

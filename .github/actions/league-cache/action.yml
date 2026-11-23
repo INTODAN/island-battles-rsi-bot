@@ -5,6 +5,9 @@
 # merged cache is saved under that suffix, so that what the runners played
 # outlives a run that fails later.
 #
+# With a match store (the repository variable LEAGUE_STORE), the jobs share
+# their matches through the store instead, and the shards pattern is empty.
+#
 # The cache holds league games only, never a real game. It ends with the mark
 # runs/.played-since: the files newer than it were played on this runner, and
 # league-cache-upload uploads them.
@@ -21,6 +24,11 @@ inputs:
   save-as:
     description: Save the merged cache under this suffix of the run's key; empty to save nothing.
     default: ""
+  go-version:
+    description: >-
+      The Go that builds the runner and the bots. With a match store, a runner built by another Go has
+      another hash, and its matches other keys: the store's players need the same one.
+    default: "1.25"
 
 runs:
   using: composite
@@ -32,7 +40,7 @@ runs:
 
     - uses: actions/setup-go@v6
       with:
-        go-version: "1.25"
+        go-version: ${{ inputs.go-version }}
         cache: false
 
     - uses: actions/cache/restore@v4

@@ -313,3 +313,14 @@ def test_a_proposal_whose_files_are_withdrawn_leaves_the_tree_as_it_was(tmp_path
     integrate.withdraw(proposal, cwd=root)
     assert not (root / "bots" / "bad").exists() and not (root / "maps" / "train" / "new.json").exists()
     assert _git(root, "status", "--porcelain") == ""
+
+
+def test_leases_work_the_same_in_a_directory_store(tmp_path: Path) -> None:
+    a, b = leases.StoreLeases(str(tmp_path / "store")), leases.StoreLeases(str(tmp_path / "store"))
+    assert leases.take(a, "slot/champ/side-x", "run-a").run == "run-a"
+    assert leases.take(b, "slot/champ/side-x", "run-b").run == "run-a"
+    assert [lease.key for lease in leases.held(b, "slot/")] == ["slot/champ/side-x"]
+    leases.take(a, "idea/old", "run-a", hours=-1)
+    assert leases.take(b, "idea/old", "run-b").run == "run-b"
+    assert leases.drop(b, "run-a") == ["slot/champ/side-x"]
+    assert [lease.key for lease in leases.held(a)] == ["idea/old"]

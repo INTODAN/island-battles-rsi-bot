@@ -19,6 +19,7 @@ from . import leases as leases_module
 from . import ledger, maps, opponents, roster, tournament
 from . import lines as lines_module
 from . import mistakes as mistakes_module
+from . import player as player_module
 from . import rematch as rematch_module
 from . import replay as replay_module
 from .paths import LEDGER, MAPS, RUNS
@@ -88,6 +89,12 @@ def _mistakes(arguments: argparse.Namespace) -> int:
     else:
         print(mistakes_module.markdown(found, mistakes_module.games_played(results)))
     return 0
+
+
+def _player(arguments: argparse.Namespace) -> int:
+    if arguments.batch < 1:
+        raise ValueError("--batch is a number of matches, 1 or more")
+    return player_module.run(arguments.drain, arguments.batch, arguments.max_seconds, arguments.parallel)
 
 
 def _digest(arguments: argparse.Namespace) -> int:
@@ -361,6 +368,22 @@ def main(argv: list[str] | None = None) -> int:
     mistakes.add_argument("--run-id", help="the directory under runs/ for the bots' stderr; default: mistakes")
     mistakes.add_argument("--json", action="store_true", help="print the tables as JSON")
     mistakes.set_defaults(handler=_mistakes)
+    player_command = commands.add_parser(
+        "player",
+        help="play the matches that others asked the match store (LEAGUE_STORE) for, built from the store's code "
+        "alone, and write their results there",
+    )
+    player_command.add_argument(
+        "--drain", action="store_true", help="stop once no queued match is left that this player could lease"
+    )
+    player_command.add_argument(
+        "--batch", type=int, default=50, help="matches leased and played in one run of the runner; default 50"
+    )
+    player_command.add_argument(
+        "--max-seconds", type=float, help="take no new batch after this many seconds; default: no limit"
+    )
+    player_command.add_argument("--parallel", type=int, default=0, help="matches at once; default: the CPUs")
+    player_command.set_defaults(handler=_player)
 
     study = commands.add_parser("digest", help="print a demo as a timeline, events and logs")
     study.add_argument("demo")
