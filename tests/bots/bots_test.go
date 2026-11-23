@@ -619,6 +619,8 @@ func TestBotsAreSelfContainedAndPure(t *testing.T) {
 			relative, _ := filepath.Rel(directory, path)
 			switch {
 			case strings.HasSuffix(path, "_test.go"):
+				// check.sh runs only tests/: a bot's own test would escape these checks.
+				t.Errorf("%s: %s is a test; the bots' tests are tests/bots/", name, relative)
 			case strings.HasSuffix(path, ".go"):
 				if filepath.Dir(relative) != "." {
 					t.Errorf("%s: %s is in a package of its own; a bot is one package", name, relative)

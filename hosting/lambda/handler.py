@@ -133,7 +133,14 @@ class WorkerPlay:
 
     def __call__(self, turn: BotTurn) -> dict[str, Any]:
         """Play one turn, and return the result as the worker wrote it."""
-        with self._lock:
+        if not self._lock.acquire(blocking=False):
+            # A turn that ran out of time still waits for this worker: end it, so that this turn and the next
+            # ones get a new worker instead of each waiting behind it until it too runs out of time.
+            stuck = self._process
+            if stuck is not None:
+                stuck.kill()
+            self._lock.acquire()
+        try:
             process = self._worker()
             assert process.stdin is not None and process.stdout is not None
             process.stdin.write(json.dumps({"turn": turn.model_dump(mode="json", by_alias=True)}) + "\n")
@@ -143,6 +150,8 @@ class WorkerPlay:
                 self._process = None
                 raise RuntimeError(f"{self.binary.name}'s worker stopped")
             answer = json.loads(line)
+        finally:
+            self._lock.release()
         if "error" in answer:
             raise RuntimeError(answer["error"])
         return answer["result"]

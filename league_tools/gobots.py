@@ -67,6 +67,7 @@ def build(names: Iterable[str]) -> dict[str, Path]:
                     "build",
                     "-trimpath",
                     "-buildvcs=false",
+                    "-ldflags=-s -w",
                     "-o",
                     output + os.sep,
                     *(f"./bots/{name}" for name in missing),
@@ -79,6 +80,9 @@ def build(names: Iterable[str]) -> dict[str, Path]:
             if built.returncode != 0:
                 raise RuntimeError(f"a bot didn't build:\n{built.stderr.strip()}")
             for name in missing:
+                # A bot edited while it built may hold the new code: never keep it under the old code's hash.
+                if binary_path(name) != wanted[name]:
+                    raise RuntimeError(f"bots/{name} changed while it was built; build it again")
                 os.replace(Path(output) / name, wanted[name])
     return wanted
 
@@ -104,7 +108,13 @@ class Worker:
             text=True,
             encoding="utf-8",
         )
-        if self._read() != {"ready": True}:
+        try:
+            ready = self._read()
+        except WorkerError, ValueError:
+            ready = None
+        if ready != {"ready": True}:
+            self.process.kill()
+            self.process.wait()
             raise WorkerError(f"{name}'s worker didn't start")
 
     def _read(self) -> dict[str, Any]:

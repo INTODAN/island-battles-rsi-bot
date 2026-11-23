@@ -318,7 +318,7 @@ def replay(demos: list[tuple[str, dict[str, Any]]], bot_name: str, color: int = 
                     result = bot.play(bot_turn(demo, index, color).model_dump(mode="json"))
                     upgrades, sends = bot_commands(result)
                 except WorkerError as error:  # a bot that fails made no command
-                    report.note(f"bot error: {str(error).strip().splitlines()[0][:60]}", where)
+                    report.note(f"bot error: {(str(error).strip().splitlines() or ['no message'])[0][:60]}", where)
                     upgrades, sends = [], []
                 _compare(report, frame, color, where, real, upgrades, sends)
     return report
