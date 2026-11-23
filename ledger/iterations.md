@@ -2921,4 +2921,4 @@ On the clock, from the first step to the record; the reading before it is not in
 
 **What a rating means** doesn't change: the same anchor, the same rules, the same maps. Each run still adds two holdout maps and a training map, with seeds from its id; the map sets grow faster.
 
-**Not done, not verified.** No run has gone through the integrator on main yet. The store and the Lambda players are built and tested on a directory store and stubbed S3, not deployed. The detectors were calibrated on 450 games of three training maps.
+**Not done, not verified.** No run has gone through the integrator on main yet. It was tried end to end on a scratch branch: a copy of the champion proposed as a fix was rejected (no game changed; nothing on the holdout maps), deleted, and recorded as iteration 40 with its row of progress, the champion unchanged at 2093, in one commit. The store and the Lambda players are built and tested on a directory store and stubbed S3, not deployed. The detectors were calibrated on 450 games of three training maps.

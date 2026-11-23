@@ -116,25 +116,29 @@ def _until(hours: float = HOURS) -> str:
     return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=hours)).isoformat(timespec="seconds")
 
 
-def take(backend: Backend, key: str, run: str, hours: float = HOURS) -> Lease:
+def take(backend: Backend, key: str, run: str, hours: float = HOURS, tries: int = 3) -> Lease:
     """Take a key for a run. Returns the run's lease, or the lease of whoever holds it.
 
     The run already holding it renews it. An expired lease is taken over.
+
+    Raises:
+        RuntimeError: The lease could be neither created nor read: the backend refuses this
+            machine's writes (no push access to the remote, no write to the store's leases).
     """
     lease = Lease(check_key(key), run, _until(hours))
-    if backend.create(key, lease.text()):
-        return lease
-    found = backend.read(key)
-    if found is None:
-        return take(backend, key, run, hours)
-    text, version = found
-    held = Lease.parse(text)
-    if held.run != run and not held.expired():
-        return held
-    if backend.replace(key, version, lease.text()):
-        return lease
-    found = backend.read(key)
-    return Lease.parse(found[0]) if found else take(backend, key, run, hours)
+    for _ in range(tries):
+        if backend.create(key, lease.text()):
+            return lease
+        found = backend.read(key)
+        if found is None:
+            continue
+        text, version = found
+        held = Lease.parse(text)
+        if held.run != run and not held.expired():
+            return held
+        if backend.replace(key, version, lease.text()):
+            return lease
+    raise RuntimeError(f"can't take or read the lease {key}: does this machine have write access to the leases?")
 
 
 def release(backend: Backend, key: str, run: str) -> bool:

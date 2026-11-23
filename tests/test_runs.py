@@ -324,3 +324,31 @@ def test_leases_work_the_same_in_a_directory_store(tmp_path: Path) -> None:
     assert leases.take(b, "idea/old", "run-b").run == "run-b"
     assert leases.drop(b, "run-a") == ["slot/champ/side-x"]
     assert [lease.key for lease in leases.held(a)] == ["idea/old"]
+
+
+class _Refusing:
+    """A backend that refuses every write and holds nothing, as a remote without push access does."""
+
+    def create(self, key: str, text: str) -> bool:
+        return False
+
+    def read(self, key: str) -> tuple[str, str] | None:
+        return None
+
+    def replace(self, key: str, version: str, text: str) -> bool:
+        return False
+
+    def delete(self, key: str, version: str) -> bool:
+        return False
+
+    def keys(self, prefix: str) -> list[str]:
+        return []
+
+
+def test_a_lease_that_can_be_neither_written_nor_read_is_an_error_not_a_loop() -> None:
+    try:
+        leases.take(_Refusing(), "idea/x", "run-a")
+    except RuntimeError as error:
+        assert "write access" in str(error)
+    else:
+        raise AssertionError("no error")
