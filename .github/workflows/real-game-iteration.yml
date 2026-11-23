@@ -831,10 +831,10 @@ jobs:
             echo "::error::the ledger's last entry is iteration $n, but this run claimed iteration $CLAIMED"
             exit 1
           fi
-          # The second half replaces the hand-over's last line with its own part;
-          # while the line is there the progress test excuses the missing row.
-          if grep -q '^Second half:' ledger/iterations.md; then
-            echo "::error::the ledger still holds the hand-over's \"Second half:\" line"
+          # The progress test excuses a hand-over's missing row (the first half's
+          # check needs that), so the finished iteration's row is checked here.
+          if ! grep -q "^$CLAIMED," ledger/progress.csv; then
+            echo "::error::ledger/progress.csv has no row for iteration $CLAIMED"
             exit 1
           fi
           today=$(date -u +%Y-%m-%d)

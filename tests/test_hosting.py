@@ -133,11 +133,11 @@ def test_the_home_page_charts_the_leagues_progress(tmp_path: Path) -> None:
     assert "Time per iteration" not in page.render("finish_speed", overview, listed)
 
 
-def _finished_iterations(ledger: str) -> list[int]:
-    """The ledger's iterations, but for the newest one while it is still a split
-    iteration's hand-over (its entry ends with the line "Second half: ..."): the
-    first half writes the entry's start, and only the second half has the final
-    tables that its progress row needs."""
+def _finished_iterations(ledger: str) -> tuple[list[int], int | None]:
+    """The ledger's finished iterations, and the newest one if it is still a
+    split iteration's hand-over (its entry ends with the line "Second half: ..."):
+    the first half writes the entry's start, and only the second half has the
+    final tables that its progress row needs."""
     entries: list[tuple[int, list[str]]] = []
     for line in ledger.splitlines():
         if match := ITERATION.match(line):
@@ -150,14 +150,17 @@ def _finished_iterations(ledger: str) -> list[int]:
     handovers = [n for n, handover in iterations if handover]
     newest = max((n for n, _ in iterations), default=None)
     assert handovers in ([], [newest]), f"only the newest iteration may be a hand-over, not {handovers}"
-    return sorted(n for n, handover in iterations if not handover)
+    return sorted(n for n, handover in iterations if not handover), (handovers[0] if handovers else None)
 
 
 def test_every_iteration_of_the_ledger_has_its_progress() -> None:
     root = Path(__file__).parent.parent
     ledger = (root / "ledger" / "iterations.md").read_text()
     rows = page.load_progress(root / "ledger" / "progress.csv")
-    assert [row["iteration"] for row in rows] == _finished_iterations(ledger)
+    finished, handover = _finished_iterations(ledger)
+    # A hand-over may have its row already, or not yet.
+    expected = [finished, sorted([*finished, handover])] if handover is not None else [finished]
+    assert [row["iteration"] for row in rows] in expected
     assert {row["scale"] for row in rows} <= set(page.SCALES)
 
 
@@ -167,8 +170,8 @@ def test_a_split_iterations_hand_over_needs_no_progress_yet() -> None:
         "## Iteration 1: one\n\nDone.\n\n"
         "## Iteration 2: two\n\nFound things.\n\nSecond half: the rest of step 4, then steps 5 to 7.\n"
     )
-    assert _finished_iterations(ledger) == [1]
-    assert _finished_iterations(ledger.replace("Second half: the rest", "The rest")) == [1, 2]
+    assert _finished_iterations(ledger) == ([1], 2)
+    assert _finished_iterations(ledger.replace("Second half: the rest", "The rest")) == ([1, 2], None)
     stale = ledger.replace("Done.", "Second half: the rest of step 4, then steps 5 to 7.")
     with pytest.raises(AssertionError, match="only the newest"):
         _finished_iterations(stale)
