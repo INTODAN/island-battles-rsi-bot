@@ -81,6 +81,8 @@ _HERE = Path(__file__).parent
 STUDIES = page.load_studies(
     *[path for path in (_HERE / "studies", _HERE.parent.parent / "ledger" / "studies") if path.is_dir()]
 )
+# The league's progress over the iterations: bundled by build.sh, or the ledger's when run from the repository.
+PROGRESS = page.load_progress(_HERE / "progress.csv", _HERE.parent.parent / "ledger" / "progress.csv")
 MAPS = games.KnownMaps.load(*[path for path in (_HERE / "maps", _HERE.parent.parent / "maps") if path.is_dir()])
 _ZIP_PATH = re.compile(r"^/games/(\d+)\.zip$")
 # The largest demo the bot downloads, and how long it waits for it.
@@ -347,7 +349,7 @@ def _home(store: games.Store | None) -> dict[str, Any]:
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render(_bot.name, summary, listed, STUDIES),
+        "body": page.render(_bot.name, summary, listed, STUDIES, PROGRESS),
     }
 
 

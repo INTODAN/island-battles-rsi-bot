@@ -26,6 +26,8 @@ cp league_tools/digest.py "$out/package/digest.py"
 mkdir -p "$out/package/studies"
 studies=(); [[ -d ledger/studies ]] && studies=(ledger/studies/[0-9]*.md)
 [[ -e "${studies[0]:-}" ]] && cp "${studies[@]}" "$out/package/studies/"
+# The league's progress, which the home page charts.
+cp ledger/progress.csv "$out/package/progress.csv"
 # The league's maps, which name the map of a real game.
 mkdir -p "$out/package/maps"
 cp maps/*/*.json "$out/package/maps/"
