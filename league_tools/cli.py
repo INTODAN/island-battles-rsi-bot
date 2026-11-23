@@ -221,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     replay.add_argument(
         "demo", nargs="+", help="demos, packed with gzip or not, such as lobby games against the opponent"
     )
-    replay.add_argument("--bot", required=True, help="the league bot to replay, by name (bots/NAME/bot.py)")
+    replay.add_argument("--bot", required=True, help="the league bot to replay, by name (bots/NAME/)")
     replay.add_argument(
         "--team", type=int, choices=(1, 2), default=2, help="the team's colour to imitate; default 2, the opponent"
     )

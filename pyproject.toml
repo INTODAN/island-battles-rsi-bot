@@ -24,7 +24,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["bots", "league_tools"]
+packages = ["league_tools"]
 
 [tool.ruff]
 extend-exclude = ["*.md", "runs", ".runner"]

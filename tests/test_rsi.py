@@ -103,9 +103,9 @@ def test_a_zip_is_unpacked_by_its_known_names_only(tmp_path: Path) -> None:
 
 def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> None:
     allowed = [
-        ("A", "bots/ori_fast/bot.py"),
+        ("A", "bots/ori_fast/main.go"),
         ("M", "bots/ori_hold/bot.toml"),
-        ("D", "bots/old_bot/bot.py"),
+        ("D", "bots/old_bot/main.go"),
         ("M", "ledger/iterations.md"),
         ("M", "ledger/real-games.txt"),
         ("A", "ledger/studies/471.md"),
@@ -115,7 +115,8 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
     assert scope.out_of_scope(allowed) == []
     refused = [
         ("M", ".github/workflows/checks.yml"),
-        ("M", "bots/__init__.py"),
+        ("M", "go.mod"),
+        ("M", "tests/bots/bots_test.go"),
         ("M", "maps/train/claw.json"),
         ("M", "league_tools/tournament.py"),
         ("M", "tests/test_bots.py"),

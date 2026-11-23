@@ -46,3 +46,5 @@ CACHE = SHARED / "runs" / "cache"
 # The game's source at that commit, fetched on the first build, and the runners built from it.
 RUNNER = SHARED / ".runner"
 RUNNER_SOURCE = RUNNER / "source"
+# The bots' binaries, each named by its bot and a hash of its code: shared by all checkouts.
+BINARIES = SHARED / "runs" / "bin"

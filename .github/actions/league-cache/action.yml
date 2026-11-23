@@ -45,6 +45,11 @@ runs:
         key: ${{ inputs.key-prefix }}-${{ github.run_id }}
         restore-keys: ${{ inputs.key-prefix }}-
 
+    # The bots are Go programs on the game's Go SDK: the modules that go.mod pins, before Claude runs.
+    - name: Download the bots' Go modules
+      shell: bash
+      run: go mod download
+
     - uses: actions/download-artifact@v4
       if: inputs.shards != ''
       with:

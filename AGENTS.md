@@ -1,6 +1,6 @@
 # Agent guide
 
-This repository is a **bot league** for the game Island Battles: Python bots that only AI agents write and improve, and the tools that play them against each other and measure them. [README.md](README.md) is the design; read it first.
+This repository is a **bot league** for the game Island Battles: Go bots, on the game's Go SDK, that only AI agents write and improve, and the tools (Python) that play them against each other and measure them. [README.md](README.md) is the design; read it first.
 
 The game is a separate project, [INTODAN/island-battles-go](https://github.com/INTODAN/island-battles-go). This repository is a player of that game, as any person's bot project is, and holds none of its code.
 
@@ -23,4 +23,4 @@ The game is a separate project, [INTODAN/island-battles-go](https://github.com/I
 
 ## The copied skills
 
-`island-battles-rules`, `writing-a-bot` and `bot-logging` are copies of the skills in the game's Python bot template (`templates/python-bot/.agents/skills/`), taken at the commit in `runner.toml`. They mention that template's scripts (`scripts/run.sh`, `island-battles-bot serve`), which this repository doesn't have: here a bot plays through `league tournament`. Don't edit the copies; when `runner.toml` moves to a commit that changed them, copy them again.
+`island-battles-rules`, `writing-a-bot` and `bot-logging` are copies of the skills in the game's Python bot template (`templates/python-bot/.agents/skills/`), taken at the commit in `runner.toml`. They mention that template's scripts (`scripts/run.sh`, `island-battles-bot serve`), which this repository doesn't have: here a bot plays through `league tournament`. Their code is Python, and the league's bots are Go: the `bot-league` skill says how the two map. The game has no Go bot template; when it gets one, copy its skills instead. Don't edit the copies; when `runner.toml` moves to a commit that changed them, copy them again.

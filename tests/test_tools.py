@@ -6,7 +6,6 @@ import json
 import re
 from collections.abc import Generator
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from island_battles_client import (
@@ -91,12 +90,13 @@ def test_a_match_is_cached_under_its_players_names(tmp_path: Path, monkeypatch: 
     bots, cache = tmp_path / "bots", tmp_path / "cache"
     for name in ("first", "copy"):
         (bots / name).mkdir(parents=True)
-        (bots / name / "bot.py").write_text("def play(turn): ...\n")
+        (bots / name / "main.go").write_text("package main\n")
     map_file = tmp_path / "duel.json"
     map_file.write_text("{}")
     monkeypatch.setattr(tournament, "BOTS", bots)
     monkeypatch.setattr(tournament, "CACHE", cache)
-    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament, "player_specification", lambda name, binary=None: {})
+    monkeypatch.setattr(tournament.gobots, "build", lambda names: {})
     monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
     played: list[list[str]] = []
     failing = {"copy"}
@@ -153,12 +153,13 @@ def _fake_league(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, names: list[st
     bots, cache = tmp_path / "bots", tmp_path / "cache"
     for name in names:
         (bots / name).mkdir(parents=True)
-        (bots / name / "bot.py").write_text(f"def play(turn): ...  # {name}\n")
+        (bots / name / "main.go").write_text(f"package main // {name}\n")
     map_file = tmp_path / "duel.json"
     map_file.write_text("{}")
     monkeypatch.setattr(tournament, "BOTS", bots)
     monkeypatch.setattr(tournament, "CACHE", cache)
-    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament, "player_specification", lambda name, binary=None: {})
+    monkeypatch.setattr(tournament.gobots, "build", lambda names: {})
     monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
     played: list[list[str]] = []
 
@@ -267,14 +268,15 @@ def test_shards_split_a_tournament_into_parts_that_make_the_whole(
     bots, cache = tmp_path / "bots", tmp_path / "cache"
     for name in ("first", "second", "third"):
         (bots / name).mkdir(parents=True)
-        (bots / name / "bot.py").write_text(f"def play(turn): ...  # {name}\n")
+        (bots / name / "main.go").write_text(f"package main // {name}\n")
     maps = []
     for name in ("duel", "ring"):
         maps.append(tmp_path / f"{name}.json")
         maps[-1].write_text(json.dumps({"name": name}))
     monkeypatch.setattr(tournament, "BOTS", bots)
     monkeypatch.setattr(tournament, "CACHE", cache)
-    monkeypatch.setattr(tournament, "player_specification", lambda name: {})
+    monkeypatch.setattr(tournament, "player_specification", lambda name, binary=None: {})
+    monkeypatch.setattr(tournament.gobots, "build", lambda names: {})
     monkeypatch.setattr(tournament.engine, "build", lambda: tournament.engine.Build("build", tmp_path / "runner"))
     played: list[str] = []
 
@@ -404,7 +406,7 @@ def test_digest_reads_the_events_between_boards() -> None:
 def test_new_bot_copies_its_parent_as_a_candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(roster, "BOTS", tmp_path)
     (tmp_path / "founder").mkdir()
-    (tmp_path / "founder" / "bot.py").write_text("def play(turn): ...\n")
+    (tmp_path / "founder" / "main.go").write_text("package main\n")
     founder = roster.Bot(name="founder", status="active", parent="", iteration=0, idea="the first")
     monkeypatch.setattr(roster.Bot, "directory", property(lambda bot: tmp_path / bot.name))
     roster.write_bot(founder)
@@ -526,7 +528,7 @@ def test_an_outside_opponent_needs_its_interpreter(tmp_path: Path) -> None:
 def test_sparring_is_a_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(roster, "BOTS", tmp_path)
     (tmp_path / "rival").mkdir()
-    (tmp_path / "rival" / "bot.py").write_text("def play(turn): ...\n", encoding="utf-8")
+    (tmp_path / "rival" / "main.go").write_text("package main\n", encoding="utf-8")
     roster.write_bot(roster.Bot(name="rival", status="sparring", parent="", iteration=22, idea="plays like a rival"))
     assert roster.load_bot("rival").status == "sparring"
 
@@ -578,12 +580,29 @@ def fixture_play(turn: BotTurn) -> BotTurnResult:
     return turn_result(commands)
 
 
+class FixtureWorker:
+    """A worker that plays fixture_play, as a bot's worker answers: JSON in, JSON out."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __enter__(self) -> FixtureWorker:
+        return self
+
+    def __exit__(self, *exception: object) -> None:
+        pass
+
+    def play(self, turn: dict) -> dict:
+        return fixture_play(BotTurn.model_validate(turn)).model_dump(mode="json")
+
+
 def test_a_bot_replayed_on_boards_it_made_agrees_fully(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A bot of the test's own, so the test needs no bot of the population, which the population rules may delete."""
     demo = replay_demo()
     path = tmp_path / "game.json.gz"
     path.write_bytes(gzip.compress(json.dumps(demo).encode()))
-    monkeypatch.setattr(replay, "load_bot", lambda name: SimpleNamespace(play=fixture_play))
+    monkeypatch.setattr(replay, "load_bot", lambda name: None)
+    monkeypatch.setattr(replay, "Worker", FixtureWorker)
     report = replay.replay([("game", digest.load_demo(path))], "fixture", color=1)
     assert report.stats["turns"] == 2
     assert report.stats["exact"] == report.stats["loose"] == 2  # turn 2: neither the team nor the bot did anything
