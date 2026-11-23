@@ -1,3 +1,15 @@
+// fullfeed_unfreeze: speedhelp_fullfeed whose frozen castle may still buy upgrades.
+//
+// Iteration 40. upgrade() refused any castle an enemy group was bound for with
+// more soldiers than the castle produces before it lands. A group of six walking
+// at a production 1 castle every few turns kept it at production 1 for 30 turns
+// with up to nine times the landing in stock (estuary against punisher). Now an
+// attacked castle buys the upgrade when, after the cost, it still holds through
+// every landing bound for it (growth until each landing counted, as safeOut plays
+// them) and holds() passes. The note shows it as "unfrozen". Nothing else changes.
+//
+// speedhelp_fullfeed's comment follows.
+//
 // speedhelp_fullfeed: a fully upgraded castle feeds the front what it holds above its reserve.
 //
 // Iteration 38, from feedkeep_speedhelp. feed() fed only a castle whose reserve
@@ -1097,6 +1109,24 @@ func lastCastleStrikes(b *board, target *castle) []strike {
 	return candidates
 }
 
+// coversLandings is whether the castle, holding soldiers after paying and producing rate, stays ours through every landing bound for it, its growth until each landing counted.
+func (b *board) coversLandings(c *castle, soldiers, rate int) bool {
+	now := 0
+	for _, e := range b.landings(c) {
+		soldiers += rate * (e.turns - now)
+		now = e.turns
+		if e.team == b.team {
+			soldiers += e.soldiers
+		} else {
+			soldiers -= e.soldiers
+		}
+		if soldiers < 1 {
+			return false
+		}
+	}
+	return true
+}
+
 // nextUpgrade is the type and level the upgrade rule buys next for the castle, and false when it buys nothing more.
 func nextUpgrade(b *board, c *castle) (islandbattles.UpgradeType, int, bool) {
 	if level := b.level(c, production); level < topProduction {
@@ -1110,9 +1140,8 @@ func nextUpgrade(b *board, c *castle) (islandbattles.UpgradeType, int, bool) {
 
 // upgrade buys the castle's next upgrades while it can and no single enemy castle could then take it.
 func upgrade(b *board, c *castle) string {
-	if b.attacked(c) {
-		return ""
-	}
+	frozen := b.attacked(c)
+	unfrozen := false
 	var bought []string
 	for {
 		upgradeType, level, more := nextUpgrade(b, c)
@@ -1131,6 +1160,9 @@ func upgrade(b *board, c *castle) string {
 		if upgradeType == production {
 			rate = int(value)
 		}
+		if frozen && !b.coversLandings(c, after, rate) {
+			break
+		}
 		if !b.holds(c, after, rate) {
 			break
 		}
@@ -1140,6 +1172,12 @@ func upgrade(b *board, c *castle) string {
 			name = "production"
 		}
 		bought = append(bought, fmt.Sprintf("%s%d@%d", name, level, c.id))
+		if frozen {
+			unfrozen = true
+		}
+	}
+	if unfrozen {
+		bought = append(bought, "unfrozen")
 	}
 	return strings.Join(bought, " ")
 }

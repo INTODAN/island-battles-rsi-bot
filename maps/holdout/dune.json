@@ -1,0 +1,81 @@
+{
+  "map_name": "dune",
+  "player_amount": 2,
+  "plane_size_x": 16,
+  "plane_size_y": 8,
+  "neutral_starting_soldier_amount": 15,
+  "castles": [
+    {
+      "team_color": 1,
+      "x": -7.5,
+      "y": 0.5,
+      "starting_soldier_amount": 30
+    },
+    {
+      "team_color": 2,
+      "x": 7.5,
+      "y": -0.5,
+      "starting_soldier_amount": 30
+    },
+    {
+      "team_color": 0,
+      "x": -7.5,
+      "y": -1.5,
+      "starting_soldier_amount": 12
+    },
+    {
+      "team_color": 0,
+      "x": 7.5,
+      "y": 1.5,
+      "starting_soldier_amount": 12
+    },
+    {
+      "team_color": 0,
+      "x": -5.0,
+      "y": -0.5,
+      "starting_soldier_amount": 25
+    },
+    {
+      "team_color": 0,
+      "x": 5.0,
+      "y": 0.5,
+      "starting_soldier_amount": 25
+    },
+    {
+      "team_color": 0,
+      "x": -5.5,
+      "y": -2.5,
+      "starting_soldier_amount": 10
+    },
+    {
+      "team_color": 0,
+      "x": 5.5,
+      "y": 2.5,
+      "starting_soldier_amount": 10
+    },
+    {
+      "team_color": 0,
+      "x": -1.5,
+      "y": -2.0,
+      "starting_soldier_amount": 8
+    },
+    {
+      "team_color": 0,
+      "x": 1.5,
+      "y": 2.0,
+      "starting_soldier_amount": 8
+    },
+    {
+      "team_color": 0,
+      "x": -7.5,
+      "y": 3.0,
+      "starting_soldier_amount": 8
+    },
+    {
+      "team_color": 0,
+      "x": 7.5,
+      "y": -3.0,
+      "starting_soldier_amount": 8
+    }
+  ]
+}
