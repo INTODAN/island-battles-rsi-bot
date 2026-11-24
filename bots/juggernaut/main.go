@@ -1,19 +1,23 @@
 // juggernaut: one stack, fed by every rear castle, that walks from capture to capture.
 //
-// Iteration 42, a founder (its code started from pounce, whose board helpers it keeps). A real
-// game lost on claw (game 482) was won by a bot whose rear castles kept a few soldiers and fed
-// one front castle to 274, which bought speed and struck. No line of the league plays so:
+// Changes proposed from the hosted bot's real games (471 to 648; each mistake's board replayed one turn at a
+// time and judged, not measured in a tournament):
 //
-//   - Economy: rear castles buy production only, up to topProduction, and send everything
-//     their landings don't need to the stack; the stack buys production, then speed up to
-//     stackSpeed (speed 4), so its strikes are short at any distance.
-//   - Defence: no reserve in the rear. The stack is the reserve: it keeps what the enemy
-//     castles' whole stock within guardWalk turns could land on it, less its growth.
-//   - Attack: only from the stack, at the target with the lowest price plus twice the walk,
-//     priced at its exact count at landing, its burst, and the whole stock of every other
-//     enemy castle that could land on it in time (no castle is assumed to keep a reserve).
-//     The capture is nearer the enemy, so it is the next stack, and the rear feeds it.
-//   - Expansion: pounce's: the neutrals on its own side, exactly plus a margin.
+//   - Strikes and neutral takes are priced to hold: against every enemy castle that could take them back at a speed
+//     it can afford, its landings and growth counted; a neutral is paid only by castles that land together.
+//   - The stack's guard counts the groups landing on enemy castles; an upgrade keeps what an enemy castle could land
+//     after buying speed; a speed upgrade also keeps the strongest enemy stock within 12 turns; nothing is bought
+//     while enemy groups worth the cost walk at the castle.
+//   - The stack is the castle nearest the enemy (a production-1 capture counts three turns farther), ties by the
+//     shortest total distance to the others; never a castle about to fall or one the defence gave up.
+//   - Rear castles keep what an enemy castle (or an own castle about to fall) could land before the stack's help,
+//     unless that reserve couldn't hold the castle anyway; a castle still building production feeds what it holds
+//     beyond twice its next level's cost.
+//   - Help is sized for every landing up to guardWalk turns after the first that takes the castle, with a margin
+//     only from what helpers hold beyond their own guard; none is sent where it can't save the castle, and a hopeless
+//     castle's soldiers walk to the nearest castle that isn't lost; a much stronger helper keeps what the enemy
+//     castles near it could land; no stronger castle helps a production-1 capture.
+//   - A castle meets an attacking wave with half its size when that stops it long enough to hold.
 //
 // The log names the stack (stack@C), its strike (smash>T in W need N), feeds (feed>S c:n)
 // and every upgrade. pounce's comment follows.
@@ -86,8 +90,12 @@ const (
 	// what that price says against each of ours, and spare only the rest.
 	enemyNeedTenth = 10
 	enemyNeedFixed = 3
-	// At most this many castles pay for one neutral.
+	// At most this many castles pay for one neutral, their groups landing at most neutralGap turns apart.
 	neutralPayers = 2
+	neutralGap    = 2
+	// A castle within this many map units as near an enemy castle as the stack (or the castle it helps) is is as
+	// much in its way, and keeps a reserve against it.
+	exposureSlack = 0.5
 	// In the game's last this many turns any strike that lands in time is allowed, and contested neutrals too.
 	finishTurns = 30
 	// Landing order of this turn's sends, after every group on the board.
@@ -171,6 +179,7 @@ type group struct {
 	team        int
 	soldiers    int
 	destination int
+	origin      int
 	upgrades    islandbattles.Upgrades
 	// left is the distance still to go to its destination castle.
 	left float64
@@ -217,6 +226,8 @@ type board struct {
 	bought   map[purchase]int
 	// sent is this turn's sends to each castle.
 	sent map[int][]landing
+	// lost are the own castles the defence gave up this turn.
+	lost map[int]bool
 }
 
 // newBoard reads the board from the turn.
@@ -227,6 +238,7 @@ func newBoard(turn islandbattles.Turn) *board {
 		spent:  map[int]int{},
 		bought: map[purchase]int{},
 		sent:   map[int][]landing{},
+		lost:   map[int]bool{},
 	}
 	byID := map[int]*castle{}
 	for _, source := range turn.Generation.Castles {
@@ -249,6 +261,7 @@ func newBoard(turn islandbattles.Turn) *board {
 			team:        int(source.TeamColor),
 			soldiers:    int(source.Soldiers),
 			destination: int(source.DestinationCastleID),
+			origin:      int(source.OriginCastleID),
 			upgrades:    source.Upgrades,
 		}
 		if destination, found := byID[g.destination]; found {
@@ -560,6 +573,34 @@ func (b *board) sendFrom(senders []sender, target *castle, amount int) []string 
 // defend sends what a castle lacks to the castles that the groups bound for them would take. Returns the log note.
 func defend(b *board) string {
 	var notes []string
+	lost := map[int]bool{}
+	defer func() {
+		// A castle that can't be saved saves its soldiers: they walk to the nearest own castle that isn't lost, when
+		// they land there before the enemy does here (a castle that empties early only falls sooner).
+		for _, c := range b.own {
+			if !lost[c.id] {
+				continue
+			}
+			var to *castle
+			for _, o := range b.own {
+				if o.id != c.id && !lost[o.id] && (to == nil || c.distance(o) < c.distance(to)) {
+					to = o
+				}
+			}
+			if to == nil {
+				continue
+			}
+			first := math.MaxInt
+			for _, e := range b.landings(c) {
+				if e.team != b.team {
+					first = min(first, e.turns)
+				}
+			}
+			if give := b.left(c); give >= feedLeast && first > 1 {
+				b.send(c, to, give)
+			}
+		}
+	}()
 	for _, c := range b.own {
 		fall, lack := 0, 0
 		for _, e := range b.landings(c) {
@@ -574,12 +615,49 @@ func defend(b *board) string {
 		if lack == 0 {
 			continue
 		}
+		// Help sized for the first landing that takes the castle loses it to the next: count every enemy landing up to
+		// guardWalk turns after it against what the castle holds and grows.
+		last := fall
+		{
+			held, now, against := b.left(c), 0, 0
+			for _, e := range b.landings(c) {
+				if e.turns > fall+guardWalk {
+					break
+				}
+				last = e.turns
+				held += b.rate(c) * (e.turns - now)
+				now = e.turns
+				if e.team == b.team {
+					held += e.soldiers
+				} else {
+					against += e.soldiers
+					lack = max(lack, against-held+1)
+				}
+			}
+		}
 		// A castle that will certainly fall outweighs a strike that may come: helpers keep only what their own
 		// landings need.
 		var helpers []sender
 		for _, h := range b.own {
+			if b.level(c, production) == 1 && b.left(h) > b.left(c) {
+				// A fresh capture that produces 1 isn't worth a stronger castle's soldiers.
+				continue
+			}
 			if h.id != c.id && b.travel(h, c) <= fall && b.safeOut(h) >= 1 {
-				helpers = append(helpers, sender{b.travel(h, c), h, b.safeOut(h)})
+				// A helper keeps what the enemy castles at least as near it as the castle it helps could land: saving
+				// one castle must not open another.
+				reserve := 0
+				for _, t := range b.threats(h, c) {
+					// Only a helper that holds over twice what the castle it helps does keeps a reserve: it is worth more than the
+					// castle it would save.
+					net := t.stock - b.rate(h)*t.walk
+					if t.near && b.left(h) > 2*b.left(c) && net > 0 && t.walk <= guardWalk && t.walk < b.turnsLeft() {
+						reserve += net
+					}
+				}
+				if spare := b.safeOut(h) - reserve; spare >= 1 {
+					helpers = append(helpers, sender{b.travel(h, c), h, spare})
+				}
 			}
 		}
 		slices.SortStableFunc(helpers, func(first, second sender) int {
@@ -588,37 +666,140 @@ func defend(b *board) string {
 			}
 			return first.castle.id - second.castle.id
 		})
-		parts := b.sendFrom(helpers, c, lack)
-		inTime := 0
+		inTime, later := 0, 0
 		for _, h := range helpers {
 			inTime += h.spare
+			// It grows until its last group that still lands in time (by the last landing counted), and can send that
+			// too on later turns.
+			later += b.rate(h.castle) * (last - h.walk)
 		}
-		// Help that walks too slowly: a castle that can pay its next speed level and still give buys it, when that
+		// Help that walks too slowly: a castle that can pay its next speed level and still give may buy it, when that
 		// makes its group land by the fall.
-		if inTime < lack {
-			lack -= inTime
-			for _, h := range b.own {
-				if lack <= 0 {
-					break
-				}
-				if h.id == c.id || b.travel(h, c) <= fall {
-					continue
-				}
-				level := b.level(h, speed) + 1
-				value, cost, found := b.table(speed, level)
-				if !found || b.safeOut(h)-cost < 1 || walkTurns(h.distance(c), value) > fall {
-					continue
-				}
-				b.buy(h, speed, cost)
-				give := min(b.safeOut(h), lack)
-				b.send(h, c, give)
-				parts = append(parts, fmt.Sprintf("speed%d@%d %d:%d", level, h.id, h.id, give))
-				lack -= give
+		type speedHelp struct {
+			castle *castle
+			level  int
+			cost   int
+		}
+		var faster []speedHelp
+		possible := inTime + later
+		for _, h := range b.own {
+			if h.id == c.id || b.travel(h, c) <= fall {
+				continue
 			}
+			level := b.level(h, speed) + 1
+			value, cost, found := b.table(speed, level)
+			if !found || b.safeOut(h)-cost < 1 || walkTurns(h.distance(c), value) > fall {
+				continue
+			}
+			faster = append(faster, speedHelp{h, level, cost})
+			possible += b.safeOut(h) - cost
+		}
+		var parts []string
+		if possible+1 < lack {
+			// Help that falls far short of saving the castle is lost with it: send none, and meet the attacker if that
+			// holds it. (Short by less, it may still hold: help and growth on later turns come on top of this estimate.)
+			if note := intercept(b, c, fall); note != "" {
+				parts = append(parts, note)
+			} else {
+				parts = append(parts, "lost")
+				b.lost[c.id] = true
+				// Hopeless (help covers under half of it): the castle's own soldiers leave it.
+				lost[c.id] = 2*possible < lack
+			}
+			notes = append(notes, fmt.Sprintf("help>%d in %d %s", c.id, fall, strings.Join(parts, " ")))
+			continue
+		}
+		// Help that only covers this landing leaves the castle to the next one: add what the enemy castles near it
+		// could still land, as far as the helpers have it.
+		parts = b.sendFrom(helpers, c, lack)
+		// The margin comes only from what a helper holds beyond what the enemy castles near it could land.
+		if margin := b.guard(c, false); margin > 0 {
+			var extra []sender
+			for _, h := range helpers {
+				if spare := b.safeOut(h.castle) - b.guard(h.castle, false); spare >= 1 {
+					extra = append(extra, sender{h.walk, h.castle, spare})
+				}
+			}
+			parts = append(parts, b.sendFrom(extra, c, margin)...)
+		}
+		lack -= inTime
+		margin := b.guard(c, false)
+		for _, f := range faster {
+			if lack <= 0 {
+				break
+			}
+			b.buy(f.castle, speed, f.cost)
+			// Help that buys speed comes with a margin only from what the helper holds beyond its own guard.
+			give := min(b.safeOut(f.castle), lack)
+			if extra := min(margin, b.safeOut(f.castle)-b.guard(f.castle, false)-give); extra > 0 {
+				give += extra
+				margin -= extra
+			}
+			b.send(f.castle, c, give)
+			parts = append(parts, fmt.Sprintf("speed%d@%d %d:%d", f.level, f.castle.id, f.castle.id, give))
+			lack -= give
 		}
 		notes = append(notes, fmt.Sprintf("help>%d in %d %s", c.id, fall, strings.Join(parts, " ")))
 	}
 	return strings.Join(notes, " ")
+}
+
+// intercept meets the enemy group that would take the castle with half its soldiers, sent from the castle itself
+// toward the group's origin: a clash where the smaller side has half or more stops both groups for the group's
+// clash_stop_generations, and costs the attacker as many as were sent. Only when the castle then holds through the
+// delayed landing and every other enemy landing by then. Returns the log part, or "".
+func intercept(b *board, c *castle, fall int) string {
+	var attacker *group
+	for _, g := range b.groups {
+		if g.destination == c.id && g.team != b.team && b.arrival(g) == fall && (attacker == nil || g.soldiers > attacker.soldiers) {
+			attacker = g
+		}
+	}
+	if attacker == nil {
+		return ""
+	}
+	// Groups of the same wave (same origin, same landing) walk together and clash together.
+	wave := 0
+	for _, g := range b.groups {
+		if g.destination == c.id && g.team == attacker.team && g.origin == attacker.origin && b.arrival(g) == fall {
+			wave += g.soldiers
+		}
+	}
+	var origin *castle
+	for _, o := range b.castles {
+		if o.id == attacker.origin {
+			origin = o
+		}
+	}
+	if origin == nil || origin.id == c.id {
+		return ""
+	}
+	amount := (wave + 1) / 2
+	if amount < 1 || b.left(c) < amount {
+		return ""
+	}
+	stop, _, found := b.table(islandbattles.ClashStopGenerationsUpgrade, attacker.upgrades.Level(islandbattles.ClashStopGenerationsUpgrade))
+	if !found || stop < 1 {
+		return ""
+	}
+	landing := fall + int(stop) - 1
+	held := b.left(c) - amount + b.rate(c)*landing
+	against := wave - amount
+	for _, g := range b.groups {
+		sameWave := g.team == attacker.team && g.origin == attacker.origin && b.arrival(g) == fall
+		if g.destination == c.id && !sameWave && b.arrival(g) <= landing {
+			if g.team == b.team {
+				held += g.soldiers
+			} else {
+				against += g.soldiers
+			}
+		}
+	}
+	if held <= against {
+		return ""
+	}
+	b.send(c, origin, amount)
+	return fmt.Sprintf("meet%d %d:%d", attacker.id, c.id, amount)
 }
 
 // option is a strike or a neutral's price: the target, the landing turn, the soldiers it needs and who pays.
@@ -744,7 +925,8 @@ func neutralOption(b *board, target *castle) *option {
 	for count := 1; count <= min(neutralPayers, len(all)); count++ {
 		total += all[count-1].spare
 		walk := all[count-1].walk
-		if walk >= b.turnsLeft() {
+		if walk >= b.turnsLeft() || walk-all[0].walk > neutralGap {
+			// Payers whose groups land apart take the castle with the first and lose it before the rest arrive.
 			break
 		}
 		_, soldiers := b.atLanding(target, walk)
@@ -755,7 +937,23 @@ func neutralOption(b *board, target *castle) *option {
 		}
 		hold := 0
 		for _, enemy := range b.enemies {
-			hold += max(0, b.enemySpare(enemy, overrides)-b.rate(target)*b.travel(enemy, target))
+			back := b.travel(enemy, target)
+			growth := 0
+			if walk > punishWalk && back <= walk+guardWalk {
+				// An enemy castle near the capture grows while a long walk of ours goes on: it meets a bigger answer.
+				growth = b.rate(enemy) * walk
+			}
+			spared := max(0, b.enemySpare(enemy, overrides)+growth-b.rate(target)*back)
+			// An enemy castle that can land on the capture as fast as ours did, at a speed it can afford, takes it back
+			// with its whole stock, not only what its reserve spares.
+			retakes := 0
+			for _, option := range b.reaches(enemy, target) {
+				if option.walk <= max(guardWalk, walk) {
+					stock := b.left(enemy) + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
+					retakes = max(retakes, stock-b.rate(target)*option.walk)
+				}
+			}
+			hold += max(spared, retakes)
 		}
 		need := soldiers + neutralExtra + hold
 		if total >= need {
@@ -824,30 +1022,169 @@ func upgrade(b *board, c *castle) string {
 	return strings.Join(bought, " ")
 }
 
-// stackOf is the own castle nearest any enemy castle, by walk, ties by id; nil without enemies.
+// stackOf is the own castle nearest any enemy castle, by walk, ties by the shortest total distance to the other own
+// castles (so feeds walk less), skipping a castle its landings take; nil without enemies.
 func stackOf(b *board) *castle {
-	var stack *castle
+	walks := map[int]int{}
 	best := math.MaxInt
+	var places []*castle
 	for _, c := range b.own {
+		if b.falls(c) && len(b.own) > 1 {
+			// A castle its landings take before a feed could land is no place to gather.
+			continue
+		}
+		walk := math.MaxInt
 		for _, enemy := range b.enemies {
-			if walk := walkTurns(c.distance(enemy), b.speedOf(1)); walk < best || (walk == best && c.id < stack.id) {
-				stack, best = c, walk
-			}
+			walk = min(walk, walkTurns(c.distance(enemy), b.speedOf(1)))
+		}
+		if b.lost[c.id] {
+			// A castle the defence gave up is no place to gather.
+			continue
+		}
+		switch b.level(c, production) {
+		case 1:
+			// A fresh capture that produces 1 is a poor place to gather: it counts three turns farther.
+			walk += 3
+		case 2:
+			walk++
+		}
+		walks[c.id] = walk
+		best = min(best, walk)
+		places = append(places, c)
+	}
+	var stack *castle
+	bestSpread := 0.0
+	for _, c := range places {
+		if walks[c.id] > best {
+			continue
+		}
+		spread := 0.0
+		for _, other := range b.own {
+			spread += c.distance(other)
+		}
+		if stack == nil || spread < bestSpread {
+			stack, bestSpread = c, spread
 		}
 	}
 	return stack
 }
 
-// guard is what the enemy castles' whole stock within guardWalk turns could land on the castle beyond its growth.
-func (b *board) guard(c *castle) int {
-	most := 0
+// threat is a castle that could strike: its walk to a castle and the soldiers it will have.
+type threat struct {
+	walk    int
+	stock   int
+	toStack int
+	// near is whether c is at most exposureSlack farther from it than the other castle: as much in its way.
+	near bool
+}
+
+// threats are the enemy castles, with their landings counted, and the own castles that the enemy is about to take
+// (with what it will hold there), each with its walk to c.
+func (b *board) threats(c, other *castle) []threat {
+	var found []threat
 	for _, enemy := range b.enemies {
 		walk := b.travel(enemy, c)
-		if walk <= guardWalk && walk < b.turnsLeft() {
-			most += max(0, b.left(enemy)-b.rate(c)*walk)
+		near := c.distance(enemy) <= other.distance(enemy)+exposureSlack
+		found = append(found, threat{walk, b.left(enemy) + b.incoming(enemy, walk), b.travel(enemy, other), near})
+	}
+	for _, o := range b.own {
+		if o.id == c.id {
+			continue
+		}
+		for _, e := range b.landings(o) {
+			if e.team == b.team {
+				continue
+			}
+			if owner, soldiers := b.atLanding(o, e.turns); owner != b.team {
+				walk := e.turns + walkTurns(o.distance(c), b.speedOf(1))
+				near := c.distance(o) <= other.distance(o)+exposureSlack
+				found = append(found, threat{walk, soldiers, e.turns + walkTurns(o.distance(other), b.speedOf(1)), near})
+				break
+			}
 		}
 	}
+	return found
+}
+
+// incoming is the soldiers of the castle's own team that land on it within this many turns.
+func (b *board) incoming(c *castle, turns int) int {
+	total := 0
+	for _, g := range b.groups {
+		if g.destination == c.id && g.team == c.team && b.arrival(g) <= turns {
+			total += g.soldiers
+		}
+	}
+	return total
+}
+
+// guard is what the enemy castles' whole stock within guardWalk turns (the groups landing on them by then counted)
+// could land on the castle beyond its growth.
+func (b *board) guard(c *castle, speedUp bool) int {
+	most := 0
+	for _, enemy := range b.enemies {
+		// With speedUp, the enemy castle may also buy speed levels and send in the same turn: the best of them within
+		// reach counts. An upgrade keeps that (it empties the castle for good); a strike moves the soldiers forward.
+		best, paid := 0, 0
+		for level := enemy.upgrades.Level(speed); level == enemy.upgrades.Level(speed) || speedUp; level++ {
+			if level > enemy.upgrades.Level(speed) {
+				_, cost, found := b.table(speed, level)
+				if !found {
+					break
+				}
+				paid += cost
+			}
+			walk := walkTurns(enemy.distance(c), b.speedOf(level))
+			if walk <= guardWalk && walk < b.turnsLeft() {
+				best = max(best, b.left(enemy)+b.incoming(enemy, walk)-paid-b.rate(c)*walk)
+			}
+		}
+		most += best
+	}
 	return most
+}
+
+// reachOption is a walk an enemy castle could make to a castle, and what the speed levels for it cost.
+type reachOption struct {
+	walk int
+	paid int
+}
+
+// reaches are the walks the enemy castle could make to c this turn: at its speed, and at each higher speed level it
+// buys first.
+func (b *board) reaches(enemy, c *castle) []reachOption {
+	var options []reachOption
+	base, paid := enemy.upgrades.Level(speed), 0
+	for level := base; ; level++ {
+		if level > base {
+			_, cost, found := b.table(speed, level)
+			if !found || paid+cost > b.left(enemy) {
+				break
+			}
+			paid += cost
+		}
+		options = append(options, reachOption{walkTurns(enemy.distance(c), b.speedOf(level)), paid})
+	}
+	return options
+}
+
+// falls is whether a landing bound for the own castle takes it although every other own castle whose group lands
+// by then sent all it can spare.
+func (b *board) falls(c *castle) bool {
+	for _, e := range b.landings(c) {
+		owner, soldiers := b.atLanding(c, e.turns)
+		if owner == b.team {
+			continue
+		}
+		help := 0
+		for _, other := range b.own {
+			if walk := b.travel(other, c); other.id != c.id && walk <= e.turns {
+				// What it can spare now, and what it grows and can still send in time.
+				help += b.safeOut(other) + b.rate(other)*(e.turns-walk)
+			}
+		}
+		return help <= soldiers
+	}
+	return false
 }
 
 // smash sends the stack at the cheapest target it can take and still keep its guard. Returns the log note.
@@ -856,7 +1193,7 @@ func smash(b *board, stack *castle) string {
 	if b.finishing() {
 		longest = b.turnsLeft() - 1
 	}
-	spare := b.safeOut(stack) - b.guard(stack)
+	spare := b.safeOut(stack) - b.guard(stack, true)
 	var best *option
 	for _, target := range b.castles {
 		if target.team == b.team || target.id == stack.id {
@@ -873,13 +1210,27 @@ func smash(b *board, stack *castle) string {
 		need := soldiers + strikeExtra
 		if owner != neutral {
 			need += b.burstPotential(target)
-			for _, enemy := range b.enemies {
-				if enemy.id != target.id && 1+b.travel(enemy, target) <= walk {
-					need += b.left(enemy)
-				}
-			}
 		} else if target.team == neutral && b.sooner(b.enemies, target) < walk {
 			continue
+		}
+		for _, enemy := range b.enemies {
+			if enemy.id == target.id {
+				continue
+			}
+			// At the speed it can afford, an enemy castle either helps the target before the landing (its stock, less
+			// the levels) or takes the capture back (what it will hold by then, its
+			// landings and growth counted, less the levels and the capture's growth) within guardWalk turns of it, or
+			// as fast as our strike walked there: the price holds against the worse.
+			helps, retakes := 0, 0
+			for _, option := range b.reaches(enemy, target) {
+				if owner != neutral && 1+option.walk <= walk {
+					helps = max(helps, b.left(enemy)+b.incoming(enemy, walk-option.walk-1)-option.paid)
+				} else if option.walk <= max(guardWalk+2, walk) {
+					stock := b.left(enemy) + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
+					retakes = max(retakes, stock-b.rate(target)*option.walk)
+				}
+			}
+			need += max(helps, retakes)
 		}
 		if need > spare {
 			continue
@@ -915,9 +1266,38 @@ func build(b *board, c *castle, isStack bool) string {
 		if !found {
 			break
 		}
-		keep := 0
+		coming := 0
+		for _, g := range b.groups {
+			if g.destination == c.id && g.team != b.team {
+				coming += g.soldiers
+			}
+		}
+		if coming >= cost {
+			// Enemy groups worth the upgrade walk at the castle: it buys nothing until they have landed.
+			break
+		}
+		var keep int
 		if isStack {
-			keep = b.guard(c)
+			keep = b.guard(c, true)
+			// For speed, the stack keeps at least what the strongest enemy castle within three times guardWalk could bring.
+			for _, enemy := range b.enemies {
+				if upgradeType != speed {
+					break
+				}
+				for _, option := range b.reaches(enemy, c) {
+					if option.walk <= 3*guardWalk {
+						keep = max(keep, b.left(enemy)+b.incoming(enemy, option.walk)-option.paid)
+					}
+				}
+			}
+		} else {
+			// A rear castle keeps what the enemy castles could spare against it, at its new rate.
+			rate := b.rate(c)
+			if upgradeType == production {
+				value, _, _ := b.table(production, level)
+				rate = int(value)
+			}
+			keep = b.threat(c, -1, rate, b.left(c)-cost)
 		}
 		if b.safeOut(c)-cost < keep {
 			break
@@ -935,9 +1315,18 @@ func build(b *board, c *castle, isStack bool) string {
 // feedStack sends the stack what every rear castle's landings don't need, when no enemy group is bound for it.
 func feedStack(b *board, stack *castle) string {
 	var moves []string
+	// A stack that holds less than its guard is fed by every rear castle, upgraded or not.
+	weak := b.left(stack) < b.guard(stack, true)
 	for _, c := range b.own {
-		if c.id == stack.id || b.level(c, production) < topProduction {
+		if c.id == stack.id {
 			continue
+		}
+		if !weak && b.level(c, production) < topProduction {
+			// A castle still building its production feeds only what it holds beyond twice its next level's cost.
+			_, cost, found := b.table(production, b.level(c, production)+1)
+			if !found || b.safeOut(c) < 2*cost {
+				continue
+			}
 		}
 		bound := false
 		for _, g := range b.groups {
@@ -945,7 +1334,20 @@ func feedStack(b *board, stack *castle) string {
 				bound = true
 			}
 		}
-		if give := b.safeOut(c); !bound && give >= feedLeast {
+		// Keep what an enemy castle (or an own castle about to fall to the enemy) that lands on this one before the
+		// stack's help could would take.
+		keep := 0
+		back := b.travel(stack, c)
+		for _, t := range b.threats(c, stack) {
+			if t.walk < back && t.walk < b.turnsLeft() {
+				keep = max(keep, t.stock-b.rate(c)*t.walk+1)
+			}
+		}
+		if keep > b.left(c) {
+			// A reserve the castle couldn't hold with anyway saves nothing: its soldiers fight at the stack.
+			keep = 0
+		}
+		if give := b.safeOut(c) - keep; !bound && give >= feedLeast && back < b.turnsLeft() {
 			b.send(c, stack, give)
 			moves = append(moves, fmt.Sprintf("%d:%d", c.id, give))
 		}
