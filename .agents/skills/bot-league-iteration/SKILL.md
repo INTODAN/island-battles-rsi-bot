@@ -124,7 +124,7 @@ When the bots under study lose nothing worth reading (the champion wins nearly e
 
 ### Started by real games
 
-The hosted bot keeps every real game it plays (`hosting/lambda/`), and an iteration can be started by them: the automated one (`.github/workflows/real-game-iteration.yml`) unpacks the games no iteration has studied into `runs/real/<id>/` and names them in its request. When the request names real games:
+The hosted bot keeps every real game it plays (`hosting/lambda/`). The automated real-game study (`.github/workflows/real-game-study.yml`) reads each one as it arrives and writes its analysis (`ledger/analyses/<id>.md`) and study (`ledger/studies/<id>.md`), and runs no iteration: read the analyses of recent games as findings to build on. An iteration can still be started with real games: its request names them, unpacked into `runs/real/<id>/`. When the request names real games:
 
 - **Study them first**, before the league's games: `uv run league digest runs/real/<id>/demo.json`, then the deciding turns with `--turns`. `game.json` says the result, the map and the hosted bot's team; `turns.jsonl` says what the hosted bot sent each turn and whether the server took it. A game whose `game.json` says `"estimated": true` or `"demo": "partial"` has only the hosted bot's own turns: its end and the other team's logs are missing.
 - **What they show counts as findings**, written the same way (game id, turns, cause, idea), and may be the iteration's ideas. A real game's lost turn is worth more than a league game's, but one game is one sample: check a finding against the champion's league games before building on it, and prefer a cause the league's games show too.

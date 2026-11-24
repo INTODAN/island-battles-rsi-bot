@@ -130,6 +130,26 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
     assert scope.out_of_scope(refused) == [f"{status} {path}" for status, path in refused]
 
 
+def test_a_study_adds_only_its_games_summaries_and_analyses_and_lists_them() -> None:
+    allowed = [
+        ("A", "ledger/studies/483.md"),
+        ("A", "ledger/analyses/483.md"),
+        ("M", "ledger/real-games.txt"),
+    ]
+    assert scope.out_of_scope(allowed, "study") == []
+    refused = [
+        ("M", "ledger/studies/471.md"),
+        ("D", "ledger/analyses/471.md"),
+        ("A", "ledger/analyses/notes.md"),
+        ("A", "ledger/runs/20261124-abc123.md"),
+        ("M", "ledger/iterations.md"),
+        ("A", "bots/new_bot/main.go"),
+        ("M", "hosting/lambda/bot"),
+        ("D", "ledger/real-games.txt"),
+    ]
+    assert scope.out_of_scope(refused, "study") == [f"{status} {path}" for status, path in refused]
+
+
 def test_the_scope_finds_players_names_without_printing_them(tmp_path: Path) -> None:
     demo = {
         "teams": [{"color": 1, "name": "Blue", "players": ["Alice Smith"]}, {"color": 2, "name": "Red", "players": []}],

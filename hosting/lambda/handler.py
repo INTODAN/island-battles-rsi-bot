@@ -77,9 +77,13 @@ OWNER = owner.Owner.from_settings(
 )
 # The map files that name a game's map: packaged next to this file, or the repository's.
 _HERE = Path(__file__).parent
-# The iterations' studies of real games: bundled by build.sh, or the ledger's when run from the repository.
+# The studies of real games and the games with a full analysis: bundled by build.sh, or the ledger's when run
+# from the repository.
 STUDIES = page.load_studies(
     *[path for path in (_HERE / "studies", _HERE.parent.parent / "ledger" / "studies") if path.is_dir()]
+)
+ANALYSES = page.load_analyses(
+    *[path for path in (_HERE / "analyses", _HERE.parent.parent / "ledger" / "analyses") if path.is_dir()]
 )
 # The league's progress over the iterations: bundled by build.sh, or the ledger's when run from the repository.
 # A file that doesn't parse costs the page its charts, never the bot its turns.
@@ -354,7 +358,7 @@ def _home(store: games.Store | None) -> dict[str, Any]:
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"},
-        "body": page.render(_bot.name, summary, listed, STUDIES, PROGRESS),
+        "body": page.render(_bot.name, summary, listed, STUDIES, PROGRESS, ANALYSES),
     }
 
 

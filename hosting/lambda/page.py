@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import datetime
 from html import escape
 from pathlib import Path
@@ -29,6 +29,16 @@ def load_studies(*directories: Path) -> dict[int, list[str]]:
                 lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
                 studies[int(match.group(1))] = lines[:STUDY_LINES]
     return studies
+
+
+def load_analyses(*directories: Path) -> set[int]:
+    """The games that have a full analysis (ledger/analyses/<id>.md), by id: the page links each one."""
+    return {
+        int(match.group(1))
+        for directory in directories
+        for path in directory.glob("*.md")
+        if (match := _STUDY.match(path.name))
+    }
 
 
 def load_progress(*paths: Path) -> list[dict[str, Any]]:
@@ -365,14 +375,16 @@ _DEMO_NOTES = {
 }
 
 
-def _study(lines: list[str] | None) -> str:
+def _study(game_id: int, lines: list[str] | None, analysis: bool = False) -> str:
     if not lines:
         return ""
     text = "".join(f"<p>{escape(line)}</p>" for line in lines)
+    if analysis:
+        text += f'<p><a href="{REPOSITORY}/blob/main/ledger/analyses/{game_id}.md">The full analysis</a></p>'
     return f'<div class="study"><div class="label">What the league learned</div>{text}</div>'
 
 
-def _game(game: dict[str, Any], study: list[str] | None = None) -> str:
+def _game(game: dict[str, Any], study: list[str] | None = None, analysis: bool = False) -> str:
     game_id = int(game["game_id"])
     action = f'<a class="zip" href="/games/{game_id}.zip">Zip</a>' if game.get("zip") else ""
     passed = f" ({game['passed']} passed)" if game.get("passed") else ""
@@ -392,7 +404,7 @@ def _game(game: dict[str, Any], study: list[str] | None = None) -> str:
         note = f'<div class="note">{mark}{escape(game["result_note"])}{demo}</div>'
     return (
         f'<article class="game"><div class="game-head"><h3>Game {game_id}</h3>{action}</div>'
-        f'<div class="fields">{"".join(fields)}</div>{note}{_study(study)}</article>'
+        f'<div class="fields">{"".join(fields)}</div>{note}{_study(game_id, study, analysis)}</article>'
     )
 
 
@@ -402,10 +414,12 @@ def render(
     games: list[dict[str, Any]],
     studies: dict[int, list[str]] | None = None,
     progress: list[dict[str, Any]] | None = None,
+    analyses: Collection[int] = (),
 ) -> str:
     """The home page as HTML.
 
-    ``studies`` are the iterations' studies of the games, by game id; ``progress`` is the league's (``load_progress``).
+    ``studies`` are the studies of the games, by game id; ``progress`` is the league's (``load_progress``);
+    ``analyses`` are the ids of the games with a full analysis (``load_analyses``), linked under their study.
     """
     studies = studies or {}
     latest = summary["latest"]
@@ -440,7 +454,7 @@ def render(
         for label, big, sub in cards
     )
     listed = (
-        "".join(_game(game, studies.get(int(game["game_id"]))) for game in games)
+        "".join(_game(game, studies.get(int(game["game_id"])), int(game["game_id"]) in analyses) for game in games)
         or '<p class="empty">No games yet.</p>'
     )
     live = " live" if summary["live"] else ""
@@ -459,7 +473,7 @@ def render(
 holds that demo (<code>demo.json</code>, which <code>league digest</code> and the demo viewer open), its digest,
 and the bot's own record of every turn: its commands, memory, timing and the server's answers. A result marked ≈
 is estimated from the last board the bot saw, for a game that never sent its end. Under a game, what the league
-learned from it is the study that the iteration which studied it wrote.</p>
+learned from it is its study's summary of the bot's mistakes, with a link to the full analysis.</p>
 <p><a href="{REPOSITORY}">The league's repository</a> · <a href="/api/games">JSON</a> ·
 <a href="/" id="sign-out">Sign out</a></p>
 </footer>

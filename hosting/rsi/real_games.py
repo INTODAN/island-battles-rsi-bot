@@ -1,4 +1,4 @@
-"""Download the hosted bot's real games that no iteration has studied yet.
+"""Download the hosted bot's real games that no study has read yet.
 
     uv run python hosting/rsi/real_games.py --bucket BUCKET --out runs/real [--limit 10]
     uv run python hosting/rsi/real_games.py --bucket BUCKET --out runs/real --ids 471,472
@@ -9,7 +9,7 @@ list, and unpacks the newest ``--limit`` of them into ``OUT/<id>/`` (the
 files of the hosted bot's zip: ``demo.json``, ``digest.txt``, ``turns.jsonl``,
 ``game.json``...). Prints their ids, one per line, oldest first. With
 ``--ids``, it unpacks those games instead, and lists nothing: a later job of
-the same iteration gets the games its first job chose.
+the same workflow gets the games its first job chose.
 
 The zips carry players' names and their bots' logs: ``runs/`` is not in git,
 and nothing from here is committed.
@@ -33,7 +33,7 @@ ZIP_FILES = ("demo.json", "digest.txt", "turns.jsonl", "game.json", "game-ended.
 
 
 def studied(path: Path = STUDIED) -> set[int]:
-    """The ids of the real games that an iteration has studied."""
+    """The ids of the real games that a study or an iteration has studied."""
     if not path.exists():
         return set()
     return {int(line.split()[0]) for line in path.read_text().splitlines() if line.strip() and line[0].isdigit()}
@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--bucket", required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--limit", type=int, default=10, help="the most games to study in one iteration (0: all)")
+    parser.add_argument("--limit", type=int, default=10, help="the most games to study in one run (0: all)")
     parser.add_argument("--ids", type=parse_ids, help="these games, comma-separated, instead of the unstudied ones")
     args = parser.parse_args(argv)
 
