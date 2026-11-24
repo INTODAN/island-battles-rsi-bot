@@ -28,7 +28,8 @@ kinds of branch, ``--kind``:
 - ``study`` (``claude/league-study-<id>``): the real-game study's
   (.github/workflows/real-game-study.yml). It adds each studied game's summary
   ``ledger/studies/<game id>.md`` and analysis ``ledger/analyses/<game id>.md``,
-  and lists the games in ``ledger/real-games.txt``. Nothing else.
+  and lists those games in ``ledger/real-games.txt``, by appending ``<id> <date>``
+  lines alone. Nothing else.
 
 With ``--names-from``, the players' names in the real games' demos under that
 directory must not appear in the lines the diff adds: the repository is public,
@@ -207,6 +208,21 @@ def out_of_scope(
     return bad
 
 
+def study_list_problems(diff: str, studied: Collection[str]) -> list[str]:
+    """What a study's ``git diff`` of ``ledger/real-games.txt`` does beyond appending ``<id> <date>`` for its games."""
+    problems = []
+    for line in diff.splitlines():
+        if line.startswith(("+++", "---")) or line[:1] not in ("+", "-"):
+            continue
+        if line.startswith("-"):
+            problems.append("removes a listed game")
+        elif not (match := re.fullmatch(r"\+([0-9]+) [0-9]{4}-[0-9]{2}-[0-9]{2}", line)):
+            problems.append("adds a line that isn't `<id> <date>`")
+        elif match.group(1) not in studied:
+            problems.append(f"lists game {match.group(1)}, whose study it doesn't add")
+    return problems
+
+
 def player_names(directory: Path, ignore: set[str]) -> set[str]:
     """The players' display names in the demos under directory, other than those in ignore."""
     names: set[str] = set()
@@ -283,6 +299,12 @@ def main(argv: list[str] | None = None) -> int:
     for change in out_of_scope(changes, args.kind, base_bots):
         print(f"out of a {args.kind}'s scope: {change}", file=sys.stderr)
         failed = True
+    if args.kind == "study":
+        studied = {Path(path).stem for status, path in changes if status == "A" and path.startswith("ledger/studies/")}
+        listing = _git("diff", "--unified=0", f"{args.base}...{args.head}", "--", "ledger/real-games.txt")
+        for problem in study_list_problems(listing, studied):
+            print(f"ledger/real-games.txt: {problem}", file=sys.stderr)
+            failed = True
     for status, path in changes:
         if status == "A" and (NEW_DETECTOR.match(path) or NEW_DETECTOR_TEST.match(path)):
             for problem in impure(path, _git("show", f"{args.head}:{path}")):

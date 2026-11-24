@@ -14,13 +14,14 @@
 #             the hosted bot's mistakes and writes, for each game,
 #               ledger/analyses/<id>.md  the full analysis
 #               ledger/studies/<id>.md   the two or three lines the page shows
-#             Only those files are carried into a clean checkout, the games
-#             are listed in ledger/real-games.txt there, and the diff is
-#             checked for its scope and for players' names (scope.py --kind
+#             Only those files are carried into a clean checkout, and the diff
+#             is checked for its scope and for players' names (scope.py --kind
 #             study) before it leaves the runner, as an artifact.
-#   publish   on a runner where Claude never ran: the diff onto the base, the
-#             same check, a pull request from claude/league-study-<run id>,
-#             merged once the checks pass. The merge deploys the hosted bot
+#   publish   on a runner where Claude never ran: the diff onto main as it is
+#             then, the games listed in ledger/real-games.txt, the same check,
+#             a pull request from claude/league-study-<run id>, merged once the
+#             checks pass. Listing the games on the latest main keeps the pull
+#             request from conflicting with an integration merged meanwhile. The merge deploys the hosted bot
 #             (deploy-bot.yml), whose page shows each game's study and links
 #             its analysis.
 #
@@ -271,7 +272,7 @@ jobs:
         run: |
           [ -f runs/rsi/stopped.txt ] && echo "::warning::Claude couldn't read every game: see the games left unlisted"
           python3 -I - . clean "$IDS" <<'EOF'
-          import datetime, pathlib, shutil, sys
+          import pathlib, shutil, sys
 
           tree, clean, ids = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3].split(",")
 
@@ -294,10 +295,6 @@ jobs:
                   (clean / f).parent.mkdir(parents=True, exist_ok=True)
                   shutil.copyfile(tree / f, clean / f)
               done.append(game)
-          listed = clean / "ledger" / "real-games.txt"
-          today = datetime.date.today().isoformat()
-          with listed.open("a") as out:
-              out.writelines(f"{game} {today}\n" for game in done)
           print(",".join(done))
           EOF
           studied=$(git -C clean status --porcelain --untracked-files=all -- ledger/studies | grep -oP '[0-9]+(?=\.md$)' | paste -sd, -)
@@ -360,7 +357,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ needs.study.outputs.base }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -374,15 +371,32 @@ jobs:
           name: study
           path: ${{ runner.temp }}/proposal
 
-      # Only a study's paths are applied; scope.py fails on anything else.
-      - name: Apply the studies and commit them
+      # Only a study's paths are applied, onto main as it is now, leaving out a
+      # game main has studied meanwhile; scope.py fails on anything else. The
+      # games are listed here, by this job, not by Claude.
+      - name: Apply the studies, list the games and commit them
         id: apply
         run: |
-          git apply --binary \
-            --include='ledger/studies/*' --include='ledger/analyses/*' --include='ledger/real-games.txt' \
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          skip=()
+          for id in $(grep -oP '^\+\+\+ b/ledger/studies/\K[0-9]+(?=\.md$)' "$RUNNER_TEMP/proposal/study.patch"); do
+            if [ -e "ledger/studies/$id.md" ] || [ -e "ledger/analyses/$id.md" ]; then
+              echo "game $id is studied on main already: left out"
+              skip+=(--exclude="ledger/studies/$id.md" --exclude="ledger/analyses/$id.md")
+            fi
+          done
+          git apply --binary "${skip[@]}" \
+            --include='ledger/studies/*' --include='ledger/analyses/*' \
             "$RUNNER_TEMP/proposal/study.patch"
           ids=$(git status --porcelain --untracked-files=all -- ledger/studies | grep -oP '[0-9]+(?=\.md$)' | paste -sd, -)
-          [ -n "$ids" ] || { echo "::error::the patch adds no study"; exit 1; }
+          if [ -z "$ids" ]; then
+            echo "::notice::main has studied every game of this study meanwhile: nothing to publish"
+            exit 0
+          fi
+          today=$(date -u +%F)
+          for id in ${ids//,/ }; do
+            grep -q "^$id " ledger/real-games.txt || echo "$id $today" >> ledger/real-games.txt
+          done
           git config user.name "island-battles-rsi[bot]"
           git config user.email "island-battles-rsi[bot]@users.noreply.github.com"
           git add -A
@@ -392,12 +406,14 @@ jobs:
           echo "ids=$ids" >> "$GITHUB_OUTPUT"
 
       - uses: aws-actions/configure-aws-credentials@v5
+        if: steps.apply.outputs.ids != ''
         with:
           role-to-assume: ${{ vars.AWS_GAMES_READ_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       # For the name check alone.
       - name: Download the studied games
+        if: steps.apply.outputs.ids != ''
         env:
           BUCKET: ${{ vars.GAMES_BUCKET }}
           IDS: ${{ steps.apply.outputs.ids }}
@@ -407,11 +423,13 @@ jobs:
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN; do echo "$name=" >> "$GITHUB_ENV"; done
 
       - name: The study stays in its scope and names nobody
+        if: steps.apply.outputs.ids != ''
         env:
-          BASE: ${{ needs.study.outputs.base }}
+          BASE: ${{ steps.apply.outputs.base }}
         run: python3 hosting/rsi/scope.py "$BASE" HEAD --kind study --names-from "$RUNNER_TEMP/real"
 
       - uses: actions/create-github-app-token@v2
+        if: steps.apply.outputs.ids != ''
         id: app
         with:
           app-id: ${{ vars.RSI_APP_ID }}
@@ -420,6 +438,8 @@ jobs:
       # Pushed with the App's token, not GITHUB_TOKEN: a pull request opened with
       # GITHUB_TOKEN starts no checks, and the merge waits for them.
       - name: Open the pull request and merge it when the checks pass
+        id: pr
+        if: steps.apply.outputs.ids != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           BRANCH: claude/league-study-${{ github.run_id }}
@@ -435,19 +455,33 @@ jobs:
           gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --merge
 
       # Waits, so that the next study starts from a main that lists these games.
+      # A pull request that doesn't merge (failed checks, a conflict) is
+      # closed: its games stay unlisted, for the next study.
       - name: Wait for the merge
+        if: steps.apply.outputs.ids != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           BRANCH: claude/league-study-${{ github.run_id }}
         run: |
+          state=""
           for _ in $(seq 120); do
             state=$(gh pr view "$BRANCH" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
             [ "$state" = MERGED ] && { echo "merged"; break; }
-            [ "$state" = CLOSED ] && { echo "::error::the pull request was closed"; exit 1; }
+            [ "$state" = CLOSED ] && break
             sleep 30
           done
-          [ "$state" = MERGED ] || { echo "::error::the pull request didn't merge within an hour; see its checks"; exit 1; }
+          if [ "$state" != MERGED ]; then
+            [ "$state" = CLOSED ] || gh pr close "$BRANCH" --repo "$GITHUB_REPOSITORY" \
+              --comment "Not merged within an hour; the games stay unlisted for the next study." || true
+          fi
           git push -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ":refs/heads/$BRANCH" \
             || echo "::warning::the branch $BRANCH wasn't deleted"
+          [ "$state" = MERGED ] || { echo "::error::the pull request didn't merge (${state:-unknown}); see its checks"; exit 1; }
+
+      - name: Revoke the token
+        if: always() && steps.app.outputs.token != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
           curl -fsS -X DELETE -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
             https://api.github.com/installation/token || echo "::warning::the token wasn't revoked; it expires within the hour"

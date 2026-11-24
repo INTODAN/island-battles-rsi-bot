@@ -34,7 +34,7 @@ Put every minute of the total in one of these, since each has a different cure:
 
 | Kind | Looks like | Who can make it faster |
 | --- | --- | --- |
-| **Playing** | tournaments' `played N matches in S s`; a round of runners | the work itself (fewer matches played twice, the cache reused), a tool (`league_tools/`), more runners (`RSI_SHARDS`), the game's runner (an issue in INTODAN/island-battles-go) |
+| **Playing** | tournaments' `played N matches in S s`; a round of runners | the work itself (fewer matches played twice, the cache reused), a tool (`league_tools/`), the game's runner (an issue in INTODAN/island-battles-go) |
 | **Waiting to play** | `waited S s for another tournament`; subagents' head-to-heads one after the other on one machine | the work's order (start what doesn't need the machine meanwhile), another machine |
 | **Thinking** | a Claude step's minutes beyond the games it played; reading, writing candidates and the ledger | parallel subagents, briefer reading (`league ledger`, not the whole file), a smaller model where a skill allows one |
 | **Setup** | checkout, uv, Go, the cache's download: the minute every runner spends before it plays | the workflow (fewer jobs, caches), not the iteration |
@@ -54,7 +54,7 @@ At the end of every iteration, and of every other long task, before its report:
    - **The next iteration** (an order of steps, a command not run twice, a cache linked first): goes in the ledger entry, and the next iteration does it.
    - **A tool or the workflow** (`league_tools/`, `scripts/`, `hosting/rsi/`, `.github/`): a separate change after the iteration, never inside it, measured before and after with the same work; say what it is in the report.
    - **The game or its runner**: an issue in INTODAN/island-battles-go, as AGENTS.md says.
-   - **A setting a person controls** (`RSI_SHARDS`, `RSI_MODEL`, `RSI_GAMES_PER_RUN`, the plan's runners): a proposal, with its evidence.
+   - **A setting a person controls** (`RSI_MODEL`, `RSI_GAMES_PER_RUN`, the plan's runners): a proposal, with its evidence.
 5. **What last time's review proposed**, and whether it was done and saved what it said. A proposal not done is raised again, with how many runs it has stood.
 
 Write it even when nothing is slow: "52 minutes, 20 of them the gate's slowest runner; nothing proposed" is a review. In the ledger it is the entry's **Time** paragraph; in a report, its time line.

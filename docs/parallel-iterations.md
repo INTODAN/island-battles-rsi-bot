@@ -1,5 +1,7 @@
 # Many iterations at once, no game played twice
 
+> **Since then:** the automated runs and the dispatcher are gone. Real games start only a study of their mistakes ([`real-game-study.yml`](../.github/workflows/real-game-study.yml), [hosting/rsi/README.md](../hosting/rsi/README.md)); a run starts when someone asks for one, and the integrator still decides its proposal. What follows about `real-game-iteration.yml`, the dispatcher, `RSI_MAX_RUNS` and `RSI_SHARDS` is the design as it was.
+
 Built: the store and its players, the detectors, the rules as code (`league decide`), the integrator, the leases, the idea queue, the curator, the dispatcher and the four side lines. Deploying the store and the Lambda players to AWS is the one step left to a person (`hosting/players/README.md`); until then everything works as before on one machine, and the dispatcher starts one run at a time. It changes the rules of the loop, so each part, once built, is a change of the league's setup with its own ledger entry ([`league-breeding`](../.agents/skills/league-breeding/SKILL.md)).
 
 ## Why only one iteration runs now
