@@ -947,9 +947,10 @@ func neutralOption(b *board, target *castle) *option {
 			// An enemy castle that can land on the capture as fast as ours did, at a speed it can afford, takes it back
 			// with its whole stock, not only what its reserve spares.
 			retakes := 0
+			free := min(b.left(enemy), b.enemySpare(enemy, overrides))
 			for _, option := range b.reaches(enemy, target) {
-				if option.walk <= max(guardWalk, walk) {
-					stock := b.left(enemy) + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
+				if option.walk <= max(guardWalk, walk) && walk+option.walk < b.turnsLeft() {
+					stock := free + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
 					retakes = max(retakes, stock-b.rate(target)*option.walk)
 				}
 			}
@@ -1221,12 +1222,16 @@ func smash(b *board, stack *castle) string {
 			// the levels) or takes the capture back (what it will hold by then, its
 			// landings and growth counted, less the levels and the capture's growth) within guardWalk turns of it, or
 			// as fast as our strike walked there: the price holds against the worse.
+			// An enemy castle sends only what it can spare: the rest it keeps home against our castles (the stack
+			// above all), so a big stack makes its neighbours' answers small.
+			free := min(b.left(enemy), b.enemySpare(enemy, nil))
 			helps, retakes := 0, 0
 			for _, option := range b.reaches(enemy, target) {
 				if owner != neutral && 1+option.walk <= walk {
-					helps = max(helps, b.left(enemy)+b.incoming(enemy, walk-option.walk-1)-option.paid)
-				} else if option.walk <= max(guardWalk+2, walk) {
-					stock := b.left(enemy) + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
+					helps = max(helps, free+b.incoming(enemy, walk-option.walk-1)-option.paid)
+				} else if option.walk <= max(guardWalk+2, walk) && walk+option.walk < b.turnsLeft() {
+					// A retake that lands after the game's end doesn't count.
+					stock := free + b.incoming(enemy, walk) + b.rate(enemy)*walk - option.paid
 					retakes = max(retakes, stock-b.rate(target)*option.walk)
 				}
 			}
@@ -1279,6 +1284,7 @@ func build(b *board, c *castle, isStack bool) string {
 		var keep int
 		if isStack {
 			keep = b.guard(c, true)
+
 			// For speed, the stack keeps at least what the strongest enemy castle within three times guardWalk could bring.
 			for _, enemy := range b.enemies {
 				if upgradeType != speed {
