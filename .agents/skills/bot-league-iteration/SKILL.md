@@ -124,7 +124,7 @@ When the bots under study lose nothing worth reading (the champion wins nearly e
 
 ### Started by real games
 
-The hosted bot keeps every real game it plays (`hosting/lambda/`), and an iteration can be started by them: the automated one (`.github/workflows/real-game-iteration.yml`) unpacks the games no iteration has studied into `runs/real/<id>/` and names them in its request. When the request names real games:
+The hosted bot keeps every real game it plays (`hosting/lambda/`). The automated real-game study (`.github/workflows/real-game-study.yml`) reads each one as it arrives and writes its analysis (`ledger/analyses/<id>.md`) and study (`ledger/studies/<id>.md`), and runs no iteration: read the analyses of recent games as findings to build on. An iteration can still be started with real games: its request names them, unpacked into `runs/real/<id>/`. When the request names real games:
 
 - **Study them first**, before the league's games: `uv run league digest runs/real/<id>/demo.json`, then the deciding turns with `--turns`. `game.json` says the result, the map and the hosted bot's team; `turns.jsonl` says what the hosted bot sent each turn and whether the server took it. A game whose `game.json` says `"estimated": true` or `"demo": "partial"` has only the hosted bot's own turns: its end and the other team's logs are missing.
 - **What they show counts as findings**, written the same way (game id, turns, cause, idea), and may be the iteration's ideas. A real game's lost turn is worth more than a league game's, but one game is one sample: check a finding against the champion's league games before building on it, and prefer a cause the league's games show too.
@@ -132,7 +132,7 @@ The hosted bot keeps every real game it plays (`hosting/lambda/`), and an iterat
 - **Never write a player's name** in the ledger, a bot, a commit or a report: say "the opponent", "a player's bot". The repository is public.
 - **Never copy a real game into the repository**, nor into `maps/` unless its map is a new default map, as **When the numbers stop moving** says.
 - In the ledger entry, say which real games the iteration studied (their ids) and what each showed, in words. The integrator lists their ids in `ledger/real-games.txt` from the studies the run adds; don't edit that file.
-- **Write each game's study** when the run is done, in `ledger/studies/<id>.md`: two or three lines of plain text, no Markdown, one sentence each. The first says the hosted bot's main mistakes in that game, with their turns; the next say what this iteration changed for them: the promoted bot and the fix it carries, or that no candidate for them passed and the mistake still stands. The hosted bot's page shows it under the game, so write it for its owner, who knows the game, and never a player's name. Example:
+- **Write each game's study** when the run is done, in `ledger/studies/<id>.md`, unless main already has it (the real-game study writes one for every game it reads, with its analysis in `ledger/analyses/<id>.md`): then the run's account says what the run did for it instead. A study is two or three lines of plain text, no Markdown, one sentence each. The first says the hosted bot's main mistakes in that game, with their turns; the next say what this iteration changed for them: the promoted bot and the fix it carries, or that no candidate for them passed and the mistake still stands. The hosted bot's page shows it under the game, so write it for its owner, who knows the game, and never a player's name. Example:
 
   ```
   Sent its home garrison out at turns 40-52 while a 30-soldier stack sat two islands away, and lost home at turn 61.
@@ -220,7 +220,7 @@ A run decides nothing that changes the population: the integrator does, on `main
 
 **Propose lessons** in `ledger/lessons/<id>.md`: what this run showed about the game in general, one per line, or a lesson of **Lessons so far** that a game contradicted, with the game. A run doesn't edit the ledger's top; the curator folds the proposals in.
 
-**Write each real game's study** (`ledger/studies/<id>.md`, **Started by real games**): its last lines say what this run proposed for the mistake; the integration's entry says what became of it.
+**Write each real game's study** (`ledger/studies/<id>.md`, **Started by real games**): its last lines say what this run proposed for the mistake; the integration's entry says what became of it. When main already has that file (the real-game study wrote it), write none: the integrator refuses a run that adds a file main has, and the game is listed already.
 
 Then `scripts/check.sh`, one commit, and the push of `claude/league-run-<id>`: that is the proposal. Release the leases of places you didn't fill (`league lease release KEY --run $RUN`); the others the integrator frees.
 

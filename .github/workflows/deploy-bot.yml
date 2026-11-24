@@ -1,5 +1,5 @@
 # Deploys the hosted bot (hosting/lambda/) when main changes the bots, the
-# deployment, the studies of real games and the league's progress (which its page shows) or the
+# deployment, the studies and analyses of real games and the league's progress (which its page shows) or the
 # dependencies: the bot that hosting/lambda/bot names goes to
 # the Lambda function behind the hosted bot's URL. It signs in to AWS with
 # GitHub's OIDC as a role that only main of this repository may assume, and
@@ -17,6 +17,7 @@ on:
       - go.sum
       - hosting/lambda/**
       - ledger/studies/**
+      - ledger/analyses/**
       - ledger/progress.csv
       - uv.lock
       - .github/workflows/deploy-bot.yml

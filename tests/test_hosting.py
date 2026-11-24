@@ -191,6 +191,14 @@ def test_the_home_page_shows_a_games_study(tmp_path: Path) -> None:
     assert "What the league learned" in html and "Left home thin at turn 40." in html
     assert "&lt;reserve&gt;" in html and "<p>4</p>" not in html
     assert "What the league learned" not in page.render("finish_speed", overview, listed)
+    assert "The full analysis" not in html
+    (tmp_path / "analyses").mkdir()
+    (tmp_path / "analyses" / f"{game_id}.md").write_text("# Game\n")
+    (tmp_path / "analyses" / "notes.md").write_text("not an analysis")
+    analyses = page.load_analyses(tmp_path / "analyses")
+    assert analyses == {game_id}
+    html = page.render("finish_speed", overview, listed, studies, None, analyses)
+    assert f"/blob/main/ledger/analyses/{game_id}.md" in html
 
 
 def _end(color: int = 1, winner: int | None = 2, expires: datetime | None = None) -> dict[str, Any]:

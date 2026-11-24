@@ -1,6 +1,6 @@
 """Check that an iteration's commits change only what an iteration may change.
 
-    python3 hosting/rsi/scope.py BASE [HEAD] [--kind iteration|run|curator] [--names-from runs/real]
+    python3 hosting/rsi/scope.py BASE [HEAD] [--kind iteration|run|curator|study] [--names-from runs/real]
 
 An iteration may change a bot's directory under ``bots/``, the ledger
 (``ledger/iterations.md``, ``ledger/real-games.txt``, ``ledger/progress.csv`` and a real game's study,
@@ -11,7 +11,7 @@ check. The automated iteration's pull request runs it, and so does every pull
 request from a ``claude/league-iteration-`` branch: a model that read an
 opponent's logs must not be able to change a workflow, a tool or a test.
 
-Since runs work in parallel (docs/parallel-iterations.md) there are three
+Since runs work in parallel (docs/parallel-iterations.md) there are four
 kinds of branch, ``--kind``:
 
 - ``run`` (``claude/league-run-<id>``): a run's proposal. It only **adds**: new
@@ -25,6 +25,11 @@ kinds of branch, ``--kind``:
   the runs' and lessons' files it carries, and the new detectors the runs added.
 - ``curator``: folds the proposed lessons into the ledger: ``ledger/iterations.md``
   only, and deletes files of ``ledger/lessons/``.
+- ``study`` (``claude/league-study-<id>``): the real-game study's
+  (.github/workflows/real-game-study.yml). It adds each studied game's summary
+  ``ledger/studies/<game id>.md`` and analysis ``ledger/analyses/<game id>.md``,
+  and lists those games in ``ledger/real-games.txt``, by appending ``<id> <date>``
+  lines alone. Nothing else.
 
 With ``--names-from``, the players' names in the real games' demos under that
 directory must not appear in the lines the diff adds: the repository is public,
@@ -66,7 +71,12 @@ RUN_ADDS = (
     NEW_DETECTOR,
     NEW_DETECTOR_TEST,
 )
-KINDS = ("iteration", "run", "curator")
+# What the real-game study's branch may add, besides listing its games in ledger/real-games.txt.
+STUDY_ADDS = (
+    re.compile(r"^ledger/studies/[0-9]+\.md$"),
+    re.compile(r"^ledger/analyses/[0-9]+\.md$"),
+)
+KINDS = ("iteration", "run", "curator", "study")
 
 # What a detector a run adds may import and call: it reads one demo and returns
 # flags, so it touches no file, process or network and reaches no object it
@@ -163,7 +173,7 @@ def out_of_scope(
 
     Args:
         changes: (git status letter, path) for every file the branch changed.
-        kind: ``iteration``, ``run`` or ``curator`` (the module's docstring).
+        kind: ``iteration``, ``run``, ``curator`` or ``study`` (the module's docstring).
         base_bots: for a run, the bots BASE has: a run adds only bots BASE doesn't have.
     """
     if kind == "run":
@@ -173,6 +183,13 @@ def out_of_scope(
             if status != "A"
             or not any(rule.match(path) for rule in RUN_ADDS)
             or (path.startswith("bots/") and path.split("/")[1] in base_bots)
+        ]
+    if kind == "study":
+        return [
+            f"{status} {path}"
+            for status, path in changes
+            if not (path == "ledger/real-games.txt" and status in "AM")
+            and not (status == "A" and any(rule.match(path) for rule in STUDY_ADDS))
         ]
     if kind == "curator":
         return [
@@ -189,6 +206,21 @@ def out_of_scope(
             continue
         bad.append(f"{status} {path}")
     return bad
+
+
+def study_list_problems(diff: str, studied: Collection[str]) -> list[str]:
+    """What a study's ``git diff`` of ``ledger/real-games.txt`` does beyond appending ``<id> <date>`` for its games."""
+    problems = []
+    for line in diff.splitlines():
+        if line.startswith(("+++", "---")) or line[:1] not in ("+", "-"):
+            continue
+        if line.startswith("-"):
+            problems.append("removes a listed game")
+        elif not (match := re.fullmatch(r"\+([0-9]+) [0-9]{4}-[0-9]{2}-[0-9]{2}", line)):
+            problems.append("adds a line that isn't `<id> <date>`")
+        elif match.group(1) not in studied:
+            problems.append(f"lists game {match.group(1)}, whose study it doesn't add")
+    return problems
 
 
 def player_names(directory: Path, ignore: set[str]) -> set[str]:
@@ -267,6 +299,12 @@ def main(argv: list[str] | None = None) -> int:
     for change in out_of_scope(changes, args.kind, base_bots):
         print(f"out of a {args.kind}'s scope: {change}", file=sys.stderr)
         failed = True
+    if args.kind == "study":
+        studied = {Path(path).stem for status, path in changes if status == "A" and path.startswith("ledger/studies/")}
+        listing = _git("diff", "--unified=0", f"{args.base}...{args.head}", "--", "ledger/real-games.txt")
+        for problem in study_list_problems(listing, studied):
+            print(f"ledger/real-games.txt: {problem}", file=sys.stderr)
+            failed = True
     for status, path in changes:
         if status == "A" and (NEW_DETECTOR.match(path) or NEW_DETECTOR_TEST.match(path)):
             for problem in impure(path, _git("show", f"{args.head}:{path}")):

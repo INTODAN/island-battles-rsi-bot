@@ -1,4 +1,4 @@
-"""Starts a league iteration when the hosted bot has packed a real game.
+"""Starts the real-game study when the hosted bot has packed a real game.
 
 An AWS Lambda function, called by the games bucket's event notification for
 every object created under ``games/`` that ends in ``.zip``. For each zip it
@@ -6,7 +6,7 @@ reads the game's summary packed inside it (``game.json``: the copy next to the
 zip is written after it, so it can still be the old one) and, when the game is
 finished and its demo is final, sends a ``repository_dispatch`` of
 type ``real-game`` to the league's repository. The workflow
-``real-game-iteration.yml`` answers it.
+``real-game-study.yml`` answers it.
 
 A game whose demo is still ``pending`` (the game's own demo didn't download
 yet) is skipped: the hosted bot packs its zip again once the demo is in, and

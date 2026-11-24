@@ -130,6 +130,37 @@ def test_the_scope_allows_bots_the_ledger_the_deployed_bot_and_new_maps() -> Non
     assert scope.out_of_scope(refused) == [f"{status} {path}" for status, path in refused]
 
 
+def test_a_study_adds_only_its_games_summaries_and_analyses_and_lists_them() -> None:
+    allowed = [
+        ("A", "ledger/studies/483.md"),
+        ("A", "ledger/analyses/483.md"),
+        ("M", "ledger/real-games.txt"),
+    ]
+    assert scope.out_of_scope(allowed, "study") == []
+    refused = [
+        ("M", "ledger/studies/471.md"),
+        ("D", "ledger/analyses/471.md"),
+        ("A", "ledger/analyses/notes.md"),
+        ("A", "ledger/runs/20261124-abc123.md"),
+        ("M", "ledger/iterations.md"),
+        ("A", "bots/new_bot/main.go"),
+        ("M", "hosting/lambda/bot"),
+        ("D", "ledger/real-games.txt"),
+    ]
+    assert scope.out_of_scope(refused, "study") == [f"{status} {path}" for status, path in refused]
+
+
+def test_a_study_only_appends_its_own_games_to_the_list() -> None:
+    diff = (
+        "--- a/ledger/real-games.txt\n+++ b/ledger/real-games.txt\n@@ -9,0 +10,2 @@\n+483 2026-11-24\n+484 2026-11-24\n"
+    )
+    assert scope.study_list_problems(diff, {"483", "484"}) == []
+    assert scope.study_list_problems(diff, {"483"}) == ["lists game 484, whose study it doesn't add"]
+    removed = "@@ -1 +0,0 @@\n-471 2026-11-23\n"
+    assert scope.study_list_problems(removed, {"483"}) == ["removes a listed game"]
+    assert scope.study_list_problems("@@ -9,0 +10 @@\n+483 soon\n", {"483"}) == ["adds a line that isn't `<id> <date>`"]
+
+
 def test_the_scope_finds_players_names_without_printing_them(tmp_path: Path) -> None:
     demo = {
         "teams": [{"color": 1, "name": "Blue", "players": ["Alice Smith"]}, {"color": 2, "name": "Red", "players": []}],
