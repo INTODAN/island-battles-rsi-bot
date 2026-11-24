@@ -8,10 +8,13 @@ A line is a founder and the bots descended from it: one strategy. The main line 
 
 | Line | Its strategy | Head | Other active bots | State |
 |---|---|---|---|---|
-| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce` | none | **main** since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once) |
-| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | `speedhelp_landlate` (the champion of iterations 38 and 39), `harrier_feedkeep` (retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`) | the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); 1 iteration of work without a promotion (41) |
-| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots | none | closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. |
-| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | `batchfront` | side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 1 iteration of work without a promotion (41) |
+| `pounce` | A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers. | `pounce_reach` | none | closed; closed in iteration 47: two iterations of work in a row without a promotion |
+| `ori` | The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code. | `fullfeed_unfreeze` | none | closed; closed in iteration 43: two iterations of work in a row without a promotion |
+| `frontline` | Production then speed in every castle, rear castles staging at the castle nearest the enemy, strikes from there with a margin. Founded in iteration 7 from a real game's winner; the champions of iterations 7 to 24. | none | none | closed; closed in iteration 25, when the `ori` founders passed it. Until iteration 38 `safe_hold` took more points from the champion than any other player outside the main line. Its code is in git, as Python and as Go. Head: none: `safe_hold`, its last bot, was deleted in iteration 38 by the cap on retired bots |
+| `batchfront` | Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment. | `batchfront_keep` | none | closed; closed in iteration 43: two iterations of work in a row without a promotion |
+| `landgrab` | land first: every castle takes the neutrals that pay back soonest before it buys any production level, the nearest two or three castles paying each together, and attacks only as one strike from every castle landing on one enemy castle on the same turn. | `landgrab` | none | side; 0 iterations of work without a promotion; admitted in iteration 43 |
+| `burstguard` | castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold. | `burstguard` | none | side; 0 iterations of work without a promotion; a side line since iteration 47, when `juggernaut` passed it |
+| `juggernaut` | one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack. | `juggernaut` | none | main; 0 iterations of work without a promotion; the main line since iteration 47 |
 
 ## Lessons so far
 
@@ -3163,3 +3166,353 @@ Holdout maps (`setup-after-41-holdout`, 5,456 matches, exit 0):
 **Not verified.** The slowest turns on training (up to 72 ms) are higher than in iteration 41 because the league's checks ran on the same machine during the tournament; no turn came near the 200 ms gate. Runs that started from main before this change measured at the old pin; since no headless result changed, their numbers still hold, but a match cached under the old runner's hash is played again at the new one.
 
 **Time:** the two tournaments took 4.5 and 4.3 minutes; the whole change about 40 minutes, most of it reading the game's pull requests.
+
+## Iteration 42: run 20261123-13f1e2, nothing promoted
+
+Run: ledger/runs/20261123-13f1e2.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/foreland, holdout/tombolo, train/backshore. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `pounce_front` | pounce | Graft from batchfront_keep: rear castles feed what they can spare above pounce's reserve to the front, the own castle nearest the enemy, in batches of 12 or more, never while an enemy group is bound for them. | 35/68 | 2186 (2142) | 107, 69 (+38; 16 maps better, 9 worse; 5.7%): confirmed | 107 (111) | not played | not played | **rejected**: over 3 points fewer than pounce against the references (107 to 111) |
+
+### The population's upkeep
+
+- delete `pounce_front`: rejected: over 3 points fewer than pounce against the references (107 to 111)
+
+The champion stays `pounce`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce` | 2149 | 0.797 | 684 | 41 | 159 |
+| `punisher` | 2134 | 0.783 | 676 | 32 | 176 |
+| `fullfeed_unfreeze` | 2065 | 0.714 | 581 | 100 | 203 |
+| `speedhelp_landlate` | 2048 | 0.696 | 572 | 87 | 225 |
+| `harrier_feedkeep` | 1986 | 0.629 | 500 | 112 | 272 |
+| `batchfront_keep` | 1984 | 0.627 | 528 | 52 | 304 |
+| `growtrickle_feedkeep` | 1954 | 0.594 | 474 | 102 | 308 |
+| `sameturn_endreserve` | 1940 | 0.578 | 443 | 136 | 305 |
+| `batchfront` | 1900 | 0.535 | 451 | 44 | 389 |
+| `ori_mimic` | 1800 | 0.433 | 323 | 120 | 441 |
+| `ori_like` | 1671 | 0.325 | 275 | 24 | 585 |
+| `level1` | 1446 | 0.061 | 0 | 92 | 656 |
+| `level3` | 1056 | 0.007 | 5 | 0 | 743 |
+| `level2` | 828 | 0.001 | 1 | 0 | 747 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce` | 2072 | 0.748 | 627 | 29 | 202 |
+| `punisher` | 2057 | 0.732 | 611 | 34 | 213 |
+| `batchfront_keep` | 2047 | 0.721 | 601 | 35 | 222 |
+| `fullfeed_unfreeze` | 2015 | 0.686 | 559 | 60 | 239 |
+| `speedhelp_landlate` | 2007 | 0.678 | 546 | 71 | 241 |
+| `harrier_feedkeep` | 1963 | 0.629 | 492 | 96 | 270 |
+| `growtrickle_feedkeep` | 1953 | 0.617 | 480 | 99 | 279 |
+| `batchfront` | 1928 | 0.590 | 491 | 30 | 337 |
+| `sameturn_endreserve` | 1890 | 0.547 | 412 | 115 | 331 |
+| `ori_mimic` | 1800 | 0.454 | 332 | 115 | 411 |
+| `ori_like` | 1650 | 0.328 | 281 | 0 | 577 |
+| `level1` | 1367 | 0.044 | 0 | 64 | 662 |
+| `level3` | 907 | 0.003 | 2 | 0 | 724 |
+| `level2` | 626 | 0.000 | 0 | 0 | 726 |
+
+## Iteration 43: run 20261123-1c1bd6, promoted landgrab, pounce_reach
+
+Run: ledger/runs/20261123-1c1bd6.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/levee, holdout/marsh, train/tarn. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `keep_inbound` | batchfront_keep | Fix: keep() counts at an enemy castle the enemy groups walking to it that land within the keep's horizon: gyre turns 63 to 67 (castle 0 sent 20 to the front while 12-soldier batches walked to enemy castle 4, which then took castle 0) and fjord turn 61 (about 100 at castle 9). | 31/70 | 2018 (2007) | 82, 59 (+23; 13 maps better, 14 worse; 15.2%): confirmed | 104 (104) | 67, 64 (+3; 16 maps better, 11 worse; 45.9%): nothing | 133, 123 (+10; 28 maps better, 25 worse; 37.1%): nothing | **unresolved**: a margin above 0 on all maps, short of the rule: nothing on the holdout maps and nothing on all maps |
+| `landgrab` | pounce | Founder: land first: every castle takes the neutrals that pay back soonest before it buys any production level, the nearest two or three castles paying each together, and attacks only as one strike from every castle landing on one enemy castle on the same turn. | against the champion: 42/70 | 1949 (2098) | — | 82 (115) | not played | not played | **admitted**: a third of the points or more from the champion (42/70), and plays alike no bot of the league |
+| `pounce_helperkeep` | pounce | Fix: a castle that is the only one whose help lands in time at a thin own castle beside a stocked enemy castle keeps that castle's shortfall when it upgrades or pays a neutral; haven turn 20 (production bought by the only helper of castles 3 and 5), breakwater turn 41 (castle 1 paid a far neutral and castle 3 fell on 44), wharf turn 68. | 37.5/70 | 2111 (2098) | 22, 7 (+15; 4 maps better, 2 worse; 25.0%): nothing | 117 (115) | 6, 7 (-1; 1 maps better, 3 worse; 50.0%): worse | 26, 13 (+13; 5 maps better, 5 worse; 25.0%): nothing | **unresolved**: a margin above 0 on all maps, short of the rule: worse on the holdout maps and nothing on all maps |
+| `pounce_reach` | pounce | Fix: from turn 60, while no group of ours walks at an enemy castle and we hold more soldiers than the enemy, strikes may walk as far as the finishing window allows instead of only six turns: bight, castles 0 and 4 held up to 974 and 894 from turn 31 to 269 with every enemy castle 7.4 to 7.8 away, a 5-to-1 win at the limit instead of an elimination. | 33/70 | 2104 (2098) | 26, 10 (+16; 11 maps better, 4 worse; 6.8%): confirmed | 117.5 (115) | 46, 15 (+31; 10 maps better, 5 worse; 4.8%): clear | 64, 22 (+42; 17 maps better, 9 worse; 1.7%): clear | **promoted**: confirmed on the holdout maps and clear on all maps against pounce |
+| `pounce_wholehelp` | pounce | Fix: help is sent only when what lands in time covers the whole shortfall, and speed is bought for help only then; otherwise the helpers keep their soldiers: haven turn 23, wharf turn 71 (speed bought, castle fell anyway, castle 2 then got 4 a turn), breakwater turns 49 to 61 and cairn turns 42 to 48 (groups of 3 or 4 a turn eaten in clashes). | 38/70 | not played | not played | not played | not played | not played | **needs_review**: 1 failed turns in the head-to-head run: fix it or drop it, or play the run again if a turn ran out of time while the machine was busy |
+| `unfreeze_pairreserve` | fullfeed_unfreeze | Fix: a feed leaves the feeding castle what the two strongest enemy castles that could land on it within a few turns of each other could land together, not only the strongest one: cairn turns 41 to 54 (castle 1 fed down to 4 to 6 three times, then 8 and 39 landed together from castles 4 and 5). | 31.5/70 | 1997 (2017) | 78, 115 (-37; 10 maps better, 16 worse; 5.3%): clearly worse | 115.5 (117.5) | not played | not played | **rejected**: clearly worse than fullfeed_unfreeze on the training maps |
+
+Left undecided by the rules and deleted, for a run to write again: pounce_wholehelp.
+
+### The population's upkeep
+
+- delete `keep_inbound`: unresolved: a margin above 0 on all maps, short of the rule: nothing on the holdout maps and nothing on all maps
+- `landgrab` becomes active: admitted: a third of the points or more from the champion (42/70), and plays alike no bot of the league; the first bot of a side line
+- delete `pounce_helperkeep`: unresolved: a margin above 0 on all maps, short of the rule: worse on the holdout maps and nothing on all maps
+- `pounce_reach` becomes active: promoted: confirmed on the holdout maps and clear on all maps against pounce
+- NEEDS REVIEW: pounce_wholehelp: left a candidate, needs_review: 1 failed turns in the head-to-head run: fix it or drop it, or play the run again if a turn ran out of time while the machine was busy
+- delete `unfreeze_pairreserve`: rejected: clearly worse than fullfeed_unfreeze on the training maps
+- `pounce_reach` is the champion: promoted from the head pounce of `pounce`
+- `fullfeed_unfreeze` becomes retired: `ori` is closed: two iterations of work in a row without a promotion (iteration 43); its head becomes a fixed opponent
+- delete `speedhelp_landlate`: `ori` is closed: two iterations of work in a row without a promotion (iteration 43)
+- delete `harrier_feedkeep`: `ori` is closed: two iterations of work in a row without a promotion (iteration 43)
+- delete `growtrickle_feedkeep`: `ori` is closed: two iterations of work in a row without a promotion (iteration 43)
+- delete `sameturn_endreserve`: `ori` is closed: two iterations of work in a row without a promotion (iteration 43)
+- `batchfront_keep` becomes retired: `batchfront` is closed: two iterations of work in a row without a promotion (iteration 43); its head becomes a fixed opponent
+- delete `batchfront`: `batchfront` is closed: two iterations of work in a row without a promotion (iteration 43)
+
+**The champion is now `pounce_reach`**, was `pounce`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce_reach` | 2051 | 0.751 | 488 | 76 | 136 |
+| `pounce` | 2046 | 0.746 | 483 | 79 | 138 |
+| `batchfront_keep` | 2015 | 0.714 | 487 | 26 | 187 |
+| `punisher` | 2004 | 0.703 | 475 | 34 | 191 |
+| `fullfeed_unfreeze` | 1995 | 0.694 | 467 | 37 | 196 |
+| `landgrab` | 1942 | 0.637 | 423 | 46 | 231 |
+| `ori_mimic` | 1800 | 0.491 | 305 | 78 | 317 |
+| `ori_like` | 1723 | 0.423 | 287 | 18 | 395 |
+| `level1` | 1364 | 0.041 | 0 | 46 | 514 |
+| `level3` | 1103 | 0.009 | 5 | 0 | 555 |
+| `level2` | 684 | 0.000 | 0 | 0 | 560 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `batchfront_keep` | 2085 | 0.788 | 542 | 19 | 139 |
+| `pounce_reach` | 2043 | 0.746 | 492 | 60 | 148 |
+| `pounce` | 2031 | 0.734 | 481 | 65 | 154 |
+| `punisher` | 1967 | 0.666 | 459 | 15 | 226 |
+| `fullfeed_unfreeze` | 1955 | 0.653 | 446 | 22 | 232 |
+| `landgrab` | 1925 | 0.621 | 415 | 39 | 246 |
+| `ori_mimic` | 1800 | 0.491 | 312 | 64 | 324 |
+| `ori_like` | 1774 | 0.467 | 327 | 0 | 373 |
+| `level1` | 1319 | 0.030 | 0 | 34 | 526 |
+| `level3` | 1142 | 0.011 | 6 | 0 | 554 |
+| `level2` | 886 | 0.002 | 1 | 0 | 559 |
+
+## Iteration 44: run 20261123-627ceb, nothing promoted
+
+Run: ledger/runs/20261123-627ceb.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/rcflats, holdout/rcmarsh, train/rcbluff. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `pounce_forward` | pounce | Fix: a castle whose threat exceeds what it holds, and that no helper could reach before the enemy castles that threaten it, is topped up now from the castles that land soonest, before the enemy sends. | 30/72 | 1982 (2047) | 57, 124 (-67; 4 maps better, 23 worse; under 0.1%): clearly worse | 108 (119) | not played | not played | **rejected**: clearly worse than pounce on the training maps |
+| `pounce_nearwalk` | pounce | Fix: a neutral castle is taken only by senders whose walk is at most punishWalk turns, unless the game is finishing. | 48/72 | 2130 (2047) | 160, 98 (+62; 22 maps better, 9 worse; 3.4%): clear | 124 (119) | 109, 116 (-7; 17 maps better, 13 worse; 41.0%): worse | 250, 200 (+50; 35 maps better, 23 worse; 11.0%): confirmed | **unresolved**: a margin above 0 on all maps, short of the rule: worse on the holdout maps and confirmed on all maps |
+| `pounce_sharedhold` | pounce (judged against pounce_reach) | Fix: an upgrade or a neutral take may spend a castle below its own threat when the other castles' spare that lands before the enemy's covers the rest. | 58/72; against pounce_reach: 57/72 | 2191 (2050) | 181, 44 (+137; 29 maps better, 4 worse; under 0.1%): clear | 116 (121.5) | not played | not played | **superseded**: passes against its parent pounce, not against its line's head pounce_reach: over 3 points fewer than pounce_reach against the references (116 to 121.5) |
+| `pounce_together` | pounce | Fix: a strike's and a neutral take's senders land within one turn of each other: a sender that would land earlier waits, so the target meets them in one landing. | 35/72 | 2061 (2047) | 87, 74 (+13; 17 maps better, 10 worse; 28.4%): nothing | 123 (119) | 84, 69 (+15; 17 maps better, 11 worse; 24.5%): nothing | 160, 131 (+29; 34 maps better, 22 worse; 14.6%): confirmed | **unresolved**: a margin above 0 on all maps, short of the rule: nothing on the holdout maps and confirmed on all maps |
+
+### The population's upkeep
+
+- delete `pounce_forward`: rejected: clearly worse than pounce on the training maps
+- delete `pounce_nearwalk`: unresolved: a margin above 0 on all maps, short of the rule: worse on the holdout maps and confirmed on all maps
+- delete `pounce_sharedhold`: superseded: passes against its parent pounce, not against its line's head pounce_reach: over 3 points fewer than pounce_reach against the references (116 to 121.5)
+- delete `pounce_together`: unresolved: a margin above 0 on all maps, short of the rule: nothing on the holdout maps and confirmed on all maps
+
+The champion stays `pounce_reach`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `pounce_reach` | 2047 | 0.754 | 504 | 78 | 138 |
+| `pounce` | 2045 | 0.752 | 501 | 81 | 138 |
+| `batchfront_keep` | 2002 | 0.708 | 497 | 26 | 197 |
+| `punisher` | 1997 | 0.703 | 489 | 34 | 197 |
+| `fullfeed_unfreeze` | 1991 | 0.697 | 483 | 37 | 200 |
+| `landgrab` | 1926 | 0.626 | 428 | 46 | 246 |
+| `ori_mimic` | 1800 | 0.497 | 319 | 78 | 323 |
+| `ori_like` | 1712 | 0.418 | 292 | 18 | 410 |
+| `level1` | 1352 | 0.040 | 0 | 46 | 530 |
+| `level3` | 1145 | 0.012 | 7 | 0 | 569 |
+| `level2` | 952 | 0.003 | 2 | 0 | 574 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `batchfront_keep` | 2067 | 0.775 | 564 | 19 | 157 |
+| `pounce_reach` | 2043 | 0.751 | 524 | 64 | 152 |
+| `pounce` | 2029 | 0.737 | 511 | 69 | 160 |
+| `punisher` | 1962 | 0.666 | 485 | 15 | 240 |
+| `fullfeed_unfreeze` | 1952 | 0.655 | 474 | 22 | 244 |
+| `landgrab` | 1922 | 0.622 | 441 | 39 | 260 |
+| `ori_mimic` | 1800 | 0.496 | 334 | 66 | 340 |
+| `ori_like` | 1766 | 0.464 | 343 | 0 | 397 |
+| `level1` | 1315 | 0.030 | 0 | 36 | 556 |
+| `level3` | 1128 | 0.010 | 6 | 0 | 586 |
+| `level2` | 871 | 0.002 | 1 | 0 | 591 |
+
+## Iteration 45: run 20261123-8bf2a7, promoted burstguard
+
+Run: ledger/runs/20261123-8bf2a7.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/marram, holdout/sedge, train/fenwick. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `burstguard` | pounce | Founder: castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold. | against the champion: 53/74 | 2061 (2031) | — | 114 (125.5) | not played | not played | **admitted**: a third of the points or more from the champion (53/74), and plays alike no bot of the league |
+
+### The population's upkeep
+
+- `burstguard` becomes active: admitted: a third of the points or more from the champion (53/74), and plays alike no bot of the league; the first bot of a side line
+- `burstguard` is the champion: the head of the side line `burstguard` rates above pounce_reach on the training maps (2061 to 2031), not below it on the holdout maps, and takes at least half the points from it: the main line changes
+
+**The champion is now `burstguard`**, was `pounce_reach`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `burstguard` | 2061 | 0.745 | 583 | 47 | 184 |
+| `pounce_reach` | 2031 | 0.714 | 536 | 90 | 188 |
+| `pounce` | 2028 | 0.711 | 533 | 91 | 190 |
+| `batchfront_keep` | 2004 | 0.685 | 543 | 29 | 242 |
+| `punisher` | 1997 | 0.677 | 532 | 38 | 244 |
+| `fullfeed_unfreeze` | 1988 | 0.666 | 523 | 39 | 252 |
+| `landgrab` | 1935 | 0.608 | 466 | 58 | 290 |
+| `ori_mimic` | 1800 | 0.466 | 340 | 78 | 396 |
+| `ori_like` | 1737 | 0.408 | 321 | 22 | 471 |
+| `level1` | 1344 | 0.035 | 0 | 46 | 620 |
+| `level3` | 1199 | 0.015 | 10 | 0 | 656 |
+| `level2` | 1114 | 0.009 | 6 | 0 | 660 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `burstguard` | 2097 | 0.770 | 629 | 64 | 165 |
+| `batchfront_keep` | 2089 | 0.763 | 639 | 31 | 188 |
+| `pounce_reach` | 2038 | 0.710 | 565 | 88 | 205 |
+| `pounce` | 2027 | 0.698 | 552 | 93 | 213 |
+| `punisher` | 1968 | 0.633 | 534 | 19 | 305 |
+| `fullfeed_unfreeze` | 1950 | 0.614 | 512 | 30 | 316 |
+| `landgrab` | 1939 | 0.602 | 481 | 71 | 306 |
+| `ori_mimic` | 1800 | 0.458 | 356 | 74 | 428 |
+| `ori_like` | 1786 | 0.445 | 382 | 0 | 476 |
+| `level1` | 1324 | 0.028 | 0 | 40 | 662 |
+| `level3` | 1120 | 0.009 | 6 | 0 | 696 |
+| `level2` | 1011 | 0.004 | 3 | 0 | 699 |
+
+## Iteration 46: run 20261123-aff22f, nothing promoted
+
+Run: ledger/runs/20261123-aff22f.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/groyne, holdout/pier, train/sluice. Real games it studied: none.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `pounce_feedwalk` | pounce | Fix: a strike counts what each other enemy castle will hold on the last turn its help can still leave (its growth and the groups landing on it by then), not its stock now, above the reserve it keeps. | 47/76 | 2084 (2057) | 73, 59 (+14; 17 maps better, 8 worse; 19.0%): confirmed | 130 (127) | 55, 71 (-16; 13 maps better, 18 worse; 15.7%): clearly worse | 128, 130 (-2; 30 maps better, 26 worse; 48.1%): worse | **rejected**: clearly worse on the holdout maps and worse on all maps against pounce |
+| `pounce_holdcapture` | pounce | Fix: a strike also brings the garrison the capture needs to hold against what the other enemy castles could spare and land on it soon after, less its growth, so it doesn't take castles it can't hold. | 35.5/76 | 2051 (2057) | 92, 106 (-14; 14 maps better, 15 worse; 30.8%): worse | 124 (127) | 73, 126 (-53; 14 maps better, 21 worse; 2.3%): clearly worse | 165, 232 (-67; 28 maps better, 36 worse; 3.5%): clearly worse | **rejected**: clearly worse on the holdout maps and clearly worse on all maps against pounce |
+| `pounce_landtogether` | pounce | Fix: a strike's senders land together: only castles whose walk is the strike's landing turn (or one less) join it, so no group lands alone ahead of the rest. | 36/76 | 2053 (2057) | 55, 65 (-10; 13 maps better, 15 worse; 28.5%): worse | 126 (127) | 50, 47 (+3; 12 maps better, 9 worse; 45.3%): nothing | 105, 112 (-7; 25 maps better, 24 worse; 39.5%): worse | **rejected**: nothing on the holdout maps and worse on all maps against pounce |
+
+### The population's upkeep
+
+- delete `pounce_feedwalk`: rejected: clearly worse on the holdout maps and worse on all maps against pounce
+- delete `pounce_holdcapture`: rejected: clearly worse on the holdout maps and clearly worse on all maps against pounce
+- delete `pounce_landtogether`: rejected: nothing on the holdout maps and worse on all maps against pounce
+
+The champion stays `burstguard`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `burstguard` | 2061 | 0.742 | 595 | 51 | 190 |
+| `pounce_reach` | 2031 | 0.711 | 548 | 92 | 196 |
+| `pounce` | 2030 | 0.709 | 545 | 95 | 196 |
+| `punisher` | 2008 | 0.685 | 554 | 38 | 244 |
+| `batchfront_keep` | 2004 | 0.681 | 555 | 29 | 252 |
+| `fullfeed_unfreeze` | 1995 | 0.670 | 541 | 39 | 256 |
+| `landgrab` | 1942 | 0.612 | 482 | 60 | 294 |
+| `ori_mimic` | 1800 | 0.463 | 348 | 78 | 410 |
+| `ori_like` | 1739 | 0.407 | 329 | 22 | 485 |
+| `level1` | 1342 | 0.034 | 0 | 46 | 638 |
+| `level3` | 1197 | 0.015 | 10 | 0 | 674 |
+| `level2` | 1112 | 0.009 | 6 | 0 | 678 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `burstguard` | 2086 | 0.765 | 655 | 70 | 177 |
+| `batchfront_keep` | 2081 | 0.760 | 670 | 31 | 201 |
+| `pounce_reach` | 2031 | 0.708 | 592 | 94 | 216 |
+| `pounce` | 2022 | 0.699 | 581 | 99 | 222 |
+| `punisher` | 1966 | 0.638 | 566 | 19 | 317 |
+| `fullfeed_unfreeze` | 1951 | 0.621 | 545 | 30 | 327 |
+| `landgrab` | 1934 | 0.603 | 505 | 77 | 320 |
+| `ori_mimic` | 1800 | 0.463 | 380 | 76 | 446 |
+| `ori_like` | 1771 | 0.437 | 394 | 0 | 508 |
+| `level1` | 1318 | 0.028 | 0 | 42 | 696 |
+| `level3` | 1105 | 0.008 | 6 | 0 | 732 |
+| `level2` | 996 | 0.004 | 3 | 0 | 735 |
+
+## Iteration 47: run 20261123-c312b4, promoted juggernaut
+
+Run: ledger/runs/20261123-c312b4.md
+
+Integrated on 2026-11-23 by `league integrate`, from the run's base `042cbce387bc`. Maps the run added: holdout/marlb4, holdout/tarnb4, train/screeb4. Real games it studied: 482.
+
+### Decisions
+
+| Candidate | Parent | Idea | Against parent | Training (parent's) | Better, worse on training (margin, maps, by luck) | Against the references (parent's) | Holdout | All maps | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| `juggernaut` | pounce | Founder: one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack. | against the champion: 66/78 | 2046 (2044) | — | 106 (122) | not played | not played | **admitted**: a third of the points or more from the champion (66/78), and plays alike no bot of the league |
+| `pounce_front` | pounce | Graft from batchfront_keep: rear castles feed the front (the own castle nearest an enemy castle) in batches of what they can spare above their own reserve, so the hoard stands where it can strike and help; real game 482 (claw) and wharf, bight and estuary showed pounce's soldiers waiting in rear castles 7 to 13 turns from the enemy while one fed enemy stack outgrew its nearest castle. | 46/78 | 2020 (1992) | 164, 129 (+35; 17 maps better, 13 worse; 10.1%): confirmed | 124 (131) | not played | not played | **rejected**: over 3 points fewer than pounce against the references (124 to 131) |
+| `pounce_together` | pounce | Graft from batchfront_keep: a strike's groups land on one turn: the senders nearer the target wait (the plan kept in memory, their soldiers held) and leave so that every group lands together; pounce sends every joining castle at once, so the nearer groups land first and alone (trickled_attack on 22 maps). | 36/78 | 1982 (1992) | 33, 42 (-9; 10 maps better, 12 worse; 25.2%): worse | 132 (131) | 21, 47 (-26; 9 maps better, 18 worse; 2.3%): clearly worse | 45, 82 (-37; 17 maps better, 31 worse; 1.3%): clearly worse | **rejected**: clearly worse on the holdout maps and clearly worse on all maps against pounce |
+
+### The population's upkeep
+
+- `juggernaut` becomes active: admitted: a third of the points or more from the champion (66/78), and plays alike no bot of the league; the first bot of a side line
+- delete `pounce_front`: rejected: over 3 points fewer than pounce against the references (124 to 131)
+- delete `pounce_together`: rejected: clearly worse on the holdout maps and clearly worse on all maps against pounce
+- `pounce_reach` becomes retired: `pounce` is closed: two iterations of work in a row without a promotion (iteration 47); its head becomes a fixed opponent
+- delete `pounce`: `pounce` is closed: two iterations of work in a row without a promotion (iteration 47)
+- `juggernaut` is the champion: the head of the side line `juggernaut` rates above burstguard on the training maps (1992 to 1979), not below it on the holdout maps, and takes at least half the points from it: the main line changes
+
+**The champion is now `juggernaut`**, was `burstguard`.
+
+### Standings on the training maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `punisher` | 2006 | 0.724 | 604 | 34 | 220 |
+| `juggernaut` | 1992 | 0.709 | 589 | 38 | 231 |
+| `fullfeed_unfreeze` | 1980 | 0.696 | 577 | 41 | 240 |
+| `burstguard` | 1979 | 0.695 | 574 | 45 | 239 |
+| `pounce_reach` | 1974 | 0.689 | 569 | 45 | 244 |
+| `batchfront_keep` | 1957 | 0.670 | 559 | 32 | 267 |
+| `landgrab` | 1889 | 0.594 | 478 | 63 | 317 |
+| `ori_mimic` | 1800 | 0.498 | 388 | 78 | 392 |
+| `ori_like` | 1694 | 0.396 | 330 | 20 | 508 |
+| `level1` | 1310 | 0.034 | 0 | 48 | 654 |
+| `level3` | 1215 | 0.020 | 14 | 0 | 688 |
+| `level2` | 1157 | 0.014 | 10 | 0 | 692 |
+
+### Standings on the holdout maps
+
+| Player | Rating | Score | Wins | Draws | Losses |
+|---|---|---|---|---|---|
+| `juggernaut` | 2043 | 0.751 | 687 | 46 | 213 |
+| `batchfront_keep` | 2031 | 0.737 | 682 | 31 | 233 |
+| `burstguard` | 2007 | 0.712 | 641 | 66 | 239 |
+| `pounce_reach` | 1977 | 0.680 | 615 | 56 | 275 |
+| `punisher` | 1976 | 0.679 | 631 | 23 | 292 |
+| `fullfeed_unfreeze` | 1946 | 0.645 | 592 | 37 | 317 |
+| `landgrab` | 1889 | 0.582 | 514 | 74 | 358 |
+| `ori_mimic` | 1800 | 0.489 | 419 | 87 | 440 |
+| `ori_like` | 1718 | 0.412 | 390 | 0 | 556 |
+| `level1` | 1289 | 0.028 | 0 | 44 | 730 |
+| `level3` | 1152 | 0.013 | 10 | 0 | 764 |
+| `level2` | 1038 | 0.006 | 5 | 0 | 769 |

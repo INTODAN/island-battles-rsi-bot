@@ -2,25 +2,25 @@
 # (league_tools/lines.py). A line is a founder and the bots descended from it. state is main,
 # side or closed; without_promotion counts the line's iterations of work in a row without a
 # promotion (a side line is closed at two); bots are the bots of the league in the line.
-champion = "pounce"
+champion = "juggernaut"
 
 [[line]]
 name = "pounce"
-state = "main"
-head = "pounce"
+state = "closed"
+head = "pounce_reach"
 strategy = "A counter-puncher with no front and no staging: every castle keeps home what the enemy castles could spare against it (their stock above the reserve the `ori` rules keep), production to 4 then speed to 2 above that reserve, only the neutrals on its own side, and every enemy castle priced exactly at each landing turn up to six, struck by the castles that land together when their spare covers it. Founded in iteration 40 on `ori_like`'s scaffolding with the `ori` line's board helpers."
-bots = ["pounce"]
-without_promotion = 1
-note = "main since iteration 40, when it rated above `speedhelp_landlate` on both sets of maps and took 51 of 62 from it; nothing promoted in iteration 41 (once)"
+bots = ["pounce_reach"]
+without_promotion = 2
+note = "closed in iteration 47: two iterations of work in a row without a promotion"
 
 [[line]]
 name = "ori"
-state = "side"
+state = "closed"
 head = "fullfeed_unfreeze"
 strategy = "The hosted bot's rules as read off its games (production at home first, neutrals priced like attacks, rear castles feeding one front, nothing bought or sent from a castle under attack), with the league's holding, exact strikes and reserves; since iteration 34 one small group kept walking at the enemy's front castle. Founded in iteration 25 on `ori_mimic`'s code."
-bots = ["fullfeed_unfreeze", "speedhelp_landlate", "harrier_feedkeep", "growtrickle_feedkeep", "sameturn_endreserve"]
-without_promotion = 1
-note = "the main line until iteration 40, a side line since (`fullfeed_unfreeze` promoted in iteration 40); `speedhelp_landlate` the champion of iterations 38 and 39; retired by the cap in iteration 39: `growtrickle_feedkeep`, `sameturn_endreserve`; `harrier_attackers` left in iteration 40 for playing alike `harrier_feedkeep`; 1 iteration of work without a promotion (41)"
+bots = ["fullfeed_unfreeze"]
+without_promotion = 2
+note = "closed in iteration 43: two iterations of work in a row without a promotion"
 
 [[line]]
 name = "frontline"
@@ -33,9 +33,36 @@ note = "closed in iteration 25, when the `ori` founders passed it. Until iterati
 
 [[line]]
 name = "batchfront"
-state = "side"
+state = "closed"
 head = "batchfront_keep"
 strategy = "Founded in iteration 39 on `safe_hold`'s code (the closed `frontline` line) with what the real opponent of games 471 to 474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together; no reserve against the strongest enemy castle, no freeze under attack, no harassment."
-bots = ["batchfront_keep", "batchfront"]
-without_promotion = 1
-note = "side line, admitted in iteration 39; `batchfront_keep` promoted in iteration 40; 1 iteration of work without a promotion (41)"
+bots = ["batchfront_keep"]
+without_promotion = 2
+note = "closed in iteration 43: two iterations of work in a row without a promotion"
+
+[[line]]
+name = "landgrab"
+state = "side"
+head = "landgrab"
+strategy = "land first: every castle takes the neutrals that pay back soonest before it buys any production level, the nearest two or three castles paying each together, and attacks only as one strike from every castle landing on one enemy castle on the same turn."
+bots = ["landgrab"]
+without_promotion = 0
+note = "admitted in iteration 43"
+
+[[line]]
+name = "burstguard"
+state = "side"
+head = "burstguard"
+strategy = "castles past production 4 buy burst levels before speed; no standing reserve against the enemy's spare: a castle keeps what the strongest enemy castle within 4 turns could land less its growth and its burst, and a castle a landing would take this turn bursts to hold."
+bots = ["burstguard"]
+without_promotion = 0
+note = "a side line since iteration 47, when `juggernaut` passed it"
+
+[[line]]
+name = "juggernaut"
+state = "main"
+head = "juggernaut"
+strategy = "one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack."
+bots = ["juggernaut"]
+without_promotion = 0
+note = "the main line since iteration 47"

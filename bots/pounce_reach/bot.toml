@@ -4,8 +4,8 @@
 status = "retired"
 # The bot this one's code was copied from. A founder keeps it too: the ledger's
 # table of the lines says which line a bot belongs to.
-parent = "stallfeed_growtrickle"
+parent = "pounce"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 34
+iteration = 42
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "Feeding keeps a castle's reserve against every enemy castle, also when the game's end frees it for strikes: freed soldiers strike, they don't move to the front."
+idea = "Fix: from turn 60, while no group of ours walks at an enemy castle and we hold more soldiers than the enemy, strikes may walk as far as the finishing window allows instead of only six turns: bight, castles 0 and 4 held up to 974 and 894 from turn 31 to 269 with every enemy castle 7.4 to 7.8 away, a 5-to-1 win at the limit instead of an elimination."

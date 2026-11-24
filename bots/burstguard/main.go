@@ -1,3 +1,23 @@
+// burstguard: a bot whose garrison is a loan. No line of the league buys burst levels or bursts; every
+// line keeps a standing reserve home instead (pounce against what the enemy castles could spare, the ori
+// line against the strongest enemy castle, batchfront_keep against the strongest within 4 turns).
+//
+// Iteration 42, a founder on pounce's code. It differs from it in its economy and its defence:
+//
+//   - Economy: production up to topProduction, then burst potential up to topBurst, then speed up to
+//     topSpeed, in every castle. A castle's burst level is a garrison that costs nothing while it
+//     waits, and every bot that prices a strike exactly (pounce, the ori line's exact strikes) must
+//     bring it too.
+//   - Defence: no reserve against the enemy's spare. A castle keeps only what the strongest single
+//     enemy castle within keepTurns could land on it (its whole stock), less its own growth until
+//     then and less the burst it could order (keep). A castle that a landing in the coming generation
+//     would take bursts the soldiers it lacks (burst>C:N); one whose fall is later and whose burst
+//     covers it waits for that turn (wait>C) instead of calling help; otherwise help as pounce sends it.
+//     Growth counts the burst debt a castle still repays.
+//   - Expansion and attack are pounce's: own-side neutrals, and exact strikes landing within punishWalk.
+//
+// pounce's comment follows.
+//
 // pounce: a counter-puncher that keeps its soldiers home and strikes a castle the turn its garrison drops.
 //
 // Iteration 40, a founder (its code started from ori_like's scaffolding, with the
@@ -46,6 +66,10 @@ const (
 	// Production and speed levels every castle buys up to, production first.
 	topProduction = 4
 	topSpeed      = 2
+	// Burst potential level every castle buys up to after production and before speed (4: a burst of 16).
+	topBurst = 4
+	// A castle keeps what the strongest enemy castle whose group lands within this many turns could land.
+	keepTurns = 4
 	// A strike lands within this many turns, so the target's owner has little time to answer it.
 	punishWalk = 6
 	// Soldiers a strike brings over the exact count of what it will meet.
@@ -189,6 +213,8 @@ type board struct {
 	bought   map[purchase]int
 	// sent is this turn's sends to each castle.
 	sent map[int][]landing
+	// bursts is this turn's bursts of each own castle.
+	bursts map[int]int
 }
 
 // newBoard reads the board from the turn.
@@ -199,6 +225,7 @@ func newBoard(turn islandbattles.Turn) *board {
 		spent:  map[int]int{},
 		bought: map[purchase]int{},
 		sent:   map[int][]landing{},
+		bursts: map[int]int{},
 	}
 	byID := map[int]*castle{}
 	for _, source := range turn.Generation.Castles {
@@ -363,6 +390,18 @@ func (b *board) landings(c *castle) []event {
 	return events
 }
 
+// grown is the soldiers the castle's owner grows in it over the next steps generations, at this rate: this
+// turn's burst arrives with the first one, and burst debt is repaid before anything grows.
+func (b *board) grown(c *castle, rate, steps int) int {
+	if steps <= 0 {
+		return 0
+	}
+	if burstNow := b.bursts[c.id]; burstNow > 0 {
+		return burstNow + rate + max(0, rate*(steps-1)-burstNow)
+	}
+	return max(0, rate*steps-c.burstDebt)
+}
+
 // atLanding is who holds the target and with how many soldiers in this many turns, after the groups bound for it.
 func (b *board) atLanding(target *castle, turns int) (int, int) {
 	owner := target.team
@@ -371,12 +410,20 @@ func (b *board) atLanding(target *castle, turns int) (int, int) {
 	if owner != neutral {
 		rate = b.rate(target)
 	}
+	// Growth until the first capture follows the castle's own rate, burst and debt; after it, a plain rate.
+	captured := -1
+	growth := func(from, to int) int {
+		if captured < 0 {
+			return b.grown(target, rate, to) - b.grown(target, rate, from)
+		}
+		return rate * (to - from)
+	}
 	now := 0
 	for _, e := range b.landings(target) {
 		if e.turns > turns {
 			break
 		}
-		soldiers += rate * (e.turns - now)
+		soldiers += growth(now, e.turns)
 		now = e.turns
 		switch {
 		case e.team == owner:
@@ -385,11 +432,12 @@ func (b *board) atLanding(target *castle, turns int) (int, int) {
 			owner = e.team
 			soldiers = e.soldiers - soldiers
 			rate = b.rate(target)
+			captured = now
 		default:
 			soldiers -= e.soldiers
 		}
 	}
-	soldiers += rate * (turns - now)
+	soldiers += growth(now, turns)
 	return owner, soldiers
 }
 
@@ -400,7 +448,7 @@ func (b *board) safeOut(c *castle) int {
 	lowest := soldiers
 	now := 0
 	for _, e := range b.landings(c) {
-		soldiers += rate * (e.turns - now)
+		soldiers += b.grown(c, rate, e.turns) - b.grown(c, rate, now)
 		now = e.turns
 		if e.team == b.team {
 			soldiers += e.soldiers
@@ -453,22 +501,36 @@ func (b *board) enemySpare(enemy *castle, overrides map[int]int) int {
 	return max(0, b.left(enemy)-keep)
 }
 
-// threat is what the enemy castles (not except) could spare and land on the castle beyond its growth on the way,
-// at this production rate, once the castle holds this many; only enemy castles that land before the game ends count.
+// burstReady is the burst the own castle could still order this turn: its burst value with this turn's
+// purchases, 0 while it has debt or once it burst this turn.
+func (b *board) burstReady(c *castle) int {
+	if c.burstDebt > 0 || b.bursts[c.id] > 0 {
+		return 0
+	}
+	value, _, found := b.table(burst, b.level(c, burst))
+	if !found {
+		return 0
+	}
+	return int(value)
+}
+
+// threat is the keep: what the strongest single enemy castle (not except) whose group lands within keepTurns could
+// spare and land on the castle once it holds this many, less the castle's growth on the way at this rate and less
+// the burst the castle could order. Enemy castles farther out, and the sum of several, are not kept against.
 func (b *board) threat(c *castle, except, rate, holding int) int {
 	overrides := map[int]int{c.id: holding}
-	total := 0
+	strongest := 0
 	for _, enemy := range b.enemies {
 		if enemy.id == except {
 			continue
 		}
 		walk := b.travel(enemy, c)
-		if walk >= b.turnsLeft() {
+		if walk > keepTurns || walk >= b.turnsLeft() {
 			continue
 		}
-		total += max(0, b.enemySpare(enemy, overrides)-rate*walk)
+		strongest = max(strongest, b.enemySpare(enemy, overrides)-rate*walk)
 	}
-	return total
+	return max(0, strongest-b.burstReady(c))
 }
 
 // avail is the soldiers the castle can spare: what no landing bound for it needs, less what the enemy castles other
@@ -529,22 +591,50 @@ func (b *board) sendFrom(senders []sender, target *castle, amount int) []string 
 	return parts
 }
 
+// fallsAt is the turn of the first landing bound for the castle that would take it and the soldiers the castle
+// would lack then, or 0, 0 when it holds through all of them.
+func (b *board) fallsAt(c *castle) (int, int) {
+	for _, e := range b.landings(c) {
+		if e.team == b.team {
+			continue
+		}
+		if owner, soldiers := b.atLanding(c, e.turns); owner != b.team {
+			return e.turns, soldiers + 1
+		}
+	}
+	return 0, 0
+}
+
 // defend sends what a castle lacks to the castles that the groups bound for them would take. Returns the log note.
 func defend(b *board) string {
 	var notes []string
 	for _, c := range b.own {
-		fall, lack := 0, 0
-		for _, e := range b.landings(c) {
-			if e.team == b.team {
-				continue
-			}
-			if owner, soldiers := b.atLanding(c, e.turns); owner != b.team {
-				fall, lack = e.turns, soldiers+1
-				break
-			}
-		}
+		fall, lack := b.fallsAt(c)
 		if lack == 0 {
 			continue
+		}
+		// The burst first: on the turn of the landing that takes the castle it arrives before that landing.
+		if ready := b.burstReady(c); ready > 0 {
+			if fall > 1 && ready >= lack {
+				notes = append(notes, fmt.Sprintf("wait>%d in %d lack %d burst %d", c.id, fall, lack, ready))
+				continue
+			}
+			if fall == 1 {
+				amount := ready
+				for try := min(lack, ready); try <= ready; try++ {
+					b.bursts[c.id] = try
+					if next, _ := b.fallsAt(c); next != 1 {
+						amount = try
+						break
+					}
+				}
+				b.bursts[c.id] = amount
+				b.commands = append(b.commands, islandbattles.BurstCastle(uint(c.id), uint(amount)))
+				notes = append(notes, fmt.Sprintf("burst>%d:%d", c.id, amount))
+				if fall, lack = b.fallsAt(c); lack == 0 {
+					continue
+				}
+			}
 		}
 		// A castle that will certainly fall outweighs a strike that may come: helpers keep only what their own
 		// landings need.
@@ -756,10 +846,24 @@ func expand(b *board) string {
 	return strings.Join(notes, " ")
 }
 
+// border is whether an enemy castle's group could land on the castle within keepTurns: only such a castle buys
+// burst levels, its garrison.
+func (b *board) border(c *castle) bool {
+	for _, enemy := range b.enemies {
+		if b.travel(enemy, c) <= keepTurns {
+			return true
+		}
+	}
+	return false
+}
+
 // nextUpgrade is the type and level the castle buys next, and false when it buys nothing more.
 func nextUpgrade(b *board, c *castle) (islandbattles.UpgradeType, int, bool) {
 	if level := b.level(c, production); level < topProduction {
 		return production, level + 1, true
+	}
+	if level := b.level(c, burst); level < topBurst && b.border(c) {
+		return burst, level + 1, true
 	}
 	if level := b.level(c, speed); level < topSpeed {
 		return speed, level + 1, true
@@ -783,13 +887,21 @@ func upgrade(b *board, c *castle) string {
 		if upgradeType == production {
 			rate = int(value)
 		}
-		if b.safeOut(c)-cost < b.threat(c, -1, rate, b.left(c)-cost) {
+		keep := b.threat(c, -1, rate, b.left(c)-cost)
+		if upgradeType == burst && c.burstDebt == 0 && b.bursts[c.id] == 0 {
+			// The level bought is part of the garrison at once.
+			keep = max(0, keep-(int(value)-b.burstReady(c)))
+		}
+		if b.safeOut(c)-cost < keep {
 			break
 		}
 		b.buy(c, upgradeType, cost)
 		name := "speed"
-		if upgradeType == production {
+		switch upgradeType {
+		case production:
 			name = "production"
+		case burst:
+			name = "burst"
 		}
 		bought = append(bought, fmt.Sprintf("%s%d@%d", name, level, c.id))
 	}

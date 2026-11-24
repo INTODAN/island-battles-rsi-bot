@@ -4,8 +4,8 @@
 status = "active"
 # The bot this one's code was copied from. A founder keeps it too: the ledger's
 # table of the lines says which line a bot belongs to.
-parent = "ori_like"
+parent = "pounce"
 # The league iteration that created it (ledger/iterations.md).
-iteration = 39
+iteration = 42
 # What this bot tries that its parent doesn't, in a sentence.
-idea = "Founder: the frontline line refounded on safe_hold's code with what the real opponent of games 471-474 did: every castle buys production to 3 first and takes only cheap neutrals until production 4; rear castles at the top feed one front in batches of 12; a neutral is paid by the one or two castles nearest it and sized to hold; strikes from up to three castles timed to land together."
+idea = "Founder: one stack: rear castles buy production only and send everything above what their landings need to one stack castle (the own castle nearest the enemy), which buys production then speed up to 4 and strikes the cheapest enemy castle with the enemy's whole stock that can land in time counted against it; the capture becomes the new stack."
