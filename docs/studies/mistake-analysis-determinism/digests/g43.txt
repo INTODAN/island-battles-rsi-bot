@@ -1,0 +1,184 @@
+Teams: 1 = rival_mimic, 2 = jug_fix
+Outcome: rival_mimic wins as the last team standing (126 generations, so 125 turns were played)
+
+Timeline: castles / soldiers in castles / soldiers in groups / production per turn
+| Turn | rival_mimic | jug_fix | Neutral castles |
+|---|---|---|---|
+| 1 | 1 / 30 / 0 / 1 | 1 / 30 / 0 / 1 | 4 |
+| 11 | 1 / 7 / 12 / 3 | 2 / 14 / 4 / 3 | 3 |
+| 21 | 1 / 15 / 22 / 3 | 2 / 36 / 0 / 3 | 3 |
+| 31 | 2 / 37 / 0 / 4 | 1 / 21 / 0 / 3 | 3 |
+| 41 | 2 / 42 / 0 / 4 | 2 / 35 / 0 / 4 | 2 |
+| 51 | 2 / 31 / 12 / 7 | 2 / 16 / 16 / 7 | 2 |
+| 61 | 2 / 44 / 12 / 8 | 3 / 44 / 16 / 9 | 1 |
+| 71 | 2 / 41 / 12 / 8 | 3 / 50 / 28 / 10 | 1 |
+| 81 | 3 / 67 / 34 / 12 | 2 / 84 / 16 / 8 | 1 |
+| 91 | 4 / 126 / 30 / 13 | 2 / 125 / 0 / 8 | 0 |
+| 101 | 4 / 226 / 28 / 13 | 2 / 173 / 0 / 8 | 0 |
+| 111 | 5 / 371 / 36 / 17 | 1 / 204 / 0 / 4 | 0 |
+| 121 | 5 / 280 / 297 / 17 | 1 / 244 / 0 / 4 | 0 |
+| 126 | 6 / 334 / 36 / 23 | 0 / 0 / 0 / 0 | 0 |
+
+Most soldiers, from turn: 10 jug_fix, 11 rival_mimic, 42 jug_fix, 43 rival_mimic, 44 jug_fix, 45 rival_mimic, 49 jug_fix, 51 rival_mimic, 58 jug_fix, 78 rival_mimic, 80 jug_fix, 81 rival_mimic
+
+Logistics (sends seen on a board; a group destroyed the turn it left isn't counted):
+  rival_mimic: sent 1171 soldiers, 3.2 away on average, 608 to its own castles and 563 at others; 19% of its soldiers were walking; lost 200 in clashes
+  jug_fix: sent 347 soldiers, 3.6 away on average, 296 to its own castles and 51 at others; 11% of its soldiers were walking; lost 200 in clashes
+
+Events (156 of 156):
+  turn 1: upgrade: rival_mimic castle 0 generation_amount 1->2
+  turn 1: upgrade: jug_fix castle 1 generation_amount 1->2
+  turn 1: send: jug_fix 17 soldiers from castle 1 (left with 5) to castle 3 (neutral, 15 soldiers), distance 3.2, speed level 1
+  turn 2: upgrade: rival_mimic castle 0 generation_amount 2->3
+  turn 7: capture: castle 3 neutral (15 soldiers) -> jug_fix (2 soldiers)
+  turn 9: upgrade: rival_mimic castle 0 speed 1->2
+  turn 9: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 3 (jug_fix, 3 soldiers), distance 5.1, speed level 2
+  turn 10: upgrade: jug_fix castle 1 speed 1->2
+  turn 10: send: jug_fix 4 soldiers from castle 1 (left with 9) to castle 3 (jug_fix, 4 soldiers), distance 3.2, speed level 2
+  turn 16: send: rival_mimic 22 soldiers from castle 0 (left with 3) to castle 3 (jug_fix, 2 soldiers), distance 5.1, speed level 2
+  turn 17: send: jug_fix 15 soldiers from castle 1 (left with 8) to castle 3 (jug_fix, 3 soldiers), distance 3.2, speed level 2
+  turn 24: upgrade: jug_fix castle 1 generation_amount 2->3
+  turn 24: send: rival_mimic 24 soldiers from castle 0 (left with 3) to castle 3 (jug_fix, 3 soldiers), distance 5.1, speed level 2
+  turn 29: capture: castle 3 jug_fix (8 soldiers) -> rival_mimic (15 soldiers)
+  turn 31: send: rival_mimic 19 soldiers from castle 0 (left with 5) to castle 2 (neutral, 15 soldiers), distance 3.2, speed level 2
+  turn 32: send: jug_fix 23 soldiers from castle 1 (left with 4) to castle 3 (rival_mimic, 17 soldiers), distance 3.2, speed level 2
+  turn 34: capture: castle 2 neutral (15 soldiers) -> rival_mimic (4 soldiers)
+  turn 35: capture: castle 3 rival_mimic (20 soldiers) -> jug_fix (2 soldiers)
+  turn 41: upgrade: rival_mimic castle 0 generation_amount 3->4
+  turn 42: upgrade: jug_fix castle 1 generation_amount 3->4
+  turn 43: upgrade: rival_mimic castle 2 generation_amount 1->2
+  turn 44: upgrade: jug_fix castle 3 generation_amount 1->2
+  turn 44: send: rival_mimic 14 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 4 soldiers), distance 3.2, speed level 2
+  turn 44: send: jug_fix 9 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 10 soldiers), distance 3.2, speed level 2
+  turn 46: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 4 soldiers), distance 3.2, speed level 2
+  turn 47: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 10 soldiers), distance 3.2, speed level 2
+  turn 48: upgrade: rival_mimic castle 2 generation_amount 2->3
+  turn 48: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 17 soldiers), distance 3.2, speed level 2
+  turn 50: upgrade: jug_fix castle 3 generation_amount 2->3
+  turn 50: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 12 soldiers), distance 3.2, speed level 2
+  turn 50: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 29 soldiers), distance 3.2, speed level 2
+  turn 51: send: rival_mimic 22 soldiers from castle 2 (left with 8) to castle 5 (neutral, 18 soldiers), distance 2.1, speed level 1
+  turn 52: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 23 soldiers), distance 3.2, speed level 2
+  turn 53: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 11 soldiers), distance 3.2, speed level 2
+  turn 54: upgrade: jug_fix castle 3 generation_amount 3->4
+  turn 54: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 37 soldiers), distance 3.2, speed level 2
+  turn 55: upgrade: jug_fix castle 3 speed 1->2
+  turn 55: capture: castle 5 neutral (18 soldiers) -> rival_mimic (4 soldiers)
+  turn 56: upgrade: rival_mimic castle 2 generation_amount 3->4
+  turn 56: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 32 soldiers), distance 3.2, speed level 2
+  turn 56: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 13 soldiers), distance 3.2, speed level 2
+  turn 57: upgrade: rival_mimic castle 2 speed 1->2
+  turn 57: send: jug_fix 11 soldiers from castle 3 (left with 18) to castle 5 (rival_mimic, 5 soldiers), distance 3.5, speed level 2
+  turn 58: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 18 soldiers), distance 3.2, speed level 2
+  turn 59: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 16 soldiers), distance 3.2, speed level 2
+  turn 60: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 3 (jug_fix, 34 soldiers), distance 3.2, speed level 2
+  turn 60: capture: castle 5 rival_mimic (8 soldiers) -> jug_fix (2 soldiers)
+  turn 61: send: rival_mimic 8 soldiers from castle 2 (left with 32) to castle 5 (jug_fix, 2 soldiers), distance 2.1, speed level 2
+  turn 62: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 32 soldiers), distance 3.2, speed level 2
+  turn 62: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 3 soldiers), distance 4.3, speed level 2
+  turn 62: send: jug_fix 16 soldiers from castle 3 (left with 38) to castle 5 (jug_fix, 3 soldiers), distance 3.5, speed level 2
+  turn 63: send: rival_mimic 15 soldiers from castle 2 (left with 37) to castle 5 (jug_fix, 4 soldiers), distance 2.1, speed level 2
+  turn 63: send: jug_fix 4 soldiers as group 30, which a clash destroyed in the same turn
+  turn 63: clash: rival_mimic group 25 8->4, jug_fix group 30 4->0
+  turn 64: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 1 soldiers), distance 4.3, speed level 2
+  turn 64: send: jug_fix 15 soldiers from castle 3 (left with 39) to castle 5 (jug_fix, 1 soldiers), distance 3.5, speed level 2
+  turn 65: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 41 soldiers), distance 3.2, speed level 2
+  turn 65: clash: rival_mimic group 25 4->0, jug_fix group 28 16->12
+  turn 66: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 0 soldiers), distance 4.3, speed level 2
+  turn 66: send: jug_fix 43 soldiers from castle 3 (left with 4) to castle 5 (jug_fix, 0 soldiers), distance 3.5, speed level 2
+  turn 67: upgrade: rival_mimic castle 2 speed 2->3
+  turn 67: send: rival_mimic 40 soldiers from castle 2 (left with 5) to castle 5 (jug_fix, 9 soldiers), distance 2.1, speed level 3
+  turn 68: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 5 soldiers), distance 3.2, speed level 2
+  turn 68: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 25 soldiers), distance 4.3, speed level 2
+  turn 68: send: jug_fix 20 soldiers as group 38, which a clash destroyed in the same turn
+  turn 68: clash: rival_mimic group 36 40->20, jug_fix group 38 20->0
+  turn 68: clash: jug_fix group 31 8->0, rival_mimic group 36 20->12
+  turn 69: send: jug_fix 12 soldiers from castle 3 (left with 4) to castle 5 (jug_fix, 6 soldiers), distance 3.5, speed level 2
+  turn 69: clash: jug_fix group 35 43->31, rival_mimic group 36 12->0
+  turn 70: upgrade: jug_fix castle 5 generation_amount 1->2
+  turn 70: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 38 soldiers), distance 4.3, speed level 2
+  turn 71: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 29 soldiers), distance 3.2, speed level 2
+  turn 71: send: jug_fix 8 soldiers from castle 3 (left with 4) to castle 5 (jug_fix, 38 soldiers), distance 3.5, speed level 2
+  turn 72: send: rival_mimic 16 soldiers from castle 2 (left with 33) to castle 3 (jug_fix, 4 soldiers), distance 2.8, speed level 3
+  turn 72: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 40 soldiers), distance 4.3, speed level 2
+  turn 73: upgrade: jug_fix castle 5 generation_amount 2->3
+  turn 73: send: jug_fix 8 soldiers as group 46, which a clash destroyed in the same turn
+  turn 73: clash: rival_mimic group 44 16->8, jug_fix group 46 8->0
+  turn 74: send: rival_mimic 7 soldiers from castle 2 (left with 46) to castle 3 (jug_fix, 4 soldiers), distance 2.8, speed level 3
+  turn 74: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 37 soldiers), distance 3.2, speed level 2
+  turn 74: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 45 soldiers), distance 4.3, speed level 2
+  turn 75: send: jug_fix 4 soldiers as group 50, which a clash destroyed in the same turn
+  turn 75: clash: rival_mimic group 44 8->4, jug_fix group 50 4->0
+  turn 76: send: rival_mimic 8 soldiers from castle 2 (left with 46) to castle 3 (jug_fix, 1 soldiers), distance 2.8, speed level 3
+  turn 76: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 67 soldiers), distance 4.3, speed level 2
+  turn 77: upgrade: jug_fix castle 5 generation_amount 3->4
+  turn 77: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 46 soldiers), distance 3.2, speed level 2
+  turn 78: send: rival_mimic 8 soldiers from castle 2 (left with 58) to castle 3 (jug_fix, 1 soldiers), distance 2.8, speed level 3
+  turn 78: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 52 soldiers), distance 4.3, speed level 2
+  turn 79: capture: castle 3 jug_fix (1 soldiers) -> rival_mimic (3 soldiers)
+  turn 80: send: rival_mimic 22 soldiers from castle 2 (left with 56) to castle 4 (neutral, 18 soldiers), distance 3.5, speed level 3
+  turn 80: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 62 soldiers), distance 3.2, speed level 2
+  turn 80: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 68 soldiers), distance 4.3, speed level 2
+  turn 81: upgrade: jug_fix castle 5 speed 1->2
+  turn 82: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 74 soldiers), distance 4.3, speed level 2
+  turn 82: capture: castle 4 neutral (18 soldiers) -> rival_mimic (4 soldiers)
+  turn 83: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 64 soldiers), distance 3.2, speed level 2
+  turn 83: send: rival_mimic 15 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 64 soldiers), distance 2.8, speed level 2
+  turn 84: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 90 soldiers), distance 4.3, speed level 2
+  turn 86: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 103 soldiers), distance 3.2, speed level 2
+  turn 86: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 103 soldiers), distance 2.8, speed level 2
+  turn 86: send: jug_fix 8 soldiers from castle 1 (left with 4) to castle 5 (jug_fix, 106 soldiers), distance 4.3, speed level 2
+  turn 87: send: rival_mimic 25 soldiers from castle 2 (left with 98) to castle 1 (jug_fix, 4 soldiers), distance 5.1, speed level 3
+  turn 88: upgrade: jug_fix castle 5 speed 2->3
+  turn 88: send: jug_fix 6 soldiers from castle 5 (left with 108) to castle 1 (jug_fix, 8 soldiers), distance 4.3, speed level 3
+  turn 89: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 114 soldiers), distance 3.2, speed level 2
+  turn 89: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 114 soldiers), distance 2.8, speed level 2
+  turn 90: upgrade: rival_mimic castle 2 speed 3->4
+  turn 90: send: rival_mimic 6 soldiers from castle 2 (left with 98) to castle 1 (jug_fix, 16 soldiers), distance 5.1, speed level 4
+  turn 92: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 114 soldiers), distance 3.2, speed level 2
+  turn 92: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 114 soldiers), distance 2.8, speed level 2
+  turn 93: send: rival_mimic 19 soldiers from castle 2 (left with 115) to castle 1 (jug_fix, 3 soldiers), distance 5.1, speed level 4
+  turn 95: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 131 soldiers), distance 3.2, speed level 2
+  turn 95: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 131 soldiers), distance 2.8, speed level 2
+  turn 95: send: jug_fix 10 soldiers as group 76, which a clash destroyed in the same turn
+  turn 95: clash: rival_mimic group 73 19->9, jug_fix group 76 10->0
+  turn 96: send: rival_mimic 11 soldiers from castle 2 (left with 140) to castle 1 (jug_fix, 5 soldiers), distance 5.1, speed level 4
+  turn 98: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 156 soldiers), distance 3.2, speed level 2
+  turn 98: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 156 soldiers), distance 2.8, speed level 2
+  turn 98: send: jug_fix 5 soldiers as group 80, which a clash destroyed in the same turn
+  turn 98: clash: rival_mimic group 73 9->4, jug_fix group 80 5->0
+  turn 99: send: rival_mimic 12 soldiers from castle 2 (left with 164) to castle 1 (jug_fix, 1 soldiers), distance 5.1, speed level 4
+  turn 101: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 180 soldiers), distance 3.2, speed level 2
+  turn 101: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 180 soldiers), distance 2.8, speed level 2
+  turn 101: capture: castle 1 jug_fix (9 soldiers) -> rival_mimic (3 soldiers)
+  turn 104: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 216 soldiers), distance 3.2, speed level 2
+  turn 104: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 216 soldiers), distance 2.8, speed level 2
+  turn 105: send: rival_mimic 15 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 232 soldiers), distance 5.1, speed level 2
+  turn 107: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 252 soldiers), distance 3.2, speed level 2
+  turn 107: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 252 soldiers), distance 2.8, speed level 2
+  turn 108: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 268 soldiers), distance 5.1, speed level 2
+  turn 110: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 288 soldiers), distance 3.2, speed level 2
+  turn 110: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 288 soldiers), distance 2.8, speed level 2
+  turn 111: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 319 soldiers), distance 5.1, speed level 2
+  turn 113: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 339 soldiers), distance 3.2, speed level 2
+  turn 113: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 339 soldiers), distance 2.8, speed level 2
+  turn 114: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 367 soldiers), distance 5.1, speed level 2
+  turn 116: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 387 soldiers), distance 3.2, speed level 2
+  turn 116: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 387 soldiers), distance 2.8, speed level 2
+  turn 117: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 415 soldiers), distance 5.1, speed level 2
+  turn 119: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 435 soldiers), distance 3.2, speed level 2
+  turn 119: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 435 soldiers), distance 2.8, speed level 2
+  turn 120: send: rival_mimic 249 soldiers from castle 2 (left with 218) to castle 5 (jug_fix, 240 soldiers), distance 2.1, speed level 4
+  turn 120: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 463 soldiers), distance 5.1, speed level 2
+  turn 121: send: jug_fix 125 soldiers as group 103, which a clash destroyed in the same turn
+  turn 121: clash: rival_mimic group 101 249->124, jug_fix group 103 125->0
+  turn 122: send: rival_mimic 10 soldiers from castle 2 (left with 252) to castle 5 (jug_fix, 123 soldiers), distance 2.1, speed level 4
+  turn 122: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 234 soldiers), distance 3.2, speed level 2
+  turn 122: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 234 soldiers), distance 2.8, speed level 2
+  turn 123: send: rival_mimic 12 soldiers from castle 1 (left with 4) to castle 2 (rival_mimic, 252 soldiers), distance 5.1, speed level 2
+  turn 124: send: rival_mimic 8 soldiers from castle 2 (left with 264) to castle 5 (jug_fix, 121 soldiers), distance 2.1, speed level 4
+  turn 125: upgrade: rival_mimic castle 4 generation_amount 1->3
+  turn 125: send: rival_mimic 12 soldiers from castle 0 (left with 4) to castle 2 (rival_mimic, 264 soldiers), distance 3.2, speed level 2
+  turn 125: send: rival_mimic 12 soldiers from castle 3 (left with 4) to castle 2 (rival_mimic, 264 soldiers), distance 2.8, speed level 2
+  turn 125: capture: castle 5 jug_fix (1 soldiers) -> rival_mimic (3 soldiers)
+  turn 125: eliminated: jug_fix

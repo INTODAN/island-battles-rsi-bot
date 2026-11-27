@@ -1,0 +1,27 @@
+config pair | jaccard of top3 kinds | same #1 kind | specific-mistake match
+opus-default opus-default (0.622, 0.659, 0.722)
+opus-default opus-medium (0.624, 0.663, 0.723)
+opus-default sonnet-high (0.528, 0.579, 0.642)
+opus-default fable-medium (0.529, 0.555, 0.647)
+opus-medium opus-medium (0.628, 0.666, 0.73)
+opus-medium sonnet-high (0.533, 0.585, 0.648)
+opus-medium fable-medium (0.534, 0.553, 0.653)
+sonnet-high sonnet-high (0.576, 0.582, 0.683)
+sonnet-high fable-medium (0.491, 0.536, 0.611)
+fable-medium fable-medium (0.635, 0.641, 0.735)
+baseline (same config, different game): (0.169, 0.125, None)
+jug_fix within-opus-default (0.654, 0.675, 0.752)
+rival_mimic within-opus-default (0.589, 0.644, 0.691)
+
+jug_fix mistakes 7200 effective #kinds 13.7 kinds used 19
+  share: [('passive_no_offense_at_parity_or_behind', 0.156), ('slow_expansion_neutral_race', 0.139), ('garrison_stripped_by_sends', 0.111), ('thin_capture_margin', 0.082), ('delayed_finishing_strike', 0.075), ('thin_garrison_misdistribution', 0.071), ('internal_shuffling', 0.067), ('wasted_speed_upgrades', 0.066), ('last_neutral_left_in_stalemate', 0.039), ('under_upgraded_production', 0.038)]
+  consensus kinds per game avg 2.62 | games where kind is consensus: [('passive_no_offense_at_parity_or_behind', 28), ('slow_expansion_neutral_race', 25), ('garrison_stripped_by_sends', 18), ('thin_capture_margin', 14), ('delayed_finishing_strike', 13), ('internal_shuffling', 10), ('thin_garrison_misdistribution', 10), ('wasted_speed_upgrades', 10), ('upgrading_under_threat', 6), ('last_neutral_left_in_stalemate', 6)]
+    win [('delayed_finishing_strike', 0.23), ('slow_expansion_neutral_race', 0.17), ('garrison_stripped_by_sends', 0.15), ('thin_capture_margin', 0.14)]
+    draw [('passive_no_offense_at_parity_or_behind', 0.28), ('slow_expansion_neutral_race', 0.16), ('wasted_speed_upgrades', 0.13), ('internal_shuffling', 0.12)]
+    loss [('garrison_stripped_by_sends', 0.18), ('passive_no_offense_at_parity_or_behind', 0.18), ('thin_garrison_misdistribution', 0.13), ('thin_capture_margin', 0.09)]
+rival_mimic mistakes 7200 effective #kinds 14.9 kinds used 19
+  share: [('slow_expansion_neutral_race', 0.128), ('passive_no_offense_at_parity_or_behind', 0.118), ('unconverted_lead_no_kill', 0.09), ('passive_stack_defense', 0.085), ('under_upgraded_production', 0.085), ('thin_capture_margin', 0.083), ('thin_garrison_misdistribution', 0.073), ('piecemeal_undersized_attacks', 0.055), ('opening_misallocation', 0.042), ('delayed_finishing_strike', 0.041)]
+  consensus kinds per game avg 2.53 | games where kind is consensus: [('passive_no_offense_at_parity_or_behind', 25), ('slow_expansion_neutral_race', 21), ('passive_stack_defense', 17), ('under_upgraded_production', 13), ('unconverted_lead_no_kill', 13), ('thin_garrison_misdistribution', 12), ('thin_capture_margin', 12), ('delayed_finishing_strike', 8), ('last_neutral_left_in_stalemate', 7), ('piecemeal_undersized_attacks', 7)]
+    win [('passive_stack_defense', 0.25), ('thin_garrison_misdistribution', 0.19), ('passive_no_offense_at_parity_or_behind', 0.13), ('slow_expansion_neutral_race', 0.09)]
+    draw [('passive_no_offense_at_parity_or_behind', 0.22), ('slow_expansion_neutral_race', 0.16), ('under_upgraded_production', 0.11), ('wasted_speed_upgrades', 0.08)]
+    loss [('unconverted_lead_no_kill', 0.15), ('thin_capture_margin', 0.15), ('slow_expansion_neutral_race', 0.14), ('delayed_finishing_strike', 0.12)]

@@ -1,0 +1,97 @@
+[
+ {
+  "id": "passive_no_offense_at_parity_or_behind",
+  "name": "Passive hoarding when even or behind on castles",
+  "definition": "For most or all of the game the bot sent almost nothing at enemy castles and sat on a large idle stockpile while tied or behind on castle count. That stockpile was the only means to gain a castle, so the game ended in a draw or a loss on count. Includes never making a final-turn strike before the generation limit, 'never retook a castle while one behind', and full mirror passivity. Use this when the castle count was equal or behind. When the bot was ahead, use unconverted_lead_no_kill."
+ },
+ {
+  "id": "unconverted_lead_no_kill",
+  "name": "Lead never pressed to elimination",
+  "definition": "The bot was ahead on castles or production, often with a big soldier surplus, and never mounted the attack that would have eliminated a weaker opponent. It settled for a narrow count win at the limit and stayed exposed to a late counter. The key test is that no decisive attack ever came. If one came but late, use delayed_finishing_strike."
+ },
+ {
+  "id": "delayed_finishing_strike",
+  "name": "Decisive strike delayed while stockpiling",
+  "definition": "The bot did eventually attack and capture or eliminate, but only after stockpiling for tens to hundreds of turns. The strike was affordable much earlier, and the wait let the rival's garrison grow. Covers 'slow finish of the last castle', 'waited N turns with a huge stack' and 'took 90 turns to finish a beaten foe'."
+ },
+ {
+  "id": "last_neutral_left_in_stalemate",
+  "name": "Decisive last neutral left uncaptured",
+  "definition": "In a tied or near-tied castle count, a remaining neutral castle sat uncaptured for a long stretch, often the whole game, while the bot held ample idle soldiers. Capturing it would have broken the tie or added a safety margin at the limit. Use this for long-standing neglect of the tiebreaking neutral. When the rival won an early race for that neutral, use slow_expansion_neutral_race."
+ },
+ {
+  "id": "slow_expansion_neutral_race",
+  "name": "Slow expansion / lost the neutral race",
+  "definition": "In the early or middle game, available neutral castles were captured late, ceded to the rival, or not contested at all. This includes stalling at a low castle count while soldiers were available and 'stopped expanding after N castles'. The result was a lost production or castle-count edge. This excludes delays caused by the turn-1 budget choice (opening_misallocation)."
+ },
+ {
+  "id": "opening_misallocation",
+  "name": "Opening budget misallocation",
+  "definition": "The bot misspent the starting soldiers in the first few turns. Examples: spending all 30 on a two-level generation upgrade on turn 1 and so delaying the first capture, sending nearly everything at an expensive distant neutral with no upgrade and leaving home bare, or buying speed instead of generation on turn 1-2. The result was lost early tempo against the rival."
+ },
+ {
+  "id": "under_upgraded_production",
+  "name": "Generation upgrades missing or late",
+  "definition": "Castle generation (production) levels were never maxed or were bought far later than affordable, while soldiers sat idle. Examples: a castle stuck at gen 1-3 for the whole game, captured castles left un-upgraded for many turns, gen 4 delayed by dozens of turns, or upgrades bought one level every 10 turns. This capped production below the rival's."
+ },
+ {
+  "id": "wasted_speed_upgrades",
+  "name": "Speed upgrades without use or before economy",
+  "definition": "Soldiers were spent on speed levels that no attack ever used, or speed was bought ahead of generation upgrades or neutral captures that would have paid more. The rule is that the speed purchase itself was the misinvestment, not that it left a castle exposed. If the spend thinned a threatened castle, use upgrading_under_threat."
+ },
+ {
+  "id": "upgrading_under_threat",
+  "name": "Spending during a threat or collapse instead of defending",
+  "definition": "The bot spent soldiers on generation or speed upgrades, or on a costly neutral, at a castle that was threatened or during a collapse. This drained the garrison, and the castle or nearby castles fell. Includes 'upgraded new castle then lost it with 12' and 'paid for neutral 2 the turn castle 8 fell'."
+ },
+ {
+  "id": "thin_capture_margin",
+  "name": "Captures taken too thin and lost back",
+  "definition": "The bot captured a castle with a tiny remainder (0-10 soldiers) and sent no follow-up reinforcement, so the rival retook it within a few turns. Includes repeated back-and-forth flip wars over the same castle and consolidating too many raid captures without garrisons. The castles involved were just captured, not long-held ones."
+ },
+ {
+  "id": "thin_garrison_misdistribution",
+  "name": "Held castle lost with few defenders while reserves sat elsewhere",
+  "definition": "A long-held castle, often the home castle or a gen-4 producer, fell holding only a handful of defenders. Meanwhile the bot's soldiers were stacked in other castles, and none were shifted to the threatened castle as rival groups approached. The cause is static misallocation of the garrison. If outgoing sends emptied the castle, use garrison_stripped_by_sends. If the lost castle held a large stack, use passive_stack_defense."
+ },
+ {
+  "id": "garrison_stripped_by_sends",
+  "name": "Castles stripped by outgoing sends (overextension)",
+  "definition": "The bot's own sends emptied its castles and the rival took them cheaply. Causes include an all-in attack or doom stack walking while the castles behind it sat empty, repeated drip-feed sends that left home at 2-4, evacuating a forward castle, or most of the army being in groups instead of garrisons. The castles fell because soldiers were sent away, not because reserves were placed badly."
+ },
+ {
+  "id": "passive_stack_defense",
+  "name": "Idle large stacks while being dismantled",
+  "definition": "While losing castles, the bot kept large idle stacks that neither reinforced the attacked castle, intercepted the visible incoming group, merged with other garrisons, nor counterattacked or retook lost castles. Typical results are big garrisons overrun one by one by a larger stack, or a hoard sitting in one castle until it fell too. The castle that fell held a large stack, or the description is about general hoarding during a collapse."
+ },
+ {
+  "id": "missed_strike_window",
+  "name": "Missed a specific exploitable moment",
+  "definition": "At an identifiable moment the rival was exploitable and the bot did not strike, even though it was otherwise active. Examples: rival castles nearly empty because its army was out walking, rival depleted after failed waves, an early soldier lead, or a fresh thin rival capture to punish. This is about one window of opportunity, not whole-game passivity (passive_no_offense_at_parity_or_behind / unconverted_lead_no_kill)."
+ },
+ {
+  "id": "internal_shuffling",
+  "name": "Pointless internal shuffling",
+  "definition": "The bot kept a constant body of soldiers walking between its own castles in loops: thousands sent, nearly all to its own castles. This churn achieved no defensive or offensive effect and tied up mass that could have been a strike force or a garrison."
+ },
+ {
+  "id": "piecemeal_undersized_attacks",
+  "name": "Piecemeal, undersized groups dying in clashes",
+  "definition": "The bot sent attacks or interceptors in small, trickled groups that were too weak to capture or that were destroyed in clashes with enemy groups. Repeated probes captured nothing and sometimes bled thousands of soldiers. A single massed group was needed. Includes sending 6-soldier groups out to meet 12-soldier groups."
+ },
+ {
+  "id": "poor_target_selection",
+  "name": "Poor target choice / overpaying",
+  "definition": "The bot chose an expensive target when cheaper ones were available. Examples: striking the rival's biggest stack instead of its thin castles, paying 25-30 for a neutral while 2-3-soldier neutrals went to the rival, or overkilling one target. It also covers contesting a castle that could not be held instead of skipping it."
+ },
+ {
+  "id": "slow_travel_and_routing",
+  "name": "Slow travel and bad routing",
+  "definition": "Soldiers moved inefficiently through space. Examples: long trickles at speed level 1 across the map that took 13-21 turns, reinforcement lanes routed through enemy groups and repeatedly intercepted, or expanding to a distant neutral instead of a close one. The cost came from travel time and exposure in transit, not from group size."
+ },
+ {
+  "id": "other",
+  "name": "Other",
+  "definition": "Mistakes that fit none of the above. Examples: never using burst or clash upgrades, generic statements of 'fell behind in soldiers' with no identifiable cause, and one-off tactical oddities."
+ }
+]
