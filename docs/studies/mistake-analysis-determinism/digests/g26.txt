@@ -1,0 +1,87 @@
+Teams: 1 = rival_mimic, 2 = jug_fix
+Outcome: Draw: equal castle counts at the generation limit (300 generations, so 299 turns were played)
+
+Timeline: castles / soldiers in castles / soldiers in groups / production per turn
+| Turn | rival_mimic | jug_fix | Neutral castles |
+|---|---|---|---|
+| 1 | 1 / 30 / 0 / 1 | 1 / 30 / 0 / 1 | 7 |
+| 11 | 1 / 7 / 22 / 3 | 2 / 25 / 0 / 3 | 6 |
+| 21 | 2 / 18 / 0 / 5 | 2 / 13 / 27 / 5 | 5 |
+| 31 | 2 / 40 / 17 / 6 | 3 / 40 / 4 / 7 | 4 |
+| 41 | 3 / 68 / 0 / 8 | 3 / 30 / 16 / 9 | 3 |
+| 51 | 4 / 50 / 25 / 12 | 3 / 36 / 58 / 12 | 2 |
+| 61 | 4 / 49 / 32 / 15 | 4 / 40 / 85 / 13 | 1 |
+| 71 | 4 / 139 / 62 / 16 | 4 / 119 / 71 / 16 | 1 |
+| 81 | 4 / 229 / 24 / 16 | 4 / 185 / 57 / 16 | 1 |
+| 91 | 4 / 389 / 24 / 16 | 4 / 346 / 56 / 16 | 1 |
+| 101 | 4 / 549 / 24 / 16 | 4 / 506 / 56 / 16 | 1 |
+| 111 | 4 / 709 / 24 / 16 | 4 / 666 / 56 / 16 | 1 |
+| 121 | 4 / 869 / 24 / 16 | 4 / 826 / 56 / 16 | 1 |
+| 131 | 4 / 1029 / 24 / 16 | 4 / 986 / 56 / 16 | 1 |
+| 141 | 4 / 1189 / 24 / 16 | 4 / 1146 / 56 / 16 | 1 |
+| 151 | 4 / 1349 / 24 / 16 | 4 / 1306 / 56 / 16 | 1 |
+| 161 | 4 / 1509 / 24 / 16 | 4 / 1466 / 56 / 16 | 1 |
+| 171 | 4 / 1669 / 24 / 16 | 4 / 1626 / 56 / 16 | 1 |
+| 181 | 4 / 1829 / 24 / 16 | 4 / 1786 / 56 / 16 | 1 |
+| 191 | 4 / 1989 / 24 / 16 | 4 / 1946 / 56 / 16 | 1 |
+| 201 | 4 / 2149 / 24 / 16 | 4 / 2106 / 56 / 16 | 1 |
+| 211 | 4 / 2309 / 24 / 16 | 4 / 2266 / 56 / 16 | 1 |
+| 221 | 4 / 2469 / 24 / 16 | 4 / 2426 / 56 / 16 | 1 |
+| 231 | 4 / 2629 / 24 / 16 | 4 / 2586 / 56 / 16 | 1 |
+| 241 | 4 / 2789 / 24 / 16 | 4 / 2746 / 56 / 16 | 1 |
+| 251 | 4 / 2949 / 24 / 16 | 4 / 2906 / 56 / 16 | 1 |
+| 261 | 4 / 3109 / 24 / 16 | 4 / 3066 / 56 / 16 | 1 |
+| 271 | 4 / 3269 / 24 / 16 | 4 / 3226 / 56 / 16 | 1 |
+| 281 | 4 / 3429 / 24 / 16 | 4 / 3386 / 56 / 16 | 1 |
+| 291 | 4 / 3589 / 24 / 16 | 4 / 3546 / 56 / 16 | 1 |
+| 300 | 4 / 3733 / 24 / 16 | 4 / 3698 / 48 / 16 | 1 |
+
+Most soldiers, from turn: 43 jug_fix, 50 rival_mimic, 51 jug_fix, 53 rival_mimic, 55 jug_fix, 59 rival_mimic, 60 jug_fix, 71 rival_mimic, 72 jug_fix, 73 rival_mimic, 74 jug_fix, 77 rival_mimic
+
+Logistics (sends seen on a board; a group destroyed the turn it left isn't counted):
+  rival_mimic: sent 3167 soldiers, 2.6 away on average, 2978 to its own castles and 189 at others; 2% of its soldiers were walking; lost 24 in clashes
+  jug_fix: sent 3278 soldiers, 3.2 away on average, 3158 to its own castles and 120 at others; 3% of its soldiers were walking; lost 24 in clashes
+
+Events (41 of 694):
+  turn 1: upgrade: rival_mimic castle 0 generation_amount 1->2
+  turn 1: upgrade: jug_fix castle 1 generation_amount 1->2
+  turn 2: upgrade: rival_mimic castle 0 generation_amount 2->3
+  turn 7: capture: castle 8 neutral (18 soldiers) -> jug_fix (2 soldiers)
+  turn 11: upgrade: jug_fix castle 1 generation_amount 2->3
+  turn 15: capture: castle 7 neutral (18 soldiers) -> rival_mimic (4 soldiers)
+  turn 16: upgrade: jug_fix castle 8 generation_amount 1->2
+  turn 19: upgrade: rival_mimic castle 0 generation_amount 3->4
+  turn 22: upgrade: rival_mimic castle 0 speed 1->2
+  turn 22: upgrade: rival_mimic castle 7 generation_amount 1->2
+  turn 26: upgrade: jug_fix castle 8 generation_amount 2->3
+  turn 26: capture: castle 6 neutral (25 soldiers) -> jug_fix (2 soldiers)
+  turn 28: upgrade: jug_fix castle 1 speed 1->2
+  turn 32: upgrade: rival_mimic castle 7 generation_amount 2->3
+  turn 35: upgrade: jug_fix castle 1 generation_amount 3->4
+  turn 36: capture: castle 5 neutral (25 soldiers) -> rival_mimic (5 soldiers)
+  turn 38: upgrade: jug_fix castle 8 generation_amount 3->4
+  turn 41: upgrade: jug_fix castle 6 generation_amount 1->2
+  turn 42: upgrade: rival_mimic castle 5 generation_amount 1->2
+  turn 42: upgrade: rival_mimic castle 7 generation_amount 3->4
+  turn 45: upgrade: jug_fix castle 6 generation_amount 2->3
+  turn 45: upgrade: rival_mimic castle 7 speed 1->2
+  turn 47: capture: castle 3 neutral (25 soldiers) -> rival_mimic (11 soldiers)
+  turn 49: upgrade: jug_fix castle 6 generation_amount 3->4
+  turn 50: upgrade: rival_mimic castle 5 generation_amount 2->3
+  turn 52: upgrade: jug_fix castle 1 speed 2->3
+  turn 54: upgrade: rival_mimic castle 3 generation_amount 1->2
+  turn 57: upgrade: rival_mimic castle 3 generation_amount 2->3
+  turn 58: capture: castle 2 neutral (25 soldiers) -> jug_fix (2 soldiers)
+  turn 59: upgrade: rival_mimic castle 5 speed 1->2
+  turn 60: upgrade: rival_mimic castle 3 generation_amount 3->4
+  turn 60: upgrade: rival_mimic castle 3 speed 1->2
+  turn 63: upgrade: rival_mimic castle 5 generation_amount 3->4
+  turn 64: upgrade: jug_fix castle 2 generation_amount 1->2
+  turn 66: upgrade: jug_fix castle 2 generation_amount 2->3
+  turn 70: upgrade: jug_fix castle 2 generation_amount 3->4
+  turn 70: upgrade: jug_fix castle 2 speed 1->2
+  turn 71: upgrade: rival_mimic castle 5 speed 2->3
+  turn 72: upgrade: jug_fix castle 2 speed 2->3
+  turn 73: upgrade: rival_mimic castle 5 speed 3->4
+  turn 76: upgrade: jug_fix castle 2 speed 3->4
+  ... the 653 sends and clashes are left out; see them with --turns A-B

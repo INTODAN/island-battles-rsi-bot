@@ -1,0 +1,602 @@
+[
+ {
+  "game": "g01",
+  "outcome_for_fix": "win",
+  "map": "archipelago",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 205,
+  "match_id": "2beb8d3a0029bab8736f09fb1fc5aeef"
+ },
+ {
+  "game": "g02",
+  "outcome_for_fix": "win",
+  "map": "pier",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 140,
+  "match_id": "d888ae990fbb8a833499c30a70f593f5"
+ },
+ {
+  "game": "g03",
+  "outcome_for_fix": "win",
+  "map": "cairn",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 74,
+  "match_id": "90cdb69ba6d58968e0ed1d01b60db6c0"
+ },
+ {
+  "game": "g04",
+  "outcome_for_fix": "win",
+  "map": "mudflat",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "a561604ed37d38241d5a46c19bacf8f0"
+ },
+ {
+  "game": "g05",
+  "outcome_for_fix": "win",
+  "map": "firth",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "c2c8a9a6ec1ef7d2ce92355d5bc4171e"
+ },
+ {
+  "game": "g06",
+  "outcome_for_fix": "win",
+  "map": "barrens",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 238,
+  "match_id": "68537d9e5f82d03f18a932b01e37e76e"
+ },
+ {
+  "game": "g07",
+  "outcome_for_fix": "win",
+  "map": "islands",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 164,
+  "match_id": "7ba4e8fb82ffb66a7df2d603dca27525"
+ },
+ {
+  "game": "g08",
+  "outcome_for_fix": "win",
+  "map": "star-of-david-duo",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 185,
+  "match_id": "1214cf2abf09b55bf5ae2d0099673550"
+ },
+ {
+  "game": "g09",
+  "outcome_for_fix": "win",
+  "map": "scatter",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 115,
+  "match_id": "0f80b076a8d02006ff67516db1b197c9"
+ },
+ {
+  "game": "g10",
+  "outcome_for_fix": "win",
+  "map": "rcbluff",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 130,
+  "match_id": "3cb94b545abce30ab76883f873901c70"
+ },
+ {
+  "game": "g11",
+  "outcome_for_fix": "win",
+  "map": "sedge",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 148,
+  "match_id": "30477e74aedeeca56013b0615e126831"
+ },
+ {
+  "game": "g12",
+  "outcome_for_fix": "win",
+  "map": "levee",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "94219b24c26d4be757988e6962d00096"
+ },
+ {
+  "game": "g13",
+  "outcome_for_fix": "win",
+  "map": "wharf",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 126,
+  "match_id": "a5a2ab987b94cac5da1f78a3d4853173"
+ },
+ {
+  "game": "g14",
+  "outcome_for_fix": "win",
+  "map": "fjord",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 130,
+  "match_id": "e1b22c4d2553197b9aacc227ef5e06e3"
+ },
+ {
+  "game": "g15",
+  "outcome_for_fix": "win",
+  "map": "tarnb4",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 283,
+  "match_id": "7ee0c75fa32e34e7928e5ebdf449809e"
+ },
+ {
+  "game": "g16",
+  "outcome_for_fix": "win",
+  "map": "moraine",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 207,
+  "match_id": "31827a11112e7e80042c71735f7b510e"
+ },
+ {
+  "game": "g17",
+  "outcome_for_fix": "win",
+  "map": "narrows",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 225,
+  "match_id": "1d7a842d2d7856aee001aaf9e8d8597b"
+ },
+ {
+  "game": "g18",
+  "outcome_for_fix": "win",
+  "map": "backshore",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 132,
+  "match_id": "3477f3c46e554acaca32a39e72a8f92c"
+ },
+ {
+  "game": "g19",
+  "outcome_for_fix": "win",
+  "map": "estuary",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 204,
+  "match_id": "b66a19345be3d0c452d406ddcd62cc0e"
+ },
+ {
+  "game": "g20",
+  "outcome_for_fix": "win",
+  "map": "jetty",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 162,
+  "match_id": "feeb7ef0b71fe38497df963418c5105c"
+ },
+ {
+  "game": "g21",
+  "outcome_for_fix": "draw",
+  "map": "circle",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "74d1ec8848eb22c73311c74dfa583d7c"
+ },
+ {
+  "game": "g22",
+  "outcome_for_fix": "draw",
+  "map": "marlb4",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "3c6f660a77a7655350b25a6a321ad514"
+ },
+ {
+  "game": "g23",
+  "outcome_for_fix": "draw",
+  "map": "rcflats",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "a4481df42579a6c0520d0a850f73f4e0"
+ },
+ {
+  "game": "g24",
+  "outcome_for_fix": "draw",
+  "map": "strait",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "766805cc5bbc0e3015cd99d2e3834acb"
+ },
+ {
+  "game": "g25",
+  "outcome_for_fix": "draw",
+  "map": "berm",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "3b6a14f38348ea1453016a1a242db706"
+ },
+ {
+  "game": "g26",
+  "outcome_for_fix": "draw",
+  "map": "mere",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "eda318812973361d7f2e5cfbd396f986"
+ },
+ {
+  "game": "g27",
+  "outcome_for_fix": "draw",
+  "map": "sound",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "83daf719c82724065ae8e70772920235"
+ },
+ {
+  "game": "g28",
+  "outcome_for_fix": "draw",
+  "map": "outcrop",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "0a266515a27e6ef51ea47782c713eb26"
+ },
+ {
+  "game": "g29",
+  "outcome_for_fix": "draw",
+  "map": "spit",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "37089eaed88c9d15c1d850d1f049f1a7"
+ },
+ {
+  "game": "g30",
+  "outcome_for_fix": "draw",
+  "map": "kelpbed",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "c97cb9ac9869a5cd35e9a59f16a6fbb2"
+ },
+ {
+  "game": "g31",
+  "outcome_for_fix": "draw",
+  "map": "key",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "87f18aaaca7939a7d51e8d6ccf926fb5"
+ },
+ {
+  "game": "g32",
+  "outcome_for_fix": "draw",
+  "map": "screeb4",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "83e43ba62a41042c146fe335e3d68d17"
+ },
+ {
+  "game": "g33",
+  "outcome_for_fix": "draw",
+  "map": "quay",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "20f203389d1b420c24c4deaea452d322"
+ },
+ {
+  "game": "g34",
+  "outcome_for_fix": "draw",
+  "map": "headland",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "1af0da7ed68e8e077cf49496e7eec243"
+ },
+ {
+  "game": "g35",
+  "outcome_for_fix": "draw",
+  "map": "marram",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "e32cbaf22f73d3bfb299fe64c0849e37"
+ },
+ {
+  "game": "g36",
+  "outcome_for_fix": "draw",
+  "map": "lagoon",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "40c33c5b9c2c73bc4f3f51abbc6f5aae"
+ },
+ {
+  "game": "g37",
+  "outcome_for_fix": "draw",
+  "map": "dune",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "15bf266bc193f1c55ad39021827e7873"
+ },
+ {
+  "game": "g38",
+  "outcome_for_fix": "draw",
+  "map": "tor",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "bc4f049a6e2c9d418017ab5f1a1129fc"
+ },
+ {
+  "game": "g39",
+  "outcome_for_fix": "draw",
+  "map": "shoals",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "77e790e7dbbd2f72e703a736ca971221"
+ },
+ {
+  "game": "g40",
+  "outcome_for_fix": "draw",
+  "map": "floe",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "a086b5f9f16e992b1a5a8e48fd8ee05f"
+ },
+ {
+  "game": "g41",
+  "outcome_for_fix": "loss",
+  "map": "narrows",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 120,
+  "match_id": "b62697b39af5080408a7f6c9e67c3043"
+ },
+ {
+  "game": "g42",
+  "outcome_for_fix": "loss",
+  "map": "ridge",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 118,
+  "match_id": "029abd685d560c4cf122ae933f3755c7"
+ },
+ {
+  "game": "g43",
+  "outcome_for_fix": "loss",
+  "map": "wick",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 126,
+  "match_id": "f9bceae4772bfe8153674e610eead214"
+ },
+ {
+  "game": "g44",
+  "outcome_for_fix": "loss",
+  "map": "bight",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "bc78c604b715614cff36ecb4e9b048d1"
+ },
+ {
+  "game": "g45",
+  "outcome_for_fix": "loss",
+  "map": "atoll",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 134,
+  "match_id": "0722a92997b376e902bdbb36a0a9a498"
+ },
+ {
+  "game": "g46",
+  "outcome_for_fix": "loss",
+  "map": "loch",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 239,
+  "match_id": "23278cf61e54aa3e8a12390723905659"
+ },
+ {
+  "game": "g47",
+  "outcome_for_fix": "loss",
+  "map": "sandbar",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "4049c4e24927cd53b17057084b32ed3c"
+ },
+ {
+  "game": "g48",
+  "outcome_for_fix": "loss",
+  "map": "groyne",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 261,
+  "match_id": "0b3b3cdb9cab70fa5dd5a14c5e35f07e"
+ },
+ {
+  "game": "g49",
+  "outcome_for_fix": "loss",
+  "map": "far-shores",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 123,
+  "match_id": "9c46cddd082257e0a05736c3fba71b76"
+ },
+ {
+  "game": "g50",
+  "outcome_for_fix": "loss",
+  "map": "skerry",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 134,
+  "match_id": "39b98fc4eb3475817d6ec5dfccd6a645"
+ },
+ {
+  "game": "g51",
+  "outcome_for_fix": "loss",
+  "map": "gyre",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "ef50c254d963b9efc775d2053028206f"
+ },
+ {
+  "game": "g52",
+  "outcome_for_fix": "loss",
+  "map": "foreland",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 142,
+  "match_id": "db2823d81040fdab2ca8b46ae335de10"
+ },
+ {
+  "game": "g53",
+  "outcome_for_fix": "loss",
+  "map": "causeway",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "last_team_standing",
+  "generations": 115,
+  "match_id": "224ddd902a8e997aabbe97ee6f039919"
+ },
+ {
+  "game": "g54",
+  "outcome_for_fix": "loss",
+  "map": "sluice",
+  "blue": "rival_mimic",
+  "red": "jug_fix",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "1d9f69efe6db6044045790e11c3616bf"
+ },
+ {
+  "game": "g55",
+  "outcome_for_fix": "loss",
+  "map": "haven",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "last_team_standing",
+  "generations": 28,
+  "match_id": "d90fbefc93a026764549036a9d6f128f"
+ },
+ {
+  "game": "g56",
+  "outcome_for_fix": "loss",
+  "map": "saltpan",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "fcd364a81c9813601a4083ff2a63039c"
+ },
+ {
+  "game": "g57",
+  "outcome_for_fix": "loss",
+  "map": "bayou",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "d1e80a40ed7141cb552e849b814b3fa2"
+ },
+ {
+  "game": "g58",
+  "outcome_for_fix": "loss",
+  "map": "lowtide",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "59910fea34785ef7b026eb565e4f4a21"
+ },
+ {
+  "game": "g59",
+  "outcome_for_fix": "loss",
+  "map": "shingle",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "c610593b3b154a5d1e99b88b8e862e74"
+ },
+ {
+  "game": "g60",
+  "outcome_for_fix": "loss",
+  "map": "marsh",
+  "blue": "jug_fix",
+  "red": "rival_mimic",
+  "reason": "generation_cap",
+  "generations": 300,
+  "match_id": "edd0f6088fb3b40897326697500f4bb5"
+ }
+]
